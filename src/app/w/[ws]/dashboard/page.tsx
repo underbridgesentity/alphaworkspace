@@ -48,7 +48,7 @@ export default function DashboardPage() {
     <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-5 md:px-6 md:pt-7">
       <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
       <p className="mt-0.5 text-sm text-muted">
-        Nobody compiled this. It's all from the work itself.
+        Nobody compiled this. It’s all from the work itself.
       </p>
 
       {/* Scope chips */}
@@ -176,8 +176,8 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
           <div className="mt-3">
             <p className="text-sm text-muted">
               Every Monday at 06:30 a short, human briefing lands here — what
-              got done, what's at risk, who's carrying too much, what to watch.
-              Written from your team's actual activity. Nobody compiles a
+              got done, what’s at risk, who’s carrying too much, what to watch.
+              Written from your team’s actual activity. Nobody compiles a
               status report again.
             </p>
             {isAdmin && (
@@ -349,7 +349,7 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
   const max = Math.max(1, ...kpis.memberLoad.map((m) => m.open));
   return (
     <section className="rounded-card bg-surface p-4" aria-label="Load per person">
-      <h3 className="text-sm font-semibold">Who's carrying what</h3>
+      <h3 className="text-sm font-semibold">Who’s carrying what</h3>
       <p className="text-xs text-faint">open tasks per person — spot the overload</p>
       <div className="mt-4 space-y-2.5">
         {kpis.memberLoad.map((m) => (

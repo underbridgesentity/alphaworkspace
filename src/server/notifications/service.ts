@@ -14,7 +14,7 @@ import { notifications, users } from "@/server/db/schema";
 import { inArray } from "drizzle-orm";
 import type { NotificationType } from "@/lib/types";
 import { channelAdapters } from "./channels";
-import { defaultChannelsFor } from "./defaults";
+import { defaultChannelsFor } from "@/lib/notification-defaults";
 
 export interface NotifyInput {
   workspaceId: string;
