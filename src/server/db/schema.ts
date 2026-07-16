@@ -9,7 +9,6 @@
  * - Phase 2 tables (kpi_*, time_entries, notes) ship now, UI later.
  */
 import {
-  boolean,
   date,
   doublePrecision,
   index,

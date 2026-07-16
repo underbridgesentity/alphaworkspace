@@ -79,10 +79,18 @@ export interface Entitlements {
   features: Feature[];
 }
 
+/** Loosely-typed stored snapshot (jsonb) — features arrive as plain strings. */
+export interface EntitlementsSnapshotInput {
+  maxMembers?: number;
+  maxActiveProjects?: number | null;
+  voiceCapturesPerMonth?: number;
+  features?: string[];
+}
+
 /** Effective entitlements: a stored snapshot wins, else the plan config. */
 export function entitlementsFor(
   plan: PlanId,
-  snapshot?: Partial<Entitlements> | null,
+  snapshot?: EntitlementsSnapshotInput | null,
 ): Entitlements {
   const base = PLANS[plan];
   return {
@@ -100,7 +108,7 @@ export function entitlementsFor(
 export function can(
   plan: PlanId,
   feature: Feature,
-  snapshot?: Partial<Entitlements> | null,
+  snapshot?: EntitlementsSnapshotInput | null,
 ): boolean {
   return entitlementsFor(plan, snapshot).features.includes(feature);
 }

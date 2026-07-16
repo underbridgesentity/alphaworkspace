@@ -12,7 +12,7 @@
 import type { Db } from "@/server/db";
 import { notifications, users } from "@/server/db/schema";
 import { inArray } from "drizzle-orm";
-import type { NotificationChannel, NotificationType } from "@/lib/types";
+import type { NotificationType } from "@/lib/types";
 import { channelAdapters } from "./channels";
 import { defaultChannelsFor } from "./defaults";
 
@@ -78,11 +78,11 @@ export async function notify(db: Db, input: NotifyInput): Promise<void> {
   }
 }
 
-/** Channels enabled for this user+type after applying quiet defaults. */
+/** Delivery channels enabled for this user+type after quiet defaults. */
 export function resolveChannels(
   type: NotificationType,
   prefs: Record<string, { inapp?: boolean; push?: boolean; email?: boolean }>,
-): NotificationChannel[] {
+): Array<"push" | "email"> {
   const defaults = defaultChannelsFor(type);
   const userPref = prefs[type] ?? {};
   return (["push", "email"] as const).filter((c) => userPref[c] ?? defaults[c]);
