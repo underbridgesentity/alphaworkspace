@@ -29,12 +29,22 @@ import { useWorkspace } from "@/lib/client/workspace";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { ThemeToggleItem } from "@/components/ui/theme-toggle";
+import dynamic from "next/dynamic";
 import { Sidebar, WorkspaceMenuItems } from "./sidebar";
 import { TaskPanel } from "./task-panel";
 import { SearchPalette } from "./search-palette";
 import { NotificationsPanel } from "./notifications-panel";
-import { QuickAddDialog } from "./quick-add";
-import { VoiceCaptureSheet } from "./voice-capture";
+
+// Capture surfaces are code-split — they only load when summoned, keeping
+// the app shell inside the 3G budget.
+const QuickAddDialog = dynamic(
+  () => import("./quick-add").then((m) => m.QuickAddDialog),
+  { ssr: false },
+);
+const VoiceCaptureSheet = dynamic(
+  () => import("./voice-capture").then((m) => m.VoiceCaptureSheet),
+  { ssr: false },
+);
 import { OfflineBadge } from "./offline-badge";
 import { Celebration } from "./celebration";
 import { UpgradePrompt } from "./upgrade-prompt";
