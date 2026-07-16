@@ -1,0 +1,435 @@
+/**
+ * The tests that prove the walls hold: cross-workspace reads and writes must
+ * fail, role checks must bite, and plan limits must enforce — all through the
+ * same DAL production uses.
+ */
+import { beforeAll, describe, expect, it } from "vitest";
+import { and, eq } from "drizzle-orm";
+import type { Db } from "@/server/db";
+import * as schema from "@/server/db/schema";
+import {
+  acceptInvite,
+  createInvite,
+  createWorkspace,
+  deleteWorkspace,
+  listMembers,
+  listWorkspacesForUser,
+  removeMember,
+  updateWorkspace,
+  workspaceUsage,
+} from "@/server/dal/workspaces";
+import { createProject, listProjects, updateProject } from "@/server/dal/projects";
+import {
+  boardTasks,
+  createTask,
+  deleteTask,
+  myWork,
+  taskDetail,
+  updateTask,
+} from "@/server/dal/tasks";
+import { addComment } from "@/server/dal/comments";
+import { createLabel } from "@/server/dal/labels";
+import { search } from "@/server/dal/search";
+import {
+  listNotifications,
+  markRead,
+  unreadCount,
+} from "@/server/dal/notifications";
+import {
+  confirmCapture,
+  createCapture,
+  discardCapture,
+} from "@/server/dal/captures";
+import { resolveCtx } from "@/server/dal/context";
+import {
+  ForbiddenError,
+  LimitError,
+  NotFoundError,
+  ValidationError,
+} from "@/server/dal/errors";
+import { exportUserData, deleteAccount } from "@/server/dal/account";
+import { addMember, createTestDb, createTestUser, ctxFor } from "./helpers/db";
+
+let db: Db;
+let anna: { id: string; email: string };
+let ben: { id: string; email: string };
+let cara: { id: string; email: string };
+let ws1: { id: string; slug: string };
+let ws2: { id: string; slug: string };
+
+beforeAll(async () => {
+  db = await createTestDb();
+  anna = await createTestUser(db, "anna@studio-one.co.za", "Anna");
+  ben = await createTestUser(db, "ben@studio-two.co.za", "Ben");
+  cara = await createTestUser(db, "cara@studio-one.co.za", "Cara");
+  ws1 = await createWorkspace(db, anna.id, { name: "Studio One", seedStarter: false });
+  ws2 = await createWorkspace(db, ben.id, { name: "Studio Two", seedStarter: false });
+  await addMember(db, ws1.id, cara.id, "member");
+});
+
+describe("workspace context", () => {
+  it("resolves for members with their role", async () => {
+    const ctx = await ctxFor(db, anna.id, ws1.slug);
+    expect(ctx.role).toBe("owner");
+    expect(ctx.workspace.id).toBe(ws1.id);
+  });
+
+  it("denies non-members indistinguishably from non-existence", async () => {
+    await expect(ctxFor(db, ben.id, ws1.slug)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(ctxFor(db, anna.id, "no-such-space")).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("lists only the user's workspaces", async () => {
+    const mine = await listWorkspacesForUser(db, anna.id);
+    expect(mine.map((w) => w.id)).toEqual([ws1.id]);
+  });
+});
+
+describe("cross-workspace isolation", () => {
+  it("blocks reads and writes into another tenant's project and tasks", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const ctxB = await ctxFor(db, ben.id, ws2.slug);
+
+    const project = await createProject(ctxA, { name: "Brand refresh", color: "#E85D2B" });
+    const task = await createTask(ctxA, {
+      projectId: project.id,
+      title: "Moodboard for Liberty",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+
+    // Reads from the other tenant fail.
+    await expect(boardTasks(ctxB, project.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(taskDetail(ctxB, task.id)).rejects.toBeInstanceOf(NotFoundError);
+
+    // Writes from the other tenant fail.
+    await expect(
+      createTask(ctxB, {
+        projectId: project.id,
+        title: "sneaky",
+        description: "",
+        status: "todo",
+        priority: "none",
+        labelIds: [],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(updateTask(ctxB, task.id, { title: "hijack" })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(deleteTask(ctxB, task.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(addComment(ctxB, task.id, { body: "hi" })).rejects.toBeInstanceOf(NotFoundError);
+
+    // Search and My Work never leak across the wall.
+    const found = await search(ctxB, "Moodboard");
+    expect(found.tasks).toHaveLength(0);
+    const mineB = await myWork(ctxB);
+    expect(mineB).toHaveLength(0);
+    const foundA = await search(ctxA, "Moodboard");
+    expect(foundA.tasks.map((t) => t.id)).toContain(task.id);
+  });
+
+  it("rejects assignees and labels that belong to another workspace", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const ctxB = await ctxFor(db, ben.id, ws2.slug);
+    const [projectA] = await listProjects(ctxA);
+    const foreignLabel = await createLabel(ctxB, { name: "Urgent", color: "#E0604F" });
+
+    await expect(
+      createTask(ctxA, {
+        projectId: projectA.id,
+        title: "assign outsider",
+        description: "",
+        status: "todo",
+        priority: "none",
+        assigneeId: ben.id,
+        labelIds: [],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    await expect(
+      createTask(ctxA, {
+        projectId: projectA.id,
+        title: "foreign label",
+        description: "",
+        status: "todo",
+        priority: "none",
+        labelIds: [foreignLabel.id],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("roles", () => {
+  it("members cannot manage projects, settings, members or invites", async () => {
+    const ctxCara = await ctxFor(db, cara.id, ws1.slug);
+    await expect(
+      createProject(ctxCara, { name: "Side quest", color: "#E85D2B" }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(updateWorkspace(ctxCara, { name: "Renamed" })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      createInvite(ctxCara, { email: "x@y.co.za", role: "member" }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(deleteWorkspace(ctxCara)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("members can create and manage their own work", async () => {
+    const ctxCara = await ctxFor(db, cara.id, ws1.slug);
+    const [project] = await listProjects(ctxCara);
+    const task = await createTask(ctxCara, {
+      projectId: project.id,
+      title: "Cara's task",
+      description: "",
+      status: "todo",
+      priority: "low",
+      assigneeId: cara.id,
+      labelIds: [],
+    });
+    const mine = await myWork(ctxCara);
+    expect(mine.map((t) => t.id)).toContain(task.id);
+    const updated = await updateTask(ctxCara, task.id, { status: "in_progress" });
+    expect(updated.status).toBe("in_progress");
+  });
+});
+
+describe("activity log", () => {
+  it("records meaningful changes, workspace-scoped", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const [project] = await listProjects(ctxA);
+    const task = await createTask(ctxA, {
+      projectId: project.id,
+      title: "Log me",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+    await updateTask(ctxA, task.id, { status: "done" });
+
+    const events = await db
+      .select()
+      .from(schema.activityEvents)
+      .where(
+        and(
+          eq(schema.activityEvents.taskId, task.id),
+          eq(schema.activityEvents.workspaceId, ws1.id),
+        ),
+      );
+    const types = events.map((e) => e.type);
+    expect(types).toContain("task_created");
+    expect(types).toContain("task_completed");
+
+    const detail = await taskDetail(ctxA, task.id);
+    expect(detail.task.completedAt).not.toBeNull();
+    expect(detail.activity.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not log pure reorders", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const [project] = await listProjects(ctxA);
+    const task = await createTask(ctxA, {
+      projectId: project.id,
+      title: "Reorder me",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+    const before = (
+      await db
+        .select()
+        .from(schema.activityEvents)
+        .where(eq(schema.activityEvents.taskId, task.id))
+    ).length;
+    await updateTask(ctxA, task.id, { position: 99999 });
+    const after = (
+      await db
+        .select()
+        .from(schema.activityEvents)
+        .where(eq(schema.activityEvents.taskId, task.id))
+    ).length;
+    expect(after).toBe(before);
+  });
+});
+
+describe("plan limits (free tier)", () => {
+  it("enforces the active-project cap with a friendly LimitError", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    await createProject(ctxA, { name: "Second project", color: "#6FAE87" });
+    await expect(
+      createProject(ctxA, { name: "One too many", color: "#D9A13B" }),
+    ).rejects.toBeInstanceOf(LimitError);
+
+    // Archiving frees a slot — limits never trap existing work.
+    const all = await listProjects(ctxA);
+    await updateProject(ctxA, all[1].id, { status: "archived" });
+    const third = await createProject(ctxA, { name: "Fits now", color: "#D9A13B" });
+    expect(third.id).toBeTruthy();
+    await updateProject(ctxA, third.id, { status: "archived" });
+  });
+
+  it("enforces the member cap across members + pending invites", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    // Free = 3 members; anna + cara = 2, one invite fits…
+    const invite = await createInvite(ctxA, {
+      email: "dave@studio-one.co.za",
+      role: "member",
+    });
+    // …the next one doesn't.
+    await expect(
+      createInvite(ctxA, { email: "eve@studio-one.co.za", role: "member" }),
+    ).rejects.toBeInstanceOf(LimitError);
+
+    // Wrong account can't accept someone else's invite.
+    await expect(
+      acceptInvite(db, { id: ben.id, email: ben.email }, invite.token),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    const dave = await createTestUser(db, "dave@studio-one.co.za", "Dave");
+    const accepted = await acceptInvite(db, dave, invite.token);
+    expect(accepted.workspaceSlug).toBe(ws1.slug);
+    const members = await listMembers(ctxA);
+    expect(members).toHaveLength(3);
+
+    // Cleanly leaving works for members.
+    const daveMembership = members.find((m) => m.id === dave.id)!;
+    const ctxDave = await ctxFor(db, dave.id, ws1.slug);
+    await removeMember(ctxDave, daveMembership.membershipId);
+    await expect(ctxFor(db, dave.id, ws1.slug)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("enforces the monthly voice-capture cap via the entitlements snapshot", async () => {
+    await db
+      .update(schema.workspaces)
+      .set({
+        entitlements: {
+          maxMembers: 3,
+          maxActiveProjects: 2,
+          voiceCapturesPerMonth: 2,
+          features: ["weekly_narrative"],
+        },
+      })
+      .where(eq(schema.workspaces.id, ws1.id));
+
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    await createCapture(ctxA, { transcript: "one", source: "voice", extraction: {}, engine: "test" });
+    const second = await createCapture(ctxA, { transcript: "two", source: "voice", extraction: {}, engine: "test" });
+    await expect(
+      createCapture(ctxA, { transcript: "three", source: "voice", extraction: {}, engine: "test" }),
+    ).rejects.toBeInstanceOf(LimitError);
+
+    // Quick-add is not capped.
+    const qa = await createCapture(ctxA, { transcript: "typed", source: "quickadd", extraction: {}, engine: "test" });
+    expect(qa.id).toBeTruthy();
+
+    await discardCapture(ctxA, second.id);
+    await db
+      .update(schema.workspaces)
+      .set({ entitlements: null })
+      .where(eq(schema.workspaces.id, ws1.id));
+  });
+});
+
+describe("capture confirmation", () => {
+  it("creates tasks only on confirm, once, by the capture's author", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const [project] = await listProjects(ctxA);
+    const capture = await createCapture(ctxA, {
+      transcript: "homepage concepts for karoo, friday",
+      source: "quickadd",
+      extraction: { proposals: [] },
+      engine: "test",
+    });
+
+    const created = await confirmCapture(ctxA, capture.id, [
+      {
+        projectId: project.id,
+        title: "Homepage concepts",
+        description: "",
+        status: "todo",
+        priority: "med",
+        labelIds: [],
+      },
+    ]);
+    expect(created).toHaveLength(1);
+
+    await expect(confirmCapture(ctxA, capture.id, [])).rejects.toBeInstanceOf(ValidationError);
+
+    // Another member can't resolve someone else's capture.
+    const ctxCara = await ctxFor(db, cara.id, ws1.slug);
+    await expect(discardCapture(ctxCara, capture.id)).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("notifications", () => {
+  it("notifies the assignee in-app, never the actor", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const [project] = await listProjects(ctxA);
+    await createTask(ctxA, {
+      projectId: project.id,
+      title: "For Cara",
+      description: "",
+      status: "todo",
+      priority: "none",
+      assigneeId: cara.id,
+      labelIds: [],
+    });
+
+    const caraInbox = await listNotifications(db, cara.id);
+    expect(caraInbox.some((n) => n.type === "task_assigned")).toBe(true);
+    const annaInbox = await listNotifications(db, anna.id);
+    expect(annaInbox.filter((n) => n.type === "task_assigned")).toHaveLength(0);
+
+    const before = await unreadCount(db, cara.id);
+    expect(before).toBeGreaterThan(0);
+    await markRead(db, cara.id, "all");
+    expect(await unreadCount(db, cara.id)).toBe(0);
+  });
+});
+
+describe("POPIA rights", () => {
+  it("exports a user's data and blocks deleting an owner with team members", async () => {
+    const data = await exportUserData(db, anna.id);
+    expect(data.user.email).toBe(anna.email);
+    expect(data.memberships.length).toBeGreaterThan(0);
+
+    await expect(deleteAccount(db, anna.id)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("deletes a sole-owner account together with their workspace", async () => {
+    await deleteAccount(db, ben.id);
+    const gone = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, ben.id));
+    expect(gone).toHaveLength(0);
+    const wsGone = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, ws2.id));
+    expect(wsGone).toHaveLength(0);
+  });
+});
+
+describe("starter template", () => {
+  it("seeds a realistic project with labels, tasks and activity", async () => {
+    const zoe = await createTestUser(db, "zoe@fresh.co.za", "Zoe");
+    const ws = await createWorkspace(db, zoe.id, { name: "Fresh Agency", seedStarter: true });
+    const ctx = await ctxFor(db, zoe.id, ws.slug);
+
+    const projects = await listProjects(ctx);
+    expect(projects).toHaveLength(1);
+    expect(projects[0].clientName).toBe("Karoo Coffee Co.");
+
+    const board = await boardTasks(ctx, projects[0].id);
+    expect(board.length).toBeGreaterThanOrEqual(8);
+    expect(board.some((t) => t.status === "done" && t.completedAt)).toBe(true);
+    expect(board.some((t) => t.labels.length > 0)).toBe(true);
+
+    const mine = await myWork(ctx);
+    expect(mine.length).toBeGreaterThan(0);
+
+    const usage = await workspaceUsage(ctx);
+    expect(usage.activeProjects).toBe(1);
+    expect(usage.members).toBe(1);
+  });
+});
