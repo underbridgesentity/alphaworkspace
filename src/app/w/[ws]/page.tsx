@@ -9,6 +9,7 @@ import { CircleCheck } from "lucide-react";
 import { addDays, todaySAST } from "@/lib/dates";
 import type { TaskDTO } from "@/lib/types";
 import { useMyWork } from "@/lib/client/tasks";
+import { BriefCard } from "@/components/app/brief-card";
 import { TaskRow } from "@/components/app/task-row";
 import { WelcomeCard } from "@/components/app/welcome-card";
 
@@ -41,6 +42,7 @@ function MyWorkInner() {
       <Suspense>
         <WelcomeCard />
       </Suspense>
+      <BriefCard />
 
       <div className="px-4 pb-24 pt-5 md:px-6 md:pt-7">
         <h1 className="text-xl font-semibold tracking-tight">My Work</h1>
