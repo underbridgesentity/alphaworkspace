@@ -1,26 +1,200 @@
+@import "./fonts.css";
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * Alpha Workspace design tokens.
+ * Calm, minimal, confident. Warm near-black / off-white, one burnt-orange
+ * accent used sparingly. Dark is the default theme; light is a toggle.
+ * ------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  --bg: #121110;
+  --surface: #191817;
+  --raised: #201e1c;
+  --overlay: #262422;
+
+  --ink: #f4f2ed;
+  --muted: #a6a099;
+  --faint: #736d65;
+
+  --line: rgba(244, 242, 237, 0.08);
+  --line-strong: rgba(244, 242, 237, 0.16);
+
+  --accent: #e85d2b;
+  --accent-hover: #f26e3c;
+  --accent-soft: rgba(232, 93, 43, 0.14);
+  --on-accent: #fff7f2;
+
+  --ok: #6fae87;
+  --warn: #d9a13b;
+  --danger: #e0604f;
+
+  --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f6f5f1;
+  --surface: #fcfbf8;
+  --raised: #ffffff;
+  --overlay: #ffffff;
+
+  --ink: #1a1815;
+  --muted: #6e685f;
+  --faint: #9a948b;
+
+  --line: rgba(26, 24, 21, 0.08);
+  --line-strong: rgba(26, 24, 21, 0.16);
+
+  --accent: #e2531f;
+  --accent-hover: #c94715;
+  --accent-soft: rgba(226, 83, 31, 0.1);
+  --on-accent: #fff7f2;
+
+  --ok: #3e8862;
+  --warn: #a97a15;
+  --danger: #c2453a;
+
+  --shadow-overlay: 0 24px 56px -20px rgba(26, 24, 21, 0.25), 0 0 0 1px var(--line);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+
+  --animate-fade-up: fade-up 0.35s cubic-bezier(0.21, 0.6, 0.35, 1) both;
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-scale-in: scale-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-slide-panel: slide-panel 0.28s cubic-bezier(0.21, 0.6, 0.35, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-panel {
+  from { opacity: 0.4; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    height: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Quiet scrollbars — content over chrome. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  input, textarea, select, button {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Micro-interaction: gentle press on tappable things. */
+@utility press {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Skeleton shimmer block. */
+@utility skeleton {
+  background: linear-gradient(100deg, var(--raised) 40%, var(--overlay) 50%, var(--raised) 60%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: 0.5rem;
+  color: transparent;
+  user-select: none;
+  pointer-events: none;
 }
