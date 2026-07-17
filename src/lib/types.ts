@@ -221,6 +221,15 @@ export interface WeeklySummary {
     daysSinceActivity: number | null;
     dueNext: { title: string; dueDate: string }[];
   }[];
+  /** Studio: manually tracked business numbers for the week (Phase 2). */
+  scorecards?: {
+    name: string;
+    unit: string;
+    value: number | null;
+    target: number | null;
+  }[];
+  /** Studio: minutes logged this week (Phase 2). */
+  timeLoggedMinutes?: number;
 }
 
 export interface BriefItem {
@@ -249,4 +258,43 @@ export interface WorkspaceKpis {
   openNow: number;
   memberLoad: { user: UserLite; open: number; overdue: number }[];
   throughputByWeek: { weekStart: string; completed: number }[];
+  /** Completions per SAST day, oldest first (momentum blocks + streak). */
+  completionsByDay: { day: string; completed: number }[];
+}
+
+/* ------------------------------ Phase 2 ---------------------------------- */
+
+export type ScorecardUnit = "count" | "currency" | "percent" | "hours";
+export type ScorecardPeriod = "weekly" | "monthly";
+
+export interface ScorecardDTO {
+  id: string;
+  name: string;
+  unit: ScorecardUnit;
+  target: number | null;
+  period: ScorecardPeriod;
+  /** Oldest first, one per period that has a value. */
+  entries: { periodStart: string; value: number }[];
+  currentPeriodStart: string;
+}
+
+export interface RunningTimerDTO {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  startedAt: string;
+}
+
+export interface TaskTimeDTO {
+  totalMinutes: number;
+  byUser: { user: UserLite; minutes: number }[];
+  /** The viewer's running entry on THIS task, if any. */
+  running: { id: string; startedAt: string } | null;
+}
+
+export interface WeekTimeDTO {
+  totalMinutes: number;
+  byMember: { user: UserLite; minutes: number }[];
+  byProject: { id: string; name: string; color: string; minutes: number }[];
 }

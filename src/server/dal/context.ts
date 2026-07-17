@@ -13,9 +13,14 @@ import {
   type EntitlementsSnapshot,
   type WorkspaceSettings,
 } from "@/server/db/schema";
-import { entitlementsFor, type Entitlements, type PlanId } from "@/lib/plans";
+import {
+  entitlementsFor,
+  type Entitlements,
+  type Feature,
+  type PlanId,
+} from "@/lib/plans";
 import { ROLE_RANK, type Role } from "@/lib/types";
-import { ForbiddenError, NotFoundError } from "./errors";
+import { ForbiddenError, LimitError, NotFoundError } from "./errors";
 
 export interface CtxWorkspace {
   id: string;
@@ -90,4 +95,11 @@ export function assertRole(ctx: Ctx, min: Role): void {
 /** Effective entitlements for the workspace (snapshot wins over plan config). */
 export function ctxEntitlements(ctx: Ctx): Entitlements {
   return entitlementsFor(ctx.workspace.plan, ctx.workspace.entitlements);
+}
+
+/** Gate a plan feature; throws the friendly upgrade-prompt error when off. */
+export function assertFeature(ctx: Ctx, feature: Feature, what: string): void {
+  if (!ctxEntitlements(ctx).features.includes(feature)) {
+    throw new LimitError("feature", `${what} comes with the Studio plan`);
+  }
 }

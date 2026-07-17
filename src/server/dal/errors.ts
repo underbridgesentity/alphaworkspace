@@ -40,9 +40,12 @@ export class ValidationError extends AppError {
 
 /** A plan limit was reached. Carries what's needed for a friendly upgrade prompt. */
 export class LimitError extends AppError {
-  readonly limit: "members" | "projects" | "captures";
+  readonly limit: "members" | "projects" | "captures" | "feature";
 
-  constructor(limit: "members" | "projects" | "captures", message: string) {
+  constructor(
+    limit: "members" | "projects" | "captures" | "feature",
+    message: string,
+  ) {
     super("plan_limit", message, 403);
     this.limit = limit;
   }

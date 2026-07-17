@@ -30,6 +30,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Logo } from "@/components/ui/logo";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { ThemeToggleItem, ThemeToggleButton } from "@/components/ui/theme-toggle";
+import { TimerChip } from "@/components/app/timer";
 import dynamic from "next/dynamic";
 import { Sidebar, WorkspaceMenuItems } from "./sidebar";
 import { TaskPanel } from "./task-panel";
@@ -205,6 +206,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <Mic className="size-4.5" />
             </button>
 
+            <TimerChip />
             <ThemeToggleButton className="hidden sm:flex" />
             <button
               onClick={() => setNotifOpen(true)}

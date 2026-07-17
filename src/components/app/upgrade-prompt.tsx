@@ -13,7 +13,7 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface LimitDetail {
-  limit?: "members" | "projects" | "captures";
+  limit?: "members" | "projects" | "captures" | "feature";
   message: string;
 }
 
@@ -21,6 +21,7 @@ const HEADLINES: Record<string, string> = {
   members: "Room for the whole team",
   projects: "More projects, same calm",
   captures: "Keep talking, we'll keep writing",
+  feature: "That one's a Studio thing",
 };
 
 export function UpgradePrompt() {
@@ -35,7 +36,12 @@ export function UpgradePrompt() {
 
   if (!detail) return null;
 
-  const nextPlan = workspace.plan === "free" ? PLANS.team : PLANS.studio;
+  const nextPlan =
+    detail.limit === "feature"
+      ? PLANS.studio
+      : workspace.plan === "free"
+        ? PLANS.team
+        : PLANS.studio;
 
   return (
     <Dialog

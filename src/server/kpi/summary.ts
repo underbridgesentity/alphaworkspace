@@ -21,6 +21,9 @@ import {
 } from "./compute";
 import { activityEvents } from "@/server/db/schema";
 import { count, lt, sql } from "drizzle-orm";
+import { entitlementsFor, type EntitlementsSnapshotInput } from "@/lib/plans";
+import { scorecardsForSummary } from "@/server/dal/scorecards";
+import { weekTime } from "@/server/dal/time";
 
 export async function compileWeeklySummary(
   db: Db,
@@ -36,7 +39,11 @@ export async function compileWeeklySummary(
   const staleBefore = new Date(now.getTime() - staleDays * 86_400_000);
 
   const [ws] = await db
-    .select({ name: workspaces.name })
+    .select({
+      name: workspaces.name,
+      plan: workspaces.plan,
+      entitlements: workspaces.entitlements,
+    })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId));
 
@@ -162,6 +169,21 @@ export async function compileWeeklySummary(
     })
     .sort((a, b) => b.open - a.open);
 
+  // Phase 2 extras go into the model's world view only when the plan has
+  // them, the narrative never mentions features the team can't see.
+  const features = entitlementsFor(
+    ws?.plan ?? "free",
+    (ws?.entitlements ?? null) as EntitlementsSnapshotInput | null,
+  ).features;
+  const [scorecards, time] = await Promise.all([
+    features.includes("scorecards")
+      ? scorecardsForSummary({ db }, workspaceId, weekStartDay)
+      : Promise.resolve(undefined),
+    features.includes("time_tracking")
+      ? weekTime(db, workspaceId, { now })
+      : Promise.resolve(undefined),
+  ]);
+
   return {
     workspaceName: ws?.name ?? "Workspace",
     weekStart: weekStartDay,
@@ -179,5 +201,7 @@ export async function compileWeeklySummary(
     throughputByWeek: kpis.throughputByWeek,
     members,
     projects: summaryProjects,
+    scorecards: scorecards && scorecards.length > 0 ? scorecards : undefined,
+    timeLoggedMinutes: time?.totalMinutes,
   };
 }

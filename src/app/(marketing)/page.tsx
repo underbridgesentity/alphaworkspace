@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PricingCards, PricingFootnote } from "@/components/marketing/pricing-cards";
 import { Reveal } from "@/components/marketing/reveal";
+import { Parallax } from "@/components/marketing/parallax";
 import { Blob } from "@/components/marketing/blob";
 
 export const metadata: Metadata = {
@@ -73,9 +74,9 @@ export default function LandingPage() {
           </div>
 
           {/* The product moment: Monday writes itself. */}
-          <div
+          <Parallax
+            speed={0.07}
             className="animate-fade-up mx-auto mt-14 max-w-xl text-left"
-            style={{ animationDelay: "260ms" }}
           >
             <div className="grad-card card-lift rounded-card border border-dashed border-line-strong bg-surface/80 p-5 shadow-[var(--shadow-overlay)]">
               <div className="flex items-center gap-2">
@@ -96,7 +97,7 @@ export default function LandingPage() {
                 compiled it.
               </p>
             </div>
-          </div>
+          </Parallax>
         </div>
       </section>
 
@@ -127,7 +128,7 @@ export default function LandingPage() {
                 morning, everyone gets their three things.
               </p>
             </Reveal>
-            <div className="grid grid-cols-3 gap-2">
+            <Parallax speed={0.06} className="grid grid-cols-3 gap-2">
               {[
                 { label: "Completion rate", value: "62%", note: "this week" },
                 { label: "Overdue", value: "3", note: "need a decision", tone: "text-danger" },
@@ -154,7 +155,7 @@ export default function LandingPage() {
                   </p>
                 </div>
               </Reveal>
-            </div>
+            </Parallax>
           </div>
         </div>
       </section>
@@ -178,6 +179,7 @@ export default function LandingPage() {
         <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <Reveal delay={120} className="order-2 md:order-1">
+              <Parallax speed={0.055}>
               <div className="grad-card card-lift rounded-card border border-dashed border-line-strong bg-surface p-5 shadow-[var(--shadow-overlay)]">
                 <div className="flex items-center gap-2.5">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
@@ -223,6 +225,7 @@ export default function LandingPage() {
                   </span>
                 </div>
               </div>
+              </Parallax>
             </Reveal>
             <Reveal className="order-1 md:order-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-faint">
@@ -271,7 +274,7 @@ export default function LandingPage() {
                 through PayFast.
               </p>
             </Reveal>
-            <div className="flex flex-col gap-2">
+            <Parallax speed={0.06} className="flex flex-col gap-2">
               {[
                 { icon: WifiOff, label: "Offline-first, work continues without signal" },
                 { icon: Smartphone, label: "Installable app, light on data" },
@@ -284,7 +287,7 @@ export default function LandingPage() {
                   </div>
                 </Reveal>
               ))}
-            </div>
+            </Parallax>
           </div>
         </div>
       </section>

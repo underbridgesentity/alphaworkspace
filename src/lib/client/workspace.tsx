@@ -70,6 +70,11 @@ export function useWorkspace(): BootstrapData {
   return ctx;
 }
 
+/** Whether the workspace's plan includes a feature (client-side gate). */
+export function useFeature(feature: Entitlements["features"][number]): boolean {
+  return useWorkspace().usage.limits.features.includes(feature);
+}
+
 /** Invalidate helpers keyed the way the app queries are. */
 export function useInvalidate() {
   const qc = useQueryClient();

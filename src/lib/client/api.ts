@@ -55,7 +55,7 @@ export type MutateResult<T> = { queued: true } | ({ queued?: false } & T);
  */
 export async function apiMutate<T>(
   path: string,
-  opts: { method: "POST" | "PATCH" | "DELETE"; body?: unknown },
+  opts: { method: "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<MutateResult<T>> {
   const queue = async (): Promise<{ queued: true }> => {
     await enqueue({ url: path, method: opts.method, body: opts.body });

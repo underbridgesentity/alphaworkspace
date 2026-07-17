@@ -9,7 +9,7 @@ import { idb } from "./idb";
 export interface OutboxOp {
   id: string;
   url: string;
-  method: "POST" | "PATCH" | "DELETE";
+  method: "POST" | "PUT" | "PATCH" | "DELETE";
   body: unknown;
   createdAt: number;
 }

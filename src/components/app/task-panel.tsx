@@ -52,6 +52,7 @@ import {
 import { Attachments } from "./attachments";
 import { MentionInput } from "./mention-input";
 import { RichText } from "./rich-text";
+import { TaskTime } from "./timer";
 import type { LabelDTO } from "@/lib/types";
 
 const RECUR_LABELS: Record<"daily" | "weekly" | "monthly", string> = {
@@ -383,6 +384,9 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
                 </>
               )}
             </Menu>
+
+            {/* Time (Studio) */}
+            <TaskTime taskId={taskId} />
           </div>
 
           {task.recurrence && (

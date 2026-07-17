@@ -193,6 +193,18 @@ export async function workspaceKpis(
     completed,
   }));
 
+  // Same event rows bucketed per SAST day, last 28 days (momentum blocks).
+  const dayBuckets = new Map<string, number>();
+  for (let i = 27; i >= 0; i--) dayBuckets.set(addDays(today, -i), 0);
+  for (const row of completionRows) {
+    const day = toDayString(row.createdAt);
+    if (dayBuckets.has(day)) dayBuckets.set(day, (dayBuckets.get(day) ?? 0) + 1);
+  }
+  const completionsByDay = [...dayBuckets.entries()].map(([day, completed]) => ({
+    day,
+    completed,
+  }));
+
   // "Of everything on the plate this week, what share got done":
   // completed / (completed + still open now).
   const denominator = completedThisWeek + openNow;
@@ -209,6 +221,7 @@ export async function workspaceKpis(
     openNow,
     memberLoad,
     throughputByWeek,
+    completionsByDay,
   };
 }
 

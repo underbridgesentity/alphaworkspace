@@ -59,6 +59,14 @@ export function isDueToday(dueDate: string | null, today = todaySAST()): boolean
   return dueDate !== null && dueDate === today;
 }
 
+/** Minutes as "2h 40m" / "45m" (time tracking display). */
+export function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 /** "Mon 21 Jul" style short label. */
 export function formatDay(day: string): string {
   return new Intl.DateTimeFormat("en-ZA", {

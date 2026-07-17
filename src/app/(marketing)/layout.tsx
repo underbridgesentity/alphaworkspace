@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
-import { ThemeToggleButton } from "@/components/ui/theme-toggle";
+import { ForceLight } from "@/components/marketing/force-light";
 
 function Wordmark({ small = false }: { small?: boolean }) {
   return (
@@ -16,13 +16,13 @@ export default function MarketingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-dvh">
+      <ForceLight />
       <header className="mx-auto flex h-[4.5rem] w-full max-w-5xl items-center gap-3 px-4 sm:px-5 md:px-8">
         <Link href="/" className="press flex min-w-0 items-center gap-2.5" aria-label="Alpha Workspace home">
           <Logo size={32} wordmark={false} />
           <Wordmark />
         </Link>
         <nav className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <ThemeToggleButton />
           <Link
             href="/pricing"
             className="press hidden rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink sm:block"

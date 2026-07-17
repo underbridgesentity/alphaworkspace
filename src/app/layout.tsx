@@ -32,7 +32,9 @@ export const viewport: Viewport = {
 };
 
 /** Applies the persisted theme before paint. Light is the default. */
-const themeInit = `try{if(localStorage.getItem("aw-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`;
+// The saved theme only applies inside the app; marketing/auth surfaces are
+// always light (the theme picker itself lives behind sign-in).
+const themeInit = `try{if(/^\\/(w\\/|account|admin|billing)/.test(location.pathname)&&localStorage.getItem("aw-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`;
 
 export default function RootLayout({
   children,

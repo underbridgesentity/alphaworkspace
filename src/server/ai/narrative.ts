@@ -25,7 +25,8 @@ Style:
 Hard rules:
 - Reference ONLY facts present in the JSON summary you are given. Do not infer causes, invent examples, or mention anyone or any project not in the data.
 - If the week was quiet or the data is thin, say so honestly and keep it short rather than padding.
-- Numbers you cite must match the summary exactly.`;
+- Numbers you cite must match the summary exactly.
+- If "scorecards" is present, weave at most one sentence on the numbers that are furthest from target (or notable); if a value is null it wasn't filled in, you may nudge once, gently. If "timeLoggedMinutes" is present and > 0, you may mention the hours logged; never guilt anyone about hours.`;
 
   const user = `Here is this week's summary as JSON:\n\n${JSON.stringify(summary)}\n\nWrite the Monday briefing.`;
   return { system, user };
@@ -104,6 +105,23 @@ export function templateNarrative(summary: WeeklySummary): string {
       `This week's fixed points: ${upcoming
         .map((u) => `“${u.title}” (${u.project}, ${u.dueDate})`)
         .join("; ")}.`,
+    );
+  }
+
+  const filled = (summary.scorecards ?? []).filter((s) => s.value !== null);
+  if (filled.length > 0) {
+    parts.push(
+      `On the scorecards: ${filled
+        .map(
+          (s) =>
+            `${s.name} at ${s.value}${s.target !== null ? ` against a target of ${s.target}` : ""}`,
+        )
+        .join("; ")}.`,
+    );
+  }
+  if (summary.timeLoggedMinutes && summary.timeLoggedMinutes >= 60) {
+    parts.push(
+      `The team logged about ${Math.round(summary.timeLoggedMinutes / 60)} hours of tracked time this week.`,
     );
   }
 

@@ -70,6 +70,30 @@ export const reactionToggleSchema = z.object({
   emoji: z.enum(REACTION_EMOJI),
 });
 
+/* ---------------------------- scorecards (P2) ---------------------------- */
+
+export const scorecardCreateSchema = z.object({
+  name: z.string().trim().min(1, "Name the scorecard").max(60),
+  unit: z.enum(["count", "currency", "percent", "hours"]).default("count"),
+  target: z.number().finite().positive().nullish(),
+  period: z.enum(["weekly", "monthly"]).default("weekly"),
+});
+
+export const scorecardEntrySchema = z.object({
+  periodStart: dayString,
+  value: z.number().finite().gte(-1_000_000_000).lte(1_000_000_000),
+});
+
+/* --------------------------- time tracking (P2) -------------------------- */
+
+export const timeStartSchema = z.object({ taskId: uuid });
+
+export const timeLogSchema = z.object({
+  taskId: uuid,
+  minutes: z.number().int().min(1).max(1_440),
+  note: z.string().trim().max(200).optional(),
+});
+
 /* ------------------------------ projects -------------------------------- */
 
 export const projectCreateSchema = z.object({
