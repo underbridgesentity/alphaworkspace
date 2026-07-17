@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
+import { ThemeToggleButton } from "@/components/ui/theme-toggle";
 
 function Wordmark({ small = false }: { small?: boolean }) {
   return (
@@ -21,6 +22,7 @@ export default function MarketingLayout({
           <Wordmark />
         </Link>
         <nav className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <ThemeToggleButton />
           <Link
             href="/pricing"
             className="press hidden rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink sm:block"

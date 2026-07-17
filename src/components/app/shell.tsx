@@ -29,7 +29,7 @@ import { useWorkspace } from "@/lib/client/workspace";
 import { Avatar } from "@/components/ui/avatar";
 import { Logo } from "@/components/ui/logo";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
-import { ThemeToggleItem } from "@/components/ui/theme-toggle";
+import { ThemeToggleItem, ThemeToggleButton } from "@/components/ui/theme-toggle";
 import dynamic from "next/dynamic";
 import { Sidebar, WorkspaceMenuItems } from "./sidebar";
 import { TaskPanel } from "./task-panel";
@@ -205,6 +205,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <Mic className="size-4.5" />
             </button>
 
+            <ThemeToggleButton className="hidden sm:flex" />
             <button
               onClick={() => setNotifOpen(true)}
               aria-label={
