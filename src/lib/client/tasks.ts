@@ -125,7 +125,7 @@ function restore(qc: QueryClient, snap: ReturnType<typeof snapshot>) {
 export function raiseLimit(err: ApiError) {
   window.dispatchEvent(
     new CustomEvent("aw:limit", {
-      detail: { limit: err.limit, message: err.message },
+      detail: { limit: err.limit, feature: err.feature, message: err.message },
     }),
   );
 }

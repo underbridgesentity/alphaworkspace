@@ -8,18 +8,22 @@ import { enqueue } from "./outbox";
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
-  readonly limit?: "members" | "projects" | "captures";
+  readonly limit?: "members" | "projects" | "captures" | "feature";
+  /** Which feature, when limit === "feature". */
+  readonly feature?: string;
 
   constructor(
     code: string,
     message: string,
     status: number,
     limit?: ApiError["limit"],
+    feature?: string,
   ) {
     super(message);
     this.code = code;
     this.status = status;
     this.limit = limit;
+    this.feature = feature;
   }
 }
 
@@ -27,17 +31,24 @@ async function throwFrom(res: Response): Promise<never> {
   let code = "error";
   let message = "Something went wrong. Try again.";
   let limit: ApiError["limit"];
+  let feature: string | undefined;
   try {
     const body = (await res.json()) as {
-      error?: { code?: string; message?: string; limit?: ApiError["limit"] };
+      error?: {
+        code?: string;
+        message?: string;
+        limit?: ApiError["limit"];
+        feature?: string;
+      };
     };
     code = body.error?.code ?? code;
     message = body.error?.message ?? message;
     limit = body.error?.limit;
+    feature = body.error?.feature;
   } catch {
     // non-JSON error body, keep defaults
   }
-  throw new ApiError(code, message, res.status, limit);
+  throw new ApiError(code, message, res.status, limit, feature);
 }
 
 export async function apiGet<T>(path: string): Promise<T> {

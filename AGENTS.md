@@ -46,5 +46,5 @@ connectivity, priced in rand.
 - Every meaningful change writes an `activity_events` row (inside the DAL, single place). KPIs and the weekly narrative depend on this.
 - Timezone for all product logic: Africa/Johannesburg (SAST). Prices in ZAR, VAT inclusive.
 - Roles: owner > admin > member (enum extensible; a client role arrives in Phase 3).
-- Phase 2 shipped for kpi_definitions/kpi_entries (scorecards) and time_entries (timers + quick logs), both Studio-gated via `can()`. `notes` still has no UI, do not build it without a decision.
+- Phase 2 shipped for kpi_definitions/kpi_entries (scorecards, Team and up) and time_entries (timers + quick logs, Studio), gated via `can()`/`assertFeature()`. `notes` still has no UI, do not build it without a decision.
 - Out of scope at any phase: two-way WhatsApp, docs/database system, automations builder, integrations marketplace, video calls.

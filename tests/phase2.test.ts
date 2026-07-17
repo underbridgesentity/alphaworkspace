@@ -59,12 +59,51 @@ beforeAll(async () => {
 });
 
 describe("plan gating", () => {
-  it("free plans hit the friendly feature limit", async () => {
+  it("free plans hit the friendly feature limit, naming the right plan", async () => {
     const ctx = await ctxFor(db, rival.id, freeWs.slug);
     await expect(
       createScorecard(ctx, { name: "New business", unit: "count", period: "weekly" }),
-    ).rejects.toMatchObject({ code: "plan_limit", limit: "feature" });
-    await expect(startTimer(ctx, taskA)).rejects.toBeInstanceOf(LimitError);
+    ).rejects.toMatchObject({
+      code: "plan_limit",
+      limit: "feature",
+      feature: "scorecards",
+      message: expect.stringContaining("Team plan"),
+    });
+    await expect(startTimer(ctx, taskA)).rejects.toMatchObject({
+      feature: "time_tracking",
+      message: expect.stringContaining("Studio plan"),
+    });
+  });
+
+  it("Team gets scorecards but not time tracking", async () => {
+    const boss = await createTestUser(db, "boss@team.co.za", "Boss");
+    const teamWs = await createWorkspace(db, boss.id, {
+      name: "Team Band Co",
+      seedStarter: false,
+    });
+    await db
+      .update(schema.workspaces)
+      .set({ plan: "team" })
+      .where(eq(schema.workspaces.id, teamWs.id));
+    const ctx = await ctxFor(db, boss.id, teamWs.slug);
+
+    const card = await createScorecard(ctx, {
+      name: "Invoices sent",
+      unit: "count",
+      period: "monthly",
+    });
+    expect(card.id).toBeTruthy();
+
+    const project = await createProject(ctx, { name: "P", color: "#17685C" });
+    const task = await createTask(ctx, {
+      projectId: project.id,
+      title: "T",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+    await expect(startTimer(ctx, task.id)).rejects.toBeInstanceOf(LimitError);
   });
 });
 

@@ -7,13 +7,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { PLANS, formatZar } from "@/lib/plans";
+import { PLANS, formatZar, planWithFeature, type Feature } from "@/lib/plans";
 import { useWorkspace } from "@/lib/client/workspace";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface LimitDetail {
   limit?: "members" | "projects" | "captures" | "feature";
+  feature?: string;
   message: string;
 }
 
@@ -36,9 +37,11 @@ export function UpgradePrompt() {
 
   if (!detail) return null;
 
+  // For a feature gate, pitch the CHEAPEST plan that has it; for capacity
+  // limits, pitch the band above the current one.
   const nextPlan =
     detail.limit === "feature"
-      ? PLANS.studio
+      ? planWithFeature((detail.feature ?? "client_reports") as Feature)
       : workspace.plan === "free"
         ? PLANS.team
         : PLANS.studio;

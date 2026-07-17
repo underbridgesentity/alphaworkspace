@@ -41,13 +41,17 @@ export class ValidationError extends AppError {
 /** A plan limit was reached. Carries what's needed for a friendly upgrade prompt. */
 export class LimitError extends AppError {
   readonly limit: "members" | "projects" | "captures" | "feature";
+  /** Set when limit === "feature": which feature, so the client can name the right plan. */
+  readonly feature?: string;
 
   constructor(
     limit: "members" | "projects" | "captures" | "feature",
     message: string,
+    feature?: string,
   ) {
     super("plan_limit", message, 403);
     this.limit = limit;
+    this.feature = feature;
   }
 }
 

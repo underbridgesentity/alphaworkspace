@@ -55,7 +55,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxActiveProjects: null,
     voiceCapturesPerMonth: 200,
     attachmentQuotaMb: 2_048,
-    features: ["weekly_narrative", "morning_brief"],
+    // Scorecards sit in Team on purpose: small teams steer by a handful of
+    // numbers too, and the habit is what sells Studio later.
+    features: ["weekly_narrative", "morning_brief", "scorecards"],
   },
   studio: {
     id: "studio",
@@ -119,6 +121,14 @@ export function can(
   snapshot?: EntitlementsSnapshotInput | null,
 ): boolean {
   return entitlementsFor(plan, snapshot).features.includes(feature);
+}
+
+/** The cheapest plan that includes a feature (drives upgrade copy). */
+export function planWithFeature(feature: Feature): PlanConfig {
+  for (const plan of [PLANS.free, PLANS.team, PLANS.studio]) {
+    if (plan.features.includes(feature)) return plan;
+  }
+  return PLANS.studio;
 }
 
 export function formatZar(amount: number): string {

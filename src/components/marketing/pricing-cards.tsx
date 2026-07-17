@@ -19,7 +19,10 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
           "Weekly narrative briefing",
           ...(plan.features.includes("morning_brief") ? ["Personal morning brief"] : []),
           ...(plan.features.includes("scorecards")
-            ? ["Scorecards, time tracking & client reports, as they ship"]
+            ? ["Scorecards for the numbers you steer by"]
+            : []),
+          ...(plan.features.includes("time_tracking")
+            ? ["Time tracking & client reports, as they ship"]
             : []),
           ...(detailed
             ? ["Offline-first PWA", "Boards, My Work, search, calendar"]

@@ -3,7 +3,7 @@
  * hand, weekly or monthly, beside the zero-setup KPIs. Values live in
  * kpi_entries, one per definition + period, upserts only, no history
  * rewriting. Reads never gate (data stays visible after a downgrade);
- * mutations require the Studio feature.
+ * mutations require the "scorecards" feature (Team and up, see plans.ts).
  */
 import { and, asc, count, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { kpiDefinitions, kpiEntries } from "@/server/db/schema";

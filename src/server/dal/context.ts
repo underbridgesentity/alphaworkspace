@@ -15,6 +15,7 @@ import {
 } from "@/server/db/schema";
 import {
   entitlementsFor,
+  planWithFeature,
   type Entitlements,
   type Feature,
   type PlanId,
@@ -100,6 +101,11 @@ export function ctxEntitlements(ctx: Ctx): Entitlements {
 /** Gate a plan feature; throws the friendly upgrade-prompt error when off. */
 export function assertFeature(ctx: Ctx, feature: Feature, what: string): void {
   if (!ctxEntitlements(ctx).features.includes(feature)) {
-    throw new LimitError("feature", `${what} comes with the Studio plan`);
+    const plan = planWithFeature(feature);
+    throw new LimitError(
+      "feature",
+      `${what} comes with the ${plan.name} plan`,
+      feature,
+    );
   }
 }

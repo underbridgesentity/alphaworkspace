@@ -31,7 +31,9 @@ export function errorResponse(err: unknown): NextResponse {
         error: {
           code: err.code,
           message: err.message,
-          ...(err instanceof LimitError ? { limit: err.limit } : {}),
+          ...(err instanceof LimitError
+            ? { limit: err.limit, ...(err.feature ? { feature: err.feature } : {}) }
+            : {}),
         },
       },
       { status: err.status },

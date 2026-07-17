@@ -13,6 +13,7 @@ import { Archive, Plus, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiGet, apiMutate } from "@/lib/client/api";
 import { useFeature, useWorkspace } from "@/lib/client/workspace";
+import { planWithFeature, type Feature } from "@/lib/plans";
 import { formatDay, formatMinutes, timeAgo } from "@/lib/dates";
 import type {
   ScorecardDTO,
@@ -565,34 +566,55 @@ function PhaseTwo({
   const hasScorecards = useFeature("scorecards");
   const hasTime = useFeature("time_tracking");
 
-  if (!hasScorecards && !hasTime) return <StudioTeaser />;
-
   return (
     <>
-      {hasScorecards && <Scorecards scorecards={scorecards ?? []} />}
-      {hasTime && <TimeWeekCard timeWeek={timeWeek} />}
+      {hasScorecards ? (
+        <Scorecards scorecards={scorecards ?? []} />
+      ) : (
+        <FeatureTeaser
+          feature="scorecards"
+          title="Scorecards"
+          blurb="Track the business numbers that matter, one entry a week, straight into the Monday briefing."
+        />
+      )}
+      {hasTime ? (
+        <TimeWeekCard timeWeek={timeWeek} />
+      ) : (
+        <FeatureTeaser
+          feature="time_tracking"
+          title="Time tracking"
+          blurb="Timers on tasks, and a weekly view of where the hours actually went."
+        />
+      )}
     </>
   );
 }
 
-function StudioTeaser() {
+/** Locked-feature card; names the cheapest plan that unlocks it (from config). */
+function FeatureTeaser({
+  feature,
+  title,
+  blurb,
+}: {
+  feature: Feature;
+  title: string;
+  blurb: string;
+}) {
   const { workspace } = useWorkspace();
   const isAdmin = workspace.role !== "member";
+  const plan = planWithFeature(feature);
   if (!isAdmin) return null;
   return (
     <section className="mt-4 rounded-card border border-dashed border-line-strong bg-surface/60 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
           <p className="text-sm font-semibold">
-            Scorecards and time tracking
+            {title}
             <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-              Studio
+              {plan.name}
             </span>
           </p>
-          <p className="mt-0.5 text-sm text-muted">
-            Track the business numbers that matter weekly, and see where the
-            hours actually went.
-          </p>
+          <p className="mt-0.5 text-sm text-muted">{blurb}</p>
         </div>
         <Button
           size="sm"
@@ -602,14 +624,14 @@ function StudioTeaser() {
               new CustomEvent("aw:limit", {
                 detail: {
                   limit: "feature",
-                  message:
-                    "Scorecards and time tracking come with the Studio plan",
+                  feature,
+                  message: `${title} comes with the ${plan.name} plan`,
                 },
               }),
             )
           }
         >
-          See Studio
+          See {plan.name}
         </Button>
       </div>
     </section>
