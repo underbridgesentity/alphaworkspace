@@ -257,8 +257,9 @@ export function BoardShow() {
                   <BarChart3 className="size-4 text-faint" />
                 </div>
 
-                {/* board */}
-                <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 p-4 sm:gap-4 sm:p-6">
+                {/* board: swipeable inside the frame on phones (columns keep
+                    a readable width), a plain 3-up grid from sm. */}
+                <div className="flex min-w-0 flex-1 gap-3 overflow-x-auto p-4 [&>*]:w-44 [&>*]:shrink-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:p-6 sm:[&>*]:w-auto">
                   <Column state="todo" name="To do" count={2}>
                     <TaskCard
                       title="Retainer report deck"

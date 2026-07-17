@@ -136,7 +136,7 @@ export function Hero() {
       <div aria-hidden className="streak left-[-10%] top-[30%]" />
 
       <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <InView className="grid items-center gap-12 md:grid-cols-[55fr_45fr] md:gap-10">
+        <InView className="grid items-center gap-8 md:grid-cols-[55fr_45fr] md:gap-10">
           {/* ------------------------------ copy ------------------------------ */}
           <div>
             <p className="anim anim-rise w-fit rounded-full border border-dashed border-line-strong px-3.5 py-1 text-xs font-medium text-muted">
@@ -177,9 +177,12 @@ export function Hero() {
 
           {/* ---------------------- product collage --------------------------- */}
           <Parallax speed={0.06}>
+            {/* Outer box owns the layout height (the VISUAL size); the canvas
+                is absolute, so scaling it down on phones leaves no layout
+                ghost below the collage. */}
+            <div aria-hidden className="relative h-[358px] sm:h-[480px]">
             <div
-              aria-hidden
-              className="relative h-[420px] origin-top scale-[0.85] sm:h-[480px] sm:scale-100"
+              className="absolute inset-x-0 top-0 h-[420px] origin-top scale-[0.85] sm:h-[480px] sm:scale-100"
             >
               {/* Back: a slice of the board. */}
               <div
@@ -291,11 +294,12 @@ export function Hero() {
                 popDelay="650ms"
               />
             </div>
+            </div>
           </Parallax>
         </InView>
 
         {/* ---------------------- audience belt ------------------------------ */}
-        <InView className="relative mt-16 overflow-hidden">
+        <InView className="relative mt-10 overflow-hidden sm:mt-16">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bg to-transparent"
