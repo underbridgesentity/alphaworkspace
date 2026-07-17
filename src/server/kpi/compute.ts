@@ -97,7 +97,7 @@ export async function workspaceKpis(
       open: count(),
       overdue: count(sql`case when ${tasks.dueDate} < ${today} then 1 end`),
       stale: count(
-        sql`case when ${tasks.lastActivityAt} < ${staleBefore} then 1 end`,
+        sql`case when ${tasks.lastActivityAt} < ${staleBefore.toISOString()} then 1 end`,
       ),
     })
     .from(tasks)

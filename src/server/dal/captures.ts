@@ -3,7 +3,7 @@
  * writes tasks (product law: extract, show, confirm). Captures are kept for
  * quality auditing.
  */
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, gte } from "drizzle-orm";
 import { voiceCaptures } from "@/server/db/schema";
 import type { TaskCreateInput } from "@/lib/validators";
 import type { TaskDTO } from "@/lib/types";
@@ -23,7 +23,7 @@ export async function monthlyVoiceCaptureCount(ctx: Ctx): Promise<number> {
       and(
         eq(voiceCaptures.workspaceId, ctx.workspace.id),
         eq(voiceCaptures.source, "voice"),
-        sql`${voiceCaptures.createdAt} >= ${monthStart}`,
+        gte(voiceCaptures.createdAt, monthStart),
       ),
     );
   return row?.n ?? 0;

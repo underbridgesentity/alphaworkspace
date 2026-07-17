@@ -1,7 +1,7 @@
 /**
  * Workspace lifecycle, membership and invites.
  */
-import { and, asc, count, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, isNull, ne } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import {
   invites,
@@ -424,7 +424,7 @@ export async function workspaceUsage(ctx: Ctx) {
         and(
           eq(voiceCaptures.workspaceId, ctx.workspace.id),
           eq(voiceCaptures.source, "voice"),
-          sql`${voiceCaptures.createdAt} >= ${monthStart}`,
+          gte(voiceCaptures.createdAt, monthStart),
         ),
       ),
   ]);
