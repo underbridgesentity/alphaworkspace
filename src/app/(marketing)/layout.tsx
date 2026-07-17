@@ -50,7 +50,7 @@ export default function MarketingLayout({
 
       <main>{children}</main>
 
-      <footer className="border-t border-line">
+      <footer className="border-t border-dashed border-line-strong">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center md:px-8">
           <div className="flex items-center gap-2">
             <Logo size={26} wordmark={false} />

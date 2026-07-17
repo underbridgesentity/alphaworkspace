@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingCards, PricingFootnote } from "@/components/marketing/pricing-cards";
+import { Reveal } from "@/components/marketing/reveal";
 import { PLANS, formatZar } from "@/lib/plans";
 
 export const metadata: Metadata = {
@@ -56,13 +57,15 @@ export default function PricingPage() {
       <section className="mx-auto mt-16 max-w-2xl" aria-label="Frequently asked questions">
         <h2 className="text-xl font-semibold tracking-tight">Fair questions</h2>
         <div className="mt-4 space-y-2">
-          {FAQ.map((item) => (
-            <details key={item.q} className="group rounded-card bg-surface px-4 py-3">
+          {FAQ.map((item, i) => (
+            <Reveal key={item.q} delay={i * 60}>
+            <details className="group rounded-card border border-dashed border-line bg-surface px-4 py-3 transition-colors open:border-line-strong hover:border-line-strong">
               <summary className="cursor-pointer select-none text-sm font-medium">
                 {item.q}
               </summary>
               <p className="mt-2 text-sm leading-relaxed text-muted">{item.a}</p>
             </details>
+            </Reveal>
           ))}
         </div>
         <p className="mt-8 text-center">

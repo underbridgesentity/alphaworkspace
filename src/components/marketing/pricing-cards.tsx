@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { Reveal } from "@/components/marketing/reveal";
 import { PLANS, formatZar } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 
@@ -7,7 +8,7 @@ import { cn } from "@/lib/cn";
 export function PricingCards({ detailed = false }: { detailed?: boolean }) {
   return (
     <div className="grid gap-3 md:grid-cols-3">
-      {Object.values(PLANS).map((plan) => {
+      {Object.values(PLANS).map((plan, planIndex) => {
         const highlight = plan.id === "team";
         const rows = [
           `Up to ${plan.maxMembers} people — one flat price`,
@@ -25,11 +26,11 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
             : []),
         ];
         return (
+          <Reveal key={plan.id} delay={planIndex * 110}>
           <div
-            key={plan.id}
             className={cn(
-              "flex flex-col rounded-card bg-surface p-5",
-              highlight && "ring-1 ring-accent/60",
+              "grad-card card-lift flex h-full flex-col rounded-card border border-dashed bg-surface p-5",
+              highlight ? "border-ink/40" : "border-line",
             )}
           >
             {highlight && (
@@ -68,6 +69,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
               {plan.id === "free" ? "Start free" : `Start with ${plan.name}`}
             </Link>
           </div>
+          </Reveal>
         );
       })}
     </div>

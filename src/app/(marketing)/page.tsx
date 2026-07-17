@@ -9,35 +9,45 @@ import {
   WifiOff,
 } from "lucide-react";
 import { PricingCards, PricingFootnote } from "@/components/marketing/pricing-cards";
+import { Reveal } from "@/components/marketing/reveal";
+import { Blob } from "@/components/marketing/blob";
 
 export const metadata: Metadata = {
   description:
     "Alpha Workspace is the project workspace that does the following up — for South African agencies of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
 };
 
+/** Monochrome gradient for display headlines: ink fading toward quiet. */
+const headlineGradient = {
+  backgroundImage:
+    "linear-gradient(180deg, var(--ink) 55%, color-mix(in oklab, var(--ink) 52%, transparent))",
+} as const;
+
 export default function LandingPage() {
   return (
     <>
       {/* ------------------------------ hero ------------------------------ */}
       <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[-20%] h-[36rem] w-[52rem] -translate-x-1/2 rounded-full opacity-[0.06]"
-          style={{
-            background:
-              "radial-gradient(closest-side, #FBFAF2 0%, transparent 70%)",
-          }}
+        <Blob
+          className="left-[-14%] top-[-6%] h-[26rem] w-[30rem]"
+          strength={0.07}
+        />
+        <Blob
+          className="right-[-16%] top-[32%] h-[30rem] w-[34rem]"
+          morph={22}
+          drift={40}
+          strength={0.05}
         />
         <div className="relative mx-auto w-full max-w-5xl px-5 pb-16 pt-16 text-center sm:pt-24 md:px-8">
           <p
-            className="animate-fade-up mx-auto w-fit rounded-full bg-raised px-3 py-1 text-xs font-medium text-muted"
+            className="animate-fade-up mx-auto w-fit rounded-full border border-dashed border-line-strong px-3.5 py-1 text-xs font-medium text-muted"
             style={{ animationDelay: "0ms" }}
           >
             For South African agencies of 2–15 people
           </p>
           <h1
-            className="animate-fade-up mx-auto mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] sm:text-6xl"
-            style={{ animationDelay: "60ms" }}
+            className="animate-fade-up mx-auto mt-6 max-w-3xl text-balance bg-clip-text text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-transparent sm:text-6xl"
+            style={{ animationDelay: "60ms", ...headlineGradient }}
           >
             The workspace that does the following&nbsp;up.
           </h1>
@@ -55,13 +65,13 @@ export default function LandingPage() {
           >
             <Link
               href="/sign-in"
-              className="press rounded-[0.625rem] bg-accent px-6 py-3 text-center font-semibold text-on-accent hover:bg-accent-hover"
+              className="press rounded-[0.625rem] bg-accent px-6 py-3 text-center font-semibold text-on-accent shadow-[0_10px_36px_-12px_color-mix(in_oklab,var(--ink)_45%,transparent)] hover:bg-accent-hover"
             >
               Start free — no card
             </Link>
             <Link
               href="/pricing"
-              className="press rounded-[0.625rem] bg-raised px-6 py-3 text-center font-medium text-ink hover:bg-overlay"
+              className="press rounded-[0.625rem] border border-dashed border-line-strong px-6 py-3 text-center font-medium text-ink transition-colors hover:border-ink/40 hover:bg-raised"
             >
               See pricing
             </Link>
@@ -72,9 +82,9 @@ export default function LandingPage() {
             className="animate-fade-up mx-auto mt-14 max-w-xl text-left"
             style={{ animationDelay: "260ms" }}
           >
-            <div className="rounded-card bg-surface p-5 shadow-[var(--shadow-overlay)]">
+            <div className="grad-card card-lift rounded-card border border-dashed border-line-strong bg-surface/80 p-5 shadow-[var(--shadow-overlay)]">
               <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-accent" />
+                <Sparkles className="size-4 text-ink" />
                 <p className="text-xs font-semibold uppercase tracking-wider text-faint">
                   Monday 06:30 · Weekly briefing
                 </p>
@@ -95,59 +105,90 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="hairline-fade mx-auto max-w-4xl" />
+
       {/* --------------------------- pillar: reports ---------------------- */}
-      <section className="mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <div className="grid items-center gap-10 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-              It reports itself
-            </p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              Nobody compiles a status report. Ever again.
-            </h2>
-            <p className="mt-3 text-muted">
-              Zero-setup KPIs read straight from the work: what got done, what
-              slipped, who’s overloaded, which client project has gone quiet.
-              Every Monday a short, human briefing lands in-app, by email and
-              by push — written like a sharp ops lead, not a data dump. Each
-              morning, everyone gets their three things.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Completion rate", value: "62%", note: "this week" },
-              { label: "Overdue", value: "3", note: "need a decision", tone: "text-danger" },
-              { label: "Cycle time", value: "2.4d", note: "created → done" },
-            ].map((t) => (
-              <div key={t.label} className="rounded-card bg-surface p-4">
-                <p className="text-[11px] font-medium text-faint">{t.label}</p>
-                <p
-                  className={`mt-1 text-2xl font-semibold tracking-tight tabular ${t.tone ?? ""}`}
-                >
-                  {t.value}
-                </p>
-                <p className="mt-0.5 text-[11px] text-faint">{t.note}</p>
-              </div>
-            ))}
-            <div className="col-span-3 rounded-card bg-surface p-4">
-              <p className="text-xs text-muted">
-                <span className="font-semibold text-ink">Morning brief:</span>{" "}
-                Morning Naledi — two overdue need a decision, then Friday’s
-                deadline. Everything else can wait.
+      <section className="relative overflow-hidden">
+        <Blob
+          className="left-[-12%] bottom-[-30%] h-[24rem] w-[26rem]"
+          morph={20}
+          drift={44}
+          strength={0.05}
+        />
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
+          <div className="grid items-center gap-10 md:grid-cols-2">
+            <Reveal>
+              <p className="text-xs font-semibold uppercase tracking-wider text-faint">
+                It reports itself
               </p>
+              <h2
+                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
+                style={headlineGradient}
+              >
+                Nobody compiles a status report. Ever again.
+              </h2>
+              <p className="mt-3 text-muted">
+                Zero-setup KPIs read straight from the work: what got done, what
+                slipped, who’s overloaded, which client project has gone quiet.
+                Every Monday a short, human briefing lands in-app, by email and
+                by push — written like a sharp ops lead, not a data dump. Each
+                morning, everyone gets their three things.
+              </p>
+            </Reveal>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Completion rate", value: "62%", note: "this week" },
+                { label: "Overdue", value: "3", note: "need a decision", tone: "text-danger" },
+                { label: "Cycle time", value: "2.4d", note: "created → done" },
+              ].map((t, i) => (
+                <Reveal key={t.label} delay={120 + i * 90}>
+                  <div className="grad-card card-lift h-full rounded-card border border-dashed border-line bg-surface p-4">
+                    <p className="text-[11px] font-medium text-faint">{t.label}</p>
+                    <p
+                      className={`mt-1 text-2xl font-semibold tracking-tight tabular ${t.tone ?? ""}`}
+                    >
+                      {t.value}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-faint">{t.note}</p>
+                  </div>
+                </Reveal>
+              ))}
+              <Reveal delay={390} className="col-span-3">
+                <div className="grad-card card-lift rounded-card border border-dashed border-line bg-surface p-4">
+                  <p className="text-xs text-muted">
+                    <span className="font-semibold text-ink">Morning brief:</span>{" "}
+                    Morning Naledi — two overdue need a decision, then Friday’s
+                    deadline. Everything else can wait.
+                  </p>
+                </div>
+              </Reveal>
             </div>
           </div>
         </div>
       </section>
 
       {/* --------------------------- pillar: capture ---------------------- */}
-      <section className="border-y border-line bg-surface/40">
-        <div className="mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
+      <section className="relative overflow-hidden border-y border-dashed border-line">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, color-mix(in oklab, var(--ink) 4%, transparent), transparent 45%, color-mix(in oklab, var(--ink) 3%, transparent))",
+          }}
+        />
+        <Blob
+          className="right-[-10%] top-[-24%] h-[22rem] w-[26rem]"
+          morph={24}
+          drift={38}
+          strength={0.06}
+        />
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
           <div className="grid items-center gap-10 md:grid-cols-2">
-            <div className="order-2 md:order-1">
-              <div className="rounded-card bg-surface p-5 shadow-[var(--shadow-overlay)]">
+            <Reveal delay={120} className="order-2 md:order-1">
+              <div className="grad-card card-lift rounded-card border border-dashed border-line-strong bg-surface p-5 shadow-[var(--shadow-overlay)]">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-accent text-on-accent">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
                     <Mic className="size-4" />
                   </span>
                   <p className="text-sm italic text-muted">
@@ -166,7 +207,10 @@ export default function LandingPage() {
                       chips: ["Liberty rebrand", "unassigned", "Tue 21 Jul"],
                     },
                   ].map((t) => (
-                    <div key={t.title} className="rounded-control bg-raised p-3">
+                    <div
+                      key={t.title}
+                      className="rounded-control border border-dashed border-line bg-raised/70 p-3 transition-colors hover:border-line-strong"
+                    >
                       <p className="text-sm font-medium">{t.title}</p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {t.chips.map((c) => (
@@ -187,110 +231,156 @@ export default function LandingPage() {
                   </span>
                 </div>
               </div>
-            </div>
-            <div className="order-1 md:order-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            </Reveal>
+            <Reveal className="order-1 md:order-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Capturing work costs nothing
               </p>
-              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
+              <h2
+                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
+                style={headlineGradient}
+              >
                 Hold the mic. Talk for ninety seconds. Confirm.
               </h2>
               <p className="mt-3 text-muted">
                 Walk out of a client call and speak everything that needs
                 doing — people, projects, days. Alpha extracts the tasks and
                 shows you the list before anything is created. Or type{" "}
-                <span className="rounded bg-raised px-1.5 py-0.5 text-sm text-ink">
+                <span className="rounded border border-dashed border-line bg-raised px-1.5 py-0.5 text-sm text-ink">
                   homepage concepts for Liberty, Thabo, Friday
                 </span>{" "}
                 and press enter. The AI proposes; you always confirm.
               </p>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
       {/* --------------------------- pillar: built for here ---------------- */}
-      <section className="mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <div className="grid items-center gap-10 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-              Built for here
-            </p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              Offline-first. Light on data. Priced in rand.
-            </h2>
-            <p className="mt-3 text-muted">
-              Alpha installs like an app and keeps working when the connection
-              doesn’t — reads come from cache, changes queue and sync the
-              moment you’re back. It’s deliberately light on data. And where
-              dollar-priced tools cost a 10-person team R2,000+ a month,
-              Alpha’s whole-team band is a quarter of that, billed locally
-              through PayFast.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { icon: WifiOff, label: "Offline-first — work continues without signal" },
-              { icon: Smartphone, label: "Installable app, light on data" },
-              { icon: Check, label: "R499/month — the whole team, VAT incl." },
-            ].map((b) => (
-              <div
-                key={b.label}
-                className="flex items-center gap-2.5 rounded-card bg-surface px-4 py-3"
+      <section className="relative overflow-hidden">
+        <Blob
+          className="left-[38%] bottom-[-36%] h-[24rem] w-[30rem]"
+          morph={19}
+          drift={46}
+          strength={0.05}
+        />
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
+          <div className="grid items-center gap-10 md:grid-cols-2">
+            <Reveal>
+              <p className="text-xs font-semibold uppercase tracking-wider text-faint">
+                Built for here
+              </p>
+              <h2
+                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
+                style={headlineGradient}
               >
-                <b.icon className="size-4 shrink-0 text-accent" />
-                <span className="text-sm text-muted">{b.label}</span>
-              </div>
-            ))}
+                Offline-first. Light on data. Priced in rand.
+              </h2>
+              <p className="mt-3 text-muted">
+                Alpha installs like an app and keeps working when the connection
+                doesn’t — reads come from cache, changes queue and sync the
+                moment you’re back. It’s deliberately light on data. And where
+                dollar-priced tools cost a 10-person team R2,000+ a month,
+                Alpha’s whole-team band is a quarter of that, billed locally
+                through PayFast.
+              </p>
+            </Reveal>
+            <div className="flex flex-col gap-2">
+              {[
+                { icon: WifiOff, label: "Offline-first — work continues without signal" },
+                { icon: Smartphone, label: "Installable app, light on data" },
+                { icon: Check, label: "R499/month — the whole team, VAT incl." },
+              ].map((b, i) => (
+                <Reveal key={b.label} delay={120 + i * 90}>
+                  <div className="grad-card card-lift flex items-center gap-2.5 rounded-card border border-dashed border-line bg-surface px-4 py-3.5">
+                    <b.icon className="size-4 shrink-0 text-ink" />
+                    <span className="text-sm text-muted">{b.label}</span>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ------------------------------ manifesto -------------------------- */}
-      <section className="border-y border-line bg-surface/40">
-        <div className="mx-auto w-full max-w-3xl px-5 py-12 text-center md:px-8">
-          <p className="text-balance text-lg font-medium tracking-tight sm:text-xl">
-            “Every feature must reduce follow-up messages between humans — or
-            it doesn’t ship.”
-          </p>
-          <p className="mt-2 text-sm text-faint">
-            The anti-noise law. It’s why Alpha exists.
-          </p>
-        </div>
+      <section className="border-y border-dashed border-line">
+        <Reveal>
+          <div className="mx-auto w-full max-w-3xl px-5 py-14 text-center md:px-8">
+            <p
+              className="text-balance bg-clip-text text-lg font-medium tracking-tight text-transparent sm:text-2xl"
+              style={headlineGradient}
+            >
+              “Every feature must reduce follow-up messages between humans — or
+              it doesn’t ship.”
+            </p>
+            <p className="mt-3 text-sm text-faint">
+              The anti-noise law. It’s why Alpha exists.
+            </p>
+          </div>
+        </Reveal>
       </section>
 
       {/* ------------------------------ pricing ---------------------------- */}
-      <section className="mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <h2 className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
-          Flat bands. No per-seat maths.
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-center text-muted">
-          Your finance person will read this once and nod.
-        </p>
-        <div className="mt-8">
-          <PricingCards />
-          <PricingFootnote />
+      <section className="relative overflow-hidden">
+        <Blob
+          className="right-[-14%] top-[6%] h-[26rem] w-[28rem]"
+          morph={21}
+          drift={42}
+          strength={0.05}
+        />
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
+          <Reveal>
+            <h2
+              className="bg-clip-text text-center text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
+              style={headlineGradient}
+            >
+              Flat bands. No per-seat maths.
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-center text-muted">
+              Your finance person will read this once and nod.
+            </p>
+          </Reveal>
+          <div className="mt-8">
+            <PricingCards />
+            <Reveal delay={300}>
+              <PricingFootnote />
+            </Reveal>
+          </div>
         </div>
       </section>
 
       {/* ------------------------------ final CTA -------------------------- */}
       <section className="mx-auto w-full max-w-5xl px-5 pb-20 md:px-8">
-        <div className="rounded-card bg-surface px-6 py-12 text-center">
-          <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-            Your Monday briefing could write itself next week.
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-muted">
-            Set up in under two minutes. Free for teams of three — no card, no
-            trial clock.
-          </p>
-          <Link
-            href="/sign-in"
-            className="press mt-6 inline-flex items-center gap-2 rounded-[0.625rem] bg-accent px-6 py-3 font-semibold text-on-accent hover:bg-accent-hover"
-          >
-            Start free
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
+        <Reveal>
+          <div className="grad-card relative overflow-hidden rounded-card border border-dashed border-line-strong bg-surface px-6 py-14 text-center">
+            <Blob
+              className="left-[-8%] top-[-40%] h-[16rem] w-[20rem]"
+              morph={16}
+              drift={30}
+              strength={0.07}
+            />
+            <div className="relative">
+              <h2
+                className="text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
+                style={headlineGradient}
+              >
+                Your Monday briefing could write itself next week.
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-muted">
+                Set up in under two minutes. Free for teams of three — no card,
+                no trial clock.
+              </p>
+              <Link
+                href="/sign-in"
+                className="press mt-6 inline-flex items-center gap-2 rounded-[0.625rem] bg-accent px-6 py-3 font-semibold text-on-accent shadow-[0_10px_36px_-12px_color-mix(in_oklab,var(--ink)_45%,transparent)] hover:bg-accent-hover"
+              >
+                Start free
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </div>
+        </Reveal>
       </section>
     </>
   );

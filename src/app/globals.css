@@ -199,3 +199,68 @@
   user-select: none;
   pointer-events: none;
 }
+
+/* ---------------------------------------------------------------------------
+ * Marketing decor: liquid blobs, scroll reveals, dashed cards, hairlines.
+ * All monochrome — interest comes from form and motion, never a new hue.
+ * ------------------------------------------------------------------------- */
+
+@keyframes blob-morph {
+  0%, 100% { border-radius: 58% 42% 55% 45% / 52% 58% 42% 48%; }
+  33% { border-radius: 45% 55% 48% 52% / 60% 42% 58% 40%; }
+  66% { border-radius: 52% 48% 62% 38% / 44% 56% 44% 56%; }
+}
+@keyframes blob-drift {
+  0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
+  50% { translate: 2% -3%; rotate: 6deg; scale: 1.05; }
+}
+
+/* Scroll-appearance: <Reveal> toggles .is-visible via IntersectionObserver. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.21, 0.6, 0.35, 1),
+    transform 0.7s cubic-bezier(0.21, 0.6, 0.35, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Gentle lift + brightened dashed edge on hover. */
+@utility card-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.21, 0.6, 0.35, 1),
+    border-color 0.35s ease,
+    background-color 0.35s ease,
+    box-shadow 0.35s ease;
+  &:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in oklab, var(--ink) 32%, transparent);
+  }
+}
+
+/* A hairline that fades out at both ends — quiet section punctuation. */
+@utility hairline-fade {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}
+
+/* Frost-tinted wash for cards (adapts to theme via --ink). */
+@utility grad-card {
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--ink) 7%, transparent),
+    color-mix(in oklab, var(--ink) 2%, transparent) 55%,
+    transparent
+  );
+}
