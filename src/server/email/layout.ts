@@ -25,8 +25,8 @@ export function escapeHtml(s: string): string {
 export function renderEmail({ heading, bodyHtml, cta, footnote }: EmailLayoutInput): string {
   return `<!doctype html>
 <html>
-<body style="margin:0;padding:0;background:#f2f5f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f5f5;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#fbfaf2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbfaf2;padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
         <tr><td style="padding:0 8px 20px;">
@@ -38,7 +38,7 @@ export function renderEmail({ heading, bodyHtml, cta, footnote }: EmailLayoutInp
           ${
             cta
               ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;"><tr><td style="border-radius:10px;background:#0b1215;">
-                   <a href="${cta.url}" style="display:inline-block;padding:11px 22px;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:600;color:#f2f5f5;text-decoration:none;border-radius:10px;">${escapeHtml(cta.label)}</a>
+                   <a href="${cta.url}" style="display:inline-block;padding:11px 22px;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:600;color:#fbfaf2;text-decoration:none;border-radius:10px;">${escapeHtml(cta.label)}</a>
                  </td></tr></table>`
               : ""
           }

@@ -4,7 +4,7 @@
 /* ---------------------------------------------------------------------------
  * Alpha Workspace design tokens.
  * Calm, minimal, confident. Monochrome: midnight abyss (#0B1215) with a
- * cool off-white — primary actions are inverted ink, no accent hue.
+ * frost white (#FBFAF2) — primary actions are inverted ink, no accent hue.
  * Dark is the default theme; light is a toggle.
  * ------------------------------------------------------------------------- */
 
@@ -16,16 +16,16 @@
   --raised: #162328;
   --overlay: #1b2a30;
 
-  --ink: #eff3f4;
+  --ink: #fbfaf2;
   --muted: #9fadb3;
   --faint: #69787f;
 
-  --line: rgba(239, 243, 244, 0.08);
-  --line-strong: rgba(239, 243, 244, 0.16);
+  --line: rgba(251, 250, 242, 0.08);
+  --line-strong: rgba(251, 250, 242, 0.16);
 
-  --accent: #eff3f4;
+  --accent: #fbfaf2;
   --accent-hover: #ffffff;
-  --accent-soft: rgba(239, 243, 244, 0.1);
+  --accent-soft: rgba(251, 250, 242, 0.1);
   --on-accent: #0b1215;
 
   --ok: #67a985;
@@ -38,8 +38,8 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg: #f2f5f5;
-  --surface: #fafcfc;
+  --bg: #fbfaf2;
+  --surface: #ffffff;
   --raised: #ffffff;
   --overlay: #ffffff;
 
@@ -53,7 +53,7 @@
   --accent: #0b1215;
   --accent-hover: #1b2a30;
   --accent-soft: rgba(11, 18, 21, 0.08);
-  --on-accent: #f2f5f5;
+  --on-accent: #fbfaf2;
 
   --ok: #35735a;
   --warn: #8f6f1a;

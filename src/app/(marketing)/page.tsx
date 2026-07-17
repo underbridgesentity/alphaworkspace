@@ -25,7 +25,7 @@ export default function LandingPage() {
           className="pointer-events-none absolute left-1/2 top-[-20%] h-[36rem] w-[52rem] -translate-x-1/2 rounded-full opacity-[0.06]"
           style={{
             background:
-              "radial-gradient(closest-side, #EFF3F4 0%, transparent 70%)",
+              "radial-gradient(closest-side, #FBFAF2 0%, transparent 70%)",
           }}
         />
         <div className="relative mx-auto w-full max-w-5xl px-5 pb-16 pt-16 text-center sm:pt-24 md:px-8">
