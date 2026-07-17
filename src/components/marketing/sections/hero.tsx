@@ -152,9 +152,11 @@ export function Hero() {
               className="anim anim-rise mt-5 max-w-xl text-pretty text-lg text-muted"
               style={{ animationDelay: "160ms" }}
             >
-              Stop chasing status on WhatsApp and email. In Alpha, work
-              captures itself, reports itself, and keeps moving even when the
-              connection doesn’t, one flat price for the whole team, in rand.
+              Alpha Workspace is the project and work-management app that
+              follows up so your team doesn’t have to. Stop chasing status on
+              WhatsApp and email: work captures itself, reports itself, and
+              keeps moving even when the connection doesn’t, one flat price for
+              the whole team, in rand.
             </p>
             <div
               className="anim anim-rise mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
