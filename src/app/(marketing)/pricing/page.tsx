@@ -54,7 +54,11 @@ export default function PricingPage() {
         <PricingFootnote />
       </div>
 
-      <section className="mx-auto mt-16 max-w-2xl" aria-label="Frequently asked questions">
+      <section
+        className="section-invert mt-16 rounded-card border border-dashed border-line bg-bg px-5 py-10 text-ink sm:px-8"
+        aria-label="Frequently asked questions"
+      >
+        <div className="mx-auto max-w-2xl">
         <h2 className="text-xl font-semibold tracking-tight">Fair questions</h2>
         <div className="mt-4 space-y-2">
           {FAQ.map((item, i) => (
@@ -76,6 +80,7 @@ export default function PricingPage() {
             Start free — upgrade when it earns it
           </Link>
         </p>
+        </div>
       </section>
     </div>
   );

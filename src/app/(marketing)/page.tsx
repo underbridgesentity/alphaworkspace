@@ -168,7 +168,7 @@ export default function LandingPage() {
       </section>
 
       {/* --------------------------- pillar: capture ---------------------- */}
-      <section className="relative overflow-hidden border-y border-dashed border-line">
+      <section className="section-invert relative overflow-hidden border-y border-dashed border-line bg-bg text-ink">
         <div
           aria-hidden
           className="absolute inset-0"
@@ -304,7 +304,7 @@ export default function LandingPage() {
       </section>
 
       {/* ------------------------------ manifesto -------------------------- */}
-      <section className="border-y border-dashed border-line">
+      <section className="section-invert border-y border-dashed border-line bg-bg text-ink">
         <Reveal>
           <div className="mx-auto w-full max-w-3xl px-5 py-14 text-center md:px-8">
             <p
@@ -353,7 +353,7 @@ export default function LandingPage() {
       {/* ------------------------------ final CTA -------------------------- */}
       <section className="mx-auto w-full max-w-5xl px-5 pb-20 md:px-8">
         <Reveal>
-          <div className="grad-card relative overflow-hidden rounded-card border border-dashed border-line-strong bg-surface px-6 py-14 text-center">
+          <div className="section-invert grad-card relative overflow-hidden rounded-card border border-dashed border-line-strong bg-bg px-6 py-14 text-center text-ink">
             <Blob
               className="left-[-8%] top-[-40%] h-[16rem] w-[20rem]"
               morph={16}
