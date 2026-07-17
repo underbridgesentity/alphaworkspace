@@ -24,10 +24,10 @@ export function Logo({
         width={size}
         height={size}
         style={{ width: size, height: size }}
-        className="rounded-full bg-[#121110] shrink-0"
+        className="rounded-full bg-[#0B1215] shrink-0"
       />
       {wordmark && (
-        <span className="text-ink leading-none tracking-tight" style={{ fontSize: size * 0.72 }}>
+        <span className="text-ink leading-none tracking-tight" style={{ fontSize: size * 0.78 }}>
           <span className="font-semibold">Alpha</span>
           <span className="text-muted">Workspace</span>
         </span>

@@ -232,7 +232,7 @@ export const projects = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    color: text("color").default("#E85D2B").notNull(),
+    color: text("color").default("#5B7C99").notNull(),
     status: projectStatus("status").default("active").notNull(),
     /** Plain text in Phase 1; becomes a Client entity when shared views land. */
     clientName: text("client_name"),
@@ -299,7 +299,7 @@ export const labels = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    color: text("color").default("#736D65").notNull(),
+    color: text("color").default("#66757C").notNull(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("labels_ws_name_uq").on(t.workspaceId, t.name)],

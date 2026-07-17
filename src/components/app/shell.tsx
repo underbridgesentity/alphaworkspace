@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useWorkspace } from "@/lib/client/workspace";
 import { Avatar } from "@/components/ui/avatar";
+import { Logo } from "@/components/ui/logo";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { ThemeToggleItem } from "@/components/ui/theme-toggle";
 import dynamic from "next/dynamic";
@@ -143,8 +144,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <Menu
                 align="start"
                 trigger={
-                  <button className="press flex max-w-full items-center gap-1 rounded-control px-2 py-1.5 hover:bg-raised">
-                    <span className="truncate font-semibold tracking-tight">
+                  <button className="press flex max-w-full items-center gap-2 rounded-control px-1.5 py-1.5 hover:bg-raised">
+                    <Logo size={26} wordmark={false} />
+                    <span className="truncate text-[1.0625rem] font-semibold tracking-tight">
                       {workspace.name}
                     </span>
                   </button>
@@ -269,7 +271,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setMic({})}
                 aria-label="Voice capture"
-                className="press -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_8px_24px_-6px_rgba(232,93,43,0.55)] hover:bg-accent-hover"
+                className="press -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] hover:bg-accent-hover"
               >
                 <Mic className="size-6" />
               </button>

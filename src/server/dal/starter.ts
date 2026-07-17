@@ -24,7 +24,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
     .values({
       workspaceId: ctx.workspace.id,
       name: "Website refresh — Karoo Coffee",
-      color: "#E85D2B",
+      color: "#5B7C99",
       clientName: "Karoo Coffee Co.",
       position: (maxPos?.max ?? 0) + 1024,
       createdBy: ctx.userId,
@@ -38,10 +38,10 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
     data: { name: project.name },
   });
 
-  const design = await createLabel(ctx, { name: "Design", color: "#E85D2B" });
+  const design = await createLabel(ctx, { name: "Design", color: "#5B7C99" });
   const copy = await createLabel(ctx, { name: "Copy", color: "#D9A13B" });
   const dev = await createLabel(ctx, { name: "Dev", color: "#6FAE87" });
-  await createLabel(ctx, { name: "Admin", color: "#736D65" });
+  await createLabel(ctx, { name: "Admin", color: "#66757C"});
 
   const t = (
     title: string,

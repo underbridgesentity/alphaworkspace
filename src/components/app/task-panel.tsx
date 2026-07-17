@@ -612,7 +612,7 @@ function LabelPicker({
     setNewLabel("");
     const res = await apiMutate<{ label: LabelDTO }>(
       `/api/w/${workspace.slug}/labels`,
-      { method: "POST", body: { name, color: "#736D65" } },
+      { method: "POST", body: { name, color: "#66757C" } },
     );
     await qc.invalidateQueries({ queryKey: ["ws", workspace.slug, "bootstrap"] });
     if (!("queued" in res && res.queued)) onChange([...current, res.label.id]);

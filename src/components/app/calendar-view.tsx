@@ -133,7 +133,7 @@ export function CalendarView({ projectId }: { projectId?: string }) {
                     )}
                     style={
                       t.status !== "done"
-                        ? { boxShadow: `inset 2px 0 0 ${t.projectColor ?? "#E85D2B"}` }
+                        ? { boxShadow: `inset 2px 0 0 ${t.projectColor ?? "#5B7C99"}` }
                         : undefined
                     }
                   >

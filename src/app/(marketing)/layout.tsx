@@ -3,7 +3,7 @@ import { Logo } from "@/components/ui/logo";
 
 function Wordmark({ small = false }: { small?: boolean }) {
   return (
-    <span className={small ? "text-sm tracking-tight" : "tracking-tight"}>
+    <span className={small ? "text-base tracking-tight" : "text-lg tracking-tight sm:text-xl"}>
       <span className="font-semibold text-ink">Alpha</span>
       <span className="text-muted">Workspace</span>
     </span>
@@ -15,15 +15,15 @@ export default function MarketingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-dvh">
-      <header className="mx-auto flex h-16 w-full max-w-5xl items-center gap-6 px-5 md:px-8">
-        <Link href="/" className="press flex items-center gap-2" aria-label="Alpha Workspace home">
-          <Logo size={24} wordmark={false} />
+      <header className="mx-auto flex h-[4.5rem] w-full max-w-5xl items-center gap-3 px-4 sm:px-5 md:px-8">
+        <Link href="/" className="press flex min-w-0 items-center gap-2.5" aria-label="Alpha Workspace home">
+          <Logo size={32} wordmark={false} />
           <Wordmark />
         </Link>
-        <nav className="ml-auto flex items-center gap-1 sm:gap-2">
+        <nav className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <Link
             href="/pricing"
-            className="press rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink"
+            className="press hidden rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink sm:block"
           >
             Pricing
           </Link>
@@ -35,13 +35,13 @@ export default function MarketingLayout({
           </Link>
           <Link
             href="/sign-in"
-            className="press rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink"
+            className="press hidden rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink sm:block"
           >
             Sign in
           </Link>
           <Link
             href="/sign-in"
-            className="press rounded-control bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover"
+            className="press whitespace-nowrap rounded-control bg-accent px-3.5 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover sm:px-4"
           >
             Start free
           </Link>
@@ -53,7 +53,7 @@ export default function MarketingLayout({
       <footer className="border-t border-line">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center md:px-8">
           <div className="flex items-center gap-2">
-            <Logo size={20} wordmark={false} />
+            <Logo size={26} wordmark={false} />
             <Wordmark small />
           </div>
           <p className="text-sm text-faint sm:ml-2">

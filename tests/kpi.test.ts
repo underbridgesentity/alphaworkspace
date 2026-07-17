@@ -62,7 +62,7 @@ beforeAll(async () => {
   await addMember(db, ws.id, naledi.id, "member");
 
   const ctx = await ctxFor(db, owner.id, ws.slug);
-  projectA = (await createProject(ctx, { name: "Liberty rebrand", color: "#E85D2B", clientName: "Liberty" })).id;
+  projectA = (await createProject(ctx, { name: "Liberty rebrand", color: "#5B7C99", clientName: "Liberty" })).id;
   projectB = (await createProject(ctx, { name: "Vodacom retainer", color: "#6FAE87", clientName: "Vodacom" })).id;
 
   const mk = (projectId: string, title: string, assigneeId?: string, dueDate?: string | null) =>

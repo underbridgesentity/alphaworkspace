@@ -1,5 +1,5 @@
 /**
- * The write queue that makes Alpha work on the taxi ride: mutations made
+ * The write queue behind offline-first writes: mutations made
  * offline are stored here in order and replayed when connectivity returns
  * (last write wins server-side). Creates carry client-generated UUIDs so
  * replays are idempotent.

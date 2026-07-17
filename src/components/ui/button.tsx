@@ -7,7 +7,7 @@ type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-accent text-on-accent hover:bg-accent-hover font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]",
+    "bg-accent text-on-accent hover:bg-accent-hover font-semibold",
   quiet: "bg-raised text-ink hover:bg-overlay",
   outline: "border border-line-strong text-ink hover:bg-raised",
   danger: "bg-danger/10 text-danger hover:bg-danger/20 font-medium",

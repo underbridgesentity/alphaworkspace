@@ -18,7 +18,7 @@ export default function AccountLayout({
             Back
           </Link>
           <div className="flex-1" />
-          <Logo size={22} />
+          <Logo size={26} />
         </header>
         <main className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 md:px-6">
           {children}

@@ -61,7 +61,7 @@ export const commentCreateSchema = z.object({
 export const projectCreateSchema = z.object({
   id: uuid.optional(),
   name: z.string().trim().min(1, "Name the project").max(120),
-  color: hexColor.default("#E85D2B"),
+  color: hexColor.default("#5B7C99"),
   clientName: z.string().trim().max(120).nullish(),
 });
 
@@ -79,7 +79,7 @@ export const projectUpdateSchema = z
 
 export const labelCreateSchema = z.object({
   name: z.string().trim().min(1).max(40),
-  color: hexColor.default("#736D65"),
+  color: hexColor.default("#66757C"),
 });
 
 /* --------------------------- workspace/members --------------------------- */

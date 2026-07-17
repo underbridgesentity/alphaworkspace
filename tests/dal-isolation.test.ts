@@ -89,7 +89,7 @@ describe("cross-workspace isolation", () => {
     const ctxA = await ctxFor(db, anna.id, ws1.slug);
     const ctxB = await ctxFor(db, ben.id, ws2.slug);
 
-    const project = await createProject(ctxA, { name: "Brand refresh", color: "#E85D2B" });
+    const project = await createProject(ctxA, { name: "Brand refresh", color: "#5B7C99" });
     const task = await createTask(ctxA, {
       projectId: project.id,
       title: "Moodboard for Liberty",
@@ -162,7 +162,7 @@ describe("roles", () => {
   it("members cannot manage projects, settings, members or invites", async () => {
     const ctxCara = await ctxFor(db, cara.id, ws1.slug);
     await expect(
-      createProject(ctxCara, { name: "Side quest", color: "#E85D2B" }),
+      createProject(ctxCara, { name: "Side quest", color: "#5B7C99" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(updateWorkspace(ctxCara, { name: "Renamed" })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(

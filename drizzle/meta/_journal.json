@@ -8,6 +8,13 @@
       "when": 1784228803748,
       "tag": "0000_clumsy_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784268350932,
+      "tag": "0001_illegal_lord_hawal",
+      "breakpoints": true
     }
   ]
 }

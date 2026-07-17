@@ -42,7 +42,7 @@ export function Sidebar({ className }: { className?: string }) {
           className="w-56"
           trigger={
             <button className="press flex w-full items-center gap-2 rounded-control px-2 py-2 hover:bg-raised">
-              <Logo size={22} wordmark={false} />
+              <Logo size={28} wordmark={false} />
               <span className="min-w-0 flex-1 truncate text-left font-semibold tracking-tight">
                 {workspace.name}
               </span>

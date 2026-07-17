@@ -114,14 +114,14 @@ async function main() {
   const ctxThabo = await resolveCtx(db, thabo, ws.id);
   const ctxNaledi = await resolveCtx(db, naledi, ws.id);
 
-  const design = await createLabel(ctx, { name: "Design", color: "#E85D2B" });
+  const design = await createLabel(ctx, { name: "Design", color: "#5B7C99" });
   const copy = await createLabel(ctx, { name: "Copy", color: "#D9A13B" });
   const dev = await createLabel(ctx, { name: "Dev", color: "#6FAE87" });
-  const admin = await createLabel(ctx, { name: "Admin", color: "#736D65" });
+  const admin = await createLabel(ctx, { name: "Admin", color: "#66757C" });
 
   const liberty = await createProject(ctx, {
     name: "Liberty rebrand",
-    color: "#E85D2B",
+    color: "#5B7C99",
     clientName: "Liberty",
   });
   const vodacom = await createProject(ctx, {

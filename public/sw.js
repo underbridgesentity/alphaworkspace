@@ -12,7 +12,7 @@
  *
  * Bump VERSION to invalidate caches on deploy of breaking asset changes.
  */
-const VERSION = "aw-v1";
+const VERSION = "aw-v2";
 const STATIC_CACHE = `static-${VERSION}`;
 const DATA_CACHE = `data-${VERSION}`;
 const PAGE_CACHE = `pages-${VERSION}`;

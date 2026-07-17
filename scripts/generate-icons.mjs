@@ -6,7 +6,7 @@
 import sharp from "sharp";
 import { mkdir } from "node:fs/promises";
 
-const INK = "#121110";
+const INK = "#0B1215";
 
 /** Ink badge with the white Alpha mark centred inside the maskable safe zone. */
 async function badge(size, out, scale = 0.68) {

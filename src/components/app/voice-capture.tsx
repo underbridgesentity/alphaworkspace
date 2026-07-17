@@ -140,7 +140,7 @@ export function VoiceCaptureSheet({
           </p>
           <button
             onClick={start}
-            className="press mx-auto mt-6 flex size-20 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_10px_30px_-8px_rgba(232,93,43,0.6)] hover:bg-accent-hover"
+            className="press mx-auto mt-6 flex size-20 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] hover:bg-accent-hover"
             aria-label="Start recording"
           >
             <Mic className="size-8" />

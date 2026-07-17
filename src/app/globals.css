@@ -3,33 +3,34 @@
 
 /* ---------------------------------------------------------------------------
  * Alpha Workspace design tokens.
- * Calm, minimal, confident. Warm near-black / off-white, one burnt-orange
- * accent used sparingly. Dark is the default theme; light is a toggle.
+ * Calm, minimal, confident. Monochrome: midnight abyss (#0B1215) with a
+ * cool off-white — primary actions are inverted ink, no accent hue.
+ * Dark is the default theme; light is a toggle.
  * ------------------------------------------------------------------------- */
 
 :root {
   color-scheme: dark;
 
-  --bg: #121110;
-  --surface: #191817;
-  --raised: #201e1c;
-  --overlay: #262422;
+  --bg: #0b1215;
+  --surface: #111a1e;
+  --raised: #162328;
+  --overlay: #1b2a30;
 
-  --ink: #f4f2ed;
-  --muted: #a6a099;
-  --faint: #736d65;
+  --ink: #eff3f4;
+  --muted: #9fadb3;
+  --faint: #69787f;
 
-  --line: rgba(244, 242, 237, 0.08);
-  --line-strong: rgba(244, 242, 237, 0.16);
+  --line: rgba(239, 243, 244, 0.08);
+  --line-strong: rgba(239, 243, 244, 0.16);
 
-  --accent: #e85d2b;
-  --accent-hover: #f26e3c;
-  --accent-soft: rgba(232, 93, 43, 0.14);
-  --on-accent: #fff7f2;
+  --accent: #eff3f4;
+  --accent-hover: #ffffff;
+  --accent-soft: rgba(239, 243, 244, 0.1);
+  --on-accent: #0b1215;
 
-  --ok: #6fae87;
-  --warn: #d9a13b;
-  --danger: #e0604f;
+  --ok: #67a985;
+  --warn: #d2a648;
+  --danger: #db6a5c;
 
   --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
 }
@@ -37,28 +38,28 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg: #f6f5f1;
-  --surface: #fcfbf8;
+  --bg: #f2f5f5;
+  --surface: #fafcfc;
   --raised: #ffffff;
   --overlay: #ffffff;
 
-  --ink: #1a1815;
-  --muted: #6e685f;
-  --faint: #9a948b;
+  --ink: #0b1215;
+  --muted: #55666d;
+  --faint: #8b9aa0;
 
-  --line: rgba(26, 24, 21, 0.08);
-  --line-strong: rgba(26, 24, 21, 0.16);
+  --line: rgba(11, 18, 21, 0.09);
+  --line-strong: rgba(11, 18, 21, 0.18);
 
-  --accent: #e2531f;
-  --accent-hover: #c94715;
-  --accent-soft: rgba(226, 83, 31, 0.1);
-  --on-accent: #fff7f2;
+  --accent: #0b1215;
+  --accent-hover: #1b2a30;
+  --accent-soft: rgba(11, 18, 21, 0.08);
+  --on-accent: #f2f5f5;
 
-  --ok: #3e8862;
-  --warn: #a97a15;
-  --danger: #c2453a;
+  --ok: #35735a;
+  --warn: #8f6f1a;
+  --danger: #b04a3d;
 
-  --shadow-overlay: 0 24px 56px -20px rgba(26, 24, 21, 0.25), 0 0 0 1px var(--line);
+  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.25), 0 0 0 1px var(--line);
 }
 
 @theme inline {

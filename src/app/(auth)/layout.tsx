@@ -8,7 +8,7 @@ export default function AuthLayout({
     <div className="min-h-dvh flex flex-col">
       <header className="px-5 py-4 sm:px-8">
         <Link href="/" className="inline-flex press" aria-label="Alpha Workspace home">
-          <Logo size={26} />
+          <Logo size={32} />
         </Link>
       </header>
       <main className="flex-1 flex items-center justify-center px-5 pb-16">

@@ -22,10 +22,10 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[-20%] h-[36rem] w-[52rem] -translate-x-1/2 rounded-full opacity-[0.14]"
+          className="pointer-events-none absolute left-1/2 top-[-20%] h-[36rem] w-[52rem] -translate-x-1/2 rounded-full opacity-[0.06]"
           style={{
             background:
-              "radial-gradient(closest-side, #E85D2B 0%, transparent 70%)",
+              "radial-gradient(closest-side, #EFF3F4 0%, transparent 70%)",
           }}
         />
         <div className="relative mx-auto w-full max-w-5xl px-5 pb-16 pt-16 text-center sm:pt-24 md:px-8">
@@ -46,22 +46,22 @@ export default function LandingPage() {
             style={{ animationDelay: "120ms" }}
           >
             Stop chasing status on WhatsApp and email. In Alpha, work captures
-            itself, reports itself, and survives the taxi ride offline — priced
-            in rand for the whole team.
+            itself, reports itself, and keeps moving even when the connection
+            doesn’t — one flat price for the whole team, in rand.
           </p>
           <div
-            className="animate-fade-up mt-8 flex flex-wrap items-center justify-center gap-3"
+            className="animate-fade-up mx-auto mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center"
             style={{ animationDelay: "180ms" }}
           >
             <Link
               href="/sign-in"
-              className="press rounded-[0.625rem] bg-accent px-6 py-3 font-semibold text-on-accent hover:bg-accent-hover"
+              className="press rounded-[0.625rem] bg-accent px-6 py-3 text-center font-semibold text-on-accent hover:bg-accent-hover"
             >
               Start free — no card
             </Link>
             <Link
               href="/pricing"
-              className="press rounded-[0.625rem] bg-raised px-6 py-3 font-medium text-ink hover:bg-overlay"
+              className="press rounded-[0.625rem] bg-raised px-6 py-3 text-center font-medium text-ink hover:bg-overlay"
             >
               See pricing
             </Link>
@@ -217,20 +217,21 @@ export default function LandingPage() {
               Built for here
             </p>
             <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              Made for load shedding, taxi Wi-Fi and rand budgets.
+              Offline-first. Light on data. Priced in rand.
             </h2>
             <p className="mt-3 text-muted">
               Alpha installs like an app and keeps working when the connection
-              doesn’t — reads come from cache, changes queue and sync when
-              you’re back. It’s light on data by design. And where dollar tools
-              cost a 10-person team R2,000+ a month, Alpha’s whole-team band is
-              a quarter of that, billed in rand through PayFast.
+              doesn’t — reads come from cache, changes queue and sync the
+              moment you’re back. It’s deliberately light on data. And where
+              dollar-priced tools cost a 10-person team R2,000+ a month,
+              Alpha’s whole-team band is a quarter of that, billed locally
+              through PayFast.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-              { icon: WifiOff, label: "Offline-first — the board works on the taxi ride" },
-              { icon: Smartphone, label: "Installable PWA, light on data" },
+              { icon: WifiOff, label: "Offline-first — work continues without signal" },
+              { icon: Smartphone, label: "Installable app, light on data" },
               { icon: Check, label: "R499/month — the whole team, VAT incl." },
             ].map((b) => (
               <div

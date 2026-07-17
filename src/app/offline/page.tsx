@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Offline" };
 export default function OfflinePage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-      <Logo size={28} />
+      <Logo size={34} />
       <WifiOff className="mt-10 size-8 text-faint" />
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">
         You’re offline

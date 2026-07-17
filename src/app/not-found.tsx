@@ -4,7 +4,7 @@ import { Logo } from "@/components/ui/logo";
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-      <Logo size={28} />
+      <Logo size={34} />
       <p className="mt-10 text-6xl font-semibold tracking-tight text-faint">404</p>
       <h1 className="mt-3 text-xl font-semibold tracking-tight">
         This page isn’t here
