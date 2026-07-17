@@ -11,12 +11,38 @@ import { AppError, LimitError, ValidationError } from "@/server/dal/errors";
 type Params = Record<string, string>;
 type Handler = (req: NextRequest, params: Params) => Promise<Response>;
 
+/**
+ * CSRF backstop for session-cookie-authenticated mutations: browsers attach
+ * an Origin header to every cross-site POST/PUT/PATCH/DELETE; if one is
+ * present and doesn't match our host, refuse. Server-to-server callers
+ * (PayFast ITN, cron) either don't go through api() or send no Origin, so
+ * they are unaffected. Cookie SameSite=Lax is the first line; this is the
+ * second.
+ */
+function assertSameOrigin(req: NextRequest): void {
+  const method = req.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return;
+  const origin = req.headers.get("origin");
+  if (!origin) return;
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  let originHost: string | null = null;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    originHost = null;
+  }
+  if (!host || originHost !== host) {
+    throw new AppError("forbidden", "Cross-origin request refused", 403);
+  }
+}
+
 export function api(handler: Handler) {
   return async (
     req: NextRequest,
     ctx: { params: Promise<Params> },
   ): Promise<Response> => {
     try {
+      assertSameOrigin(req);
       return await handler(req, await ctx.params);
     } catch (err) {
       return errorResponse(err);
@@ -66,6 +92,12 @@ export function errorResponse(err: unknown): NextResponse {
 }
 
 export async function readJson<T>(req: NextRequest, schema: ZodType<T>): Promise<T> {
+  // Requiring the JSON content type means browsers preflight any cross-site
+  // attempt (HTML forms can't produce it), killing form-based CSRF outright.
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new ValidationError("Expected an application/json body");
+  }
   let raw: unknown;
   try {
     raw = await req.json();

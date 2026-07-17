@@ -204,7 +204,7 @@ export function Numbers() {
               week’s hours actually went.
             </p>
             <p className="mt-3 text-xs text-faint">
-              Scorecards from the Team plan; time tracking with Studio.
+              Both come with the paid plans, Team and Studio alike.
             </p>
           </Reveal>
         </div>

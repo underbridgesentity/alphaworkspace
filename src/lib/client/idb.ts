@@ -47,4 +47,7 @@ export const idb = {
   count(): Promise<number> {
     return tx("readonly", (s) => s.count());
   },
+  clear(): Promise<undefined> {
+    return tx("readwrite", (s) => s.clear() as IDBRequest<undefined>);
+  },
 };

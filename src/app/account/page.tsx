@@ -137,7 +137,11 @@ export default function AccountPage() {
     setBusy("delete");
     try {
       await apiMutate("/api/me", { method: "DELETE" });
-      const { signOutAction } = await import("@/components/app/actions");
+      const [{ signOutAction }, { purgeLocalData }] = await Promise.all([
+        import("@/components/app/actions"),
+        import("@/lib/client/purge"),
+      ]);
+      await purgeLocalData();
       await signOutAction();
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't delete your account", {

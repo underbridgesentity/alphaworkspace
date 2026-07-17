@@ -8,6 +8,8 @@ export const metadata: Metadata = { title: "Sign in" };
 
 const ERROR_COPY: Record<string, string> = {
   BadEmail: "That email doesn't look right, check it and try again.",
+  RateLimited:
+    "Too many sign-in emails in a short time. Wait a few minutes and try again.",
   Verification:
     "That sign-in link expired or was already used. Enter your email for a fresh one.",
   OAuthAccountNotLinked:
@@ -24,7 +26,12 @@ export default async function SignInPage({
 }) {
   const params = await searchParams;
   const user = await getUser();
-  if (user) redirect(params.next?.startsWith("/") ? params.next : "/app");
+  // Relative paths only; "//host" is protocol-relative and leaves the site.
+  const next =
+    params.next?.startsWith("/") && !params.next.startsWith("//")
+      ? params.next
+      : "/app";
+  if (user) redirect(next);
 
   const error = params.error
     ? (ERROR_COPY[params.error] ?? ERROR_COPY.Default)

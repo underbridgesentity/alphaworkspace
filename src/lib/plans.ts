@@ -55,9 +55,16 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxActiveProjects: null,
     voiceCapturesPerMonth: 200,
     attachmentQuotaMb: 2_048,
-    // Scorecards sit in Team on purpose: small teams steer by a handful of
-    // numbers too, and the habit is what sells Studio later.
-    features: ["weekly_narrative", "morning_brief", "scorecards"],
+    // Joseph's rule (2026-07-17): paid bands share EVERY feature; the bands
+    // differ only in quantities (people, captures, storage). Features listed
+    // per plan so planWithFeature() keeps deriving honest upgrade copy.
+    features: [
+      "weekly_narrative",
+      "morning_brief",
+      "scorecards",
+      "time_tracking",
+      "client_reports",
+    ],
   },
   studio: {
     id: "studio",

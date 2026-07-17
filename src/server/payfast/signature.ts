@@ -7,7 +7,7 @@
  *    order / received order), never alphabetically. (The subscriptions API
  *    is the opposite, see subscriptions.ts.)
  */
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 /** PHP urlencode() semantics. */
 export function pfUrlEncode(value: string): string {
@@ -61,5 +61,8 @@ export function verifyItnSignature(
   const received = entries.find(([k]) => k === "signature")?.[1];
   if (!received) return false;
   const expected = buildSignature(entries, passphrase);
-  return expected === received.toLowerCase();
+  // Constant-time compare; a timing oracle on the hash would slowly leak it.
+  const a = Buffer.from(expected);
+  const b = Buffer.from(received.toLowerCase());
+  return a.length === b.length && timingSafeEqual(a, b);
 }

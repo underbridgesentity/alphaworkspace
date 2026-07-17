@@ -22,6 +22,11 @@ export function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** CTA links may only point at us (http(s) app links), never scriptable schemes. */
+function safeCtaUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : APP_URL();
+}
+
 export function renderEmail({ heading, bodyHtml, cta, footnote }: EmailLayoutInput): string {
   return `<!doctype html>
 <html>
@@ -33,12 +38,12 @@ export function renderEmail({ heading, bodyHtml, cta, footnote }: EmailLayoutInp
           <img src="${APP_URL()}/brand/logo-black.png" alt="Alpha Workspace" height="22" style="height:22px;width:auto;border:0;" />
         </td></tr>
         <tr><td style="background:#ffffff;border-radius:14px;padding:32px 32px 28px;font-family:'Instrument Sans','Segoe UI',system-ui,-apple-system,sans-serif;color:#0b1215;">
-          <h1 style="margin:0 0 14px;font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-0.01em;">${heading}</h1>
+          <h1 style="margin:0 0 14px;font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-0.01em;">${escapeHtml(heading)}</h1>
           <div style="font-size:15px;line-height:1.6;color:#3c4a50;">${bodyHtml}</div>
           ${
             cta
               ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;"><tr><td style="border-radius:10px;background:#17685c;">
-                   <a href="${cta.url}" style="display:inline-block;padding:11px 22px;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:600;color:#fbfaf2;text-decoration:none;border-radius:10px;">${escapeHtml(cta.label)}</a>
+                   <a href="${escapeHtml(safeCtaUrl(cta.url))}" style="display:inline-block;padding:11px 22px;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:600;color:#fbfaf2;text-decoration:none;border-radius:10px;">${escapeHtml(cta.label)}</a>
                  </td></tr></table>`
               : ""
           }

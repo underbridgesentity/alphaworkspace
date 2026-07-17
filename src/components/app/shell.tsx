@@ -362,7 +362,11 @@ function SignOutItem() {
     <MenuItem
       onClick={async () => {
         setPending(true);
-        const { signOutAction } = await import("./actions");
+        const [{ signOutAction }, { purgeLocalData }] = await Promise.all([
+          import("./actions"),
+          import("@/lib/client/purge"),
+        ]);
+        await purgeLocalData(); // shared devices: no workspace data left behind
         await signOutAction();
       }}
       disabled={pending}

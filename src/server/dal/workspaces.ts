@@ -315,7 +315,7 @@ export async function createInvite(
     to: input.email,
     subject: `Join ${ctx.workspace.name} on Alpha Workspace`,
     html: renderEmail({
-      heading: `You're invited to ${escapeHtml(ctx.workspace.name)}`,
+      heading: `You're invited to ${ctx.workspace.name}`,
       bodyHtml: `<p style="margin:0;">Your team runs their projects on Alpha Workspace, tasks, boards and a Monday briefing that writes itself. Accept the invite to jump in.</p>`,
       cta: { label: "Accept invite", url },
       footnote: "This invite expires in 14 days. If you weren't expecting it, you can ignore this email.",

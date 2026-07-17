@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleCheck, Undo2 } from "lucide-react";
 import { db } from "@/server/db";
-import { workspaces } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
+import { memberships, workspaces } from "@/server/db/schema";
+import { and, eq } from "drizzle-orm";
+import { getUser } from "@/server/session";
 
 export const metadata: Metadata = { title: "Payment" };
 
@@ -16,12 +17,18 @@ export default async function BillingReturnPage({
   const params = await searchParams;
   const cancelled = params.cancelled === "1";
 
+  // Resolve the back-link only for the signed-in MEMBER of that workspace;
+  // an anonymous visitor with a guessed id learns nothing.
   let slug: string | null = null;
-  if (params.ws) {
+  const user = await getUser();
+  if (params.ws && user) {
     const [row] = await db
       .select({ slug: workspaces.slug })
       .from(workspaces)
-      .where(eq(workspaces.id, params.ws));
+      .innerJoin(memberships, eq(memberships.workspaceId, workspaces.id))
+      .where(
+        and(eq(workspaces.id, params.ws), eq(memberships.userId, user.id)),
+      );
     slug = row?.slug ?? null;
   }
   const backHref = slug ? `/w/${slug}/settings/billing` : "/app";

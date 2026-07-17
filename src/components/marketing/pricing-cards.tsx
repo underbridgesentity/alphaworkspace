@@ -16,6 +16,9 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
             ? "Unlimited projects"
             : `${plan.maxActiveProjects} active projects`,
           `${plan.voiceCapturesPerMonth} voice captures a month`,
+          plan.attachmentQuotaMb >= 1024
+            ? `${Math.round(plan.attachmentQuotaMb / 1024)} GB attachment storage`
+            : `${plan.attachmentQuotaMb} MB attachment storage`,
           "Weekly narrative briefing",
           ...(plan.features.includes("morning_brief") ? ["Personal morning brief"] : []),
           ...(plan.features.includes("scorecards")

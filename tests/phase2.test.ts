@@ -23,7 +23,8 @@ import {
   taskTime,
   weekTime,
 } from "@/server/dal/time";
-import { LimitError, NotFoundError, ValidationError } from "@/server/dal/errors";
+import { NotFoundError, ValidationError } from "@/server/dal/errors";
+import { PLANS } from "@/lib/plans";
 import { todaySAST, weekStart } from "@/lib/dates";
 import { createTestDb, createTestUser, ctxFor } from "./helpers/db";
 
@@ -71,11 +72,11 @@ describe("plan gating", () => {
     });
     await expect(startTimer(ctx, taskA)).rejects.toMatchObject({
       feature: "time_tracking",
-      message: expect.stringContaining("Studio plan"),
+      message: expect.stringContaining("Team plan"),
     });
   });
 
-  it("Team gets scorecards but not time tracking", async () => {
+  it("paid bands share every feature: Team gets scorecards AND time tracking", async () => {
     const boss = await createTestUser(db, "boss@team.co.za", "Boss");
     const teamWs = await createWorkspace(db, boss.id, {
       name: "Team Band Co",
@@ -103,7 +104,12 @@ describe("plan gating", () => {
       priority: "none",
       labelIds: [],
     });
-    await expect(startTimer(ctx, task.id)).rejects.toBeInstanceOf(LimitError);
+    await startTimer(ctx, task.id);
+    const { minutes } = await stopTimer(ctx);
+    expect(minutes).toBeGreaterThanOrEqual(1);
+
+    // The Feature union stays in lockstep across both paid bands.
+    expect(new Set(PLANS.team.features)).toEqual(new Set(PLANS.studio.features));
   });
 });
 

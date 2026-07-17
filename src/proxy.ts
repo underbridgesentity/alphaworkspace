@@ -29,5 +29,6 @@ export const config = {
     "/onboarding",
     "/invite/:path*",
     "/account/:path*",
+    "/admin/:path*",
   ],
 };

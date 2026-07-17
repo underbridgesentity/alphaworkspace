@@ -16,7 +16,7 @@ import { notify } from "@/server/notifications/service";
 import { matchMentions } from "@/lib/mentions";
 import type { Ctx } from "./context";
 import { logActivity } from "./activity";
-import { NotFoundError } from "./errors";
+import { NotFoundError, ValidationError } from "./errors";
 
 export async function addComment(
   ctx: Ctx,
@@ -48,12 +48,21 @@ export async function addComment(
     .returning();
 
   if (!row) {
-    // Offline replay of an already-synced comment.
+    // Offline replay of an already-synced comment. Scope the lookup to THIS
+    // workspace and task: a client-supplied id colliding with some other
+    // tenant's comment must read as a conflict, never as their comment.
     const [existing] = await ctx.db
       .select({ comment: comments, author: users })
       .from(comments)
       .innerJoin(users, eq(comments.authorId, users.id))
-      .where(eq(comments.id, input.id!));
+      .where(
+        and(
+          eq(comments.id, input.id!),
+          eq(comments.workspaceId, ctx.workspace.id),
+          eq(comments.taskId, taskId),
+        ),
+      );
+    if (!existing) throw new ValidationError("That comment id is already taken");
     return {
       id: existing.comment.id,
       taskId,

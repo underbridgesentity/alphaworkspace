@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { api, json, readJson } from "@/server/api-utils";
 import { requireUser } from "@/server/session";
 import { db } from "@/server/db";
@@ -35,9 +35,15 @@ const unsubscribeSchema = z.object({ endpoint: z.url() });
 export const DELETE = api(async (req) => {
   const user = await requireUser();
   const { endpoint } = await readJson(req, unsubscribeSchema);
+  // Only your own subscription: endpoint alone must never let one user
+  // silence another's notifications.
   await db
     .delete(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, endpoint));
-  void user;
+    .where(
+      and(
+        eq(pushSubscriptions.endpoint, endpoint),
+        eq(pushSubscriptions.userId, user.id),
+      ),
+    );
   return json({ ok: true });
 });
