@@ -22,6 +22,11 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Alpha",
   },
+  // Google Search Console ownership (URL-prefix property for the home page);
+  // renders <meta name="google-site-verification"> on every page.
+  verification: {
+    google: "fujH5jEQTq7aTPvlmacs7s2B2MwCQSQpJq22rejeoRo",
+  },
 };
 
 export const viewport: Viewport = {

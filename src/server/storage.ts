@@ -69,6 +69,41 @@ export async function deleteObject(path: string): Promise<void> {
   await sb(`/object/${BUCKET}/${path}`, { method: "DELETE" });
 }
 
+/**
+ * The ACTUAL stored byte size of an object (server-side truth), or null if it
+ * can't be read. Used to reconcile the client-declared size on confirm so a
+ * caller can't under-report to slip past the storage quota.
+ */
+export async function objectSize(path: string): Promise<number | null> {
+  // Metadata endpoint first (cheap JSON), then fall back to a HEAD.
+  try {
+    const info = await sb(`/object/info/${BUCKET}/${path}`, { method: "GET" });
+    if (info.ok) {
+      const body = (await info.json()) as {
+        size?: number;
+        contentLength?: number;
+        metadata?: { size?: number; contentLength?: number };
+      };
+      const s =
+        body.size ??
+        body.contentLength ??
+        body.metadata?.size ??
+        body.metadata?.contentLength;
+      if (typeof s === "number" && Number.isFinite(s)) return s;
+    }
+  } catch {
+    // fall through to HEAD
+  }
+  try {
+    const head = await sb(`/object/${BUCKET}/${path}`, { method: "HEAD" });
+    const len = head.headers.get("content-length");
+    if (len && Number.isFinite(Number(len))) return Number(len);
+  } catch {
+    // give up; caller treats null as "couldn't verify"
+  }
+  return null;
+}
+
 /** Idempotently ensure the private bucket exists (called on first upload). */
 export async function ensureBucket(): Promise<void> {
   const res = await sb(`/bucket`, {

@@ -57,25 +57,34 @@ export default function MarketingLayout({
       <main>{children}</main>
 
       <footer className="border-t border-dashed border-line-strong">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center md:px-8">
-          <div className="flex items-center gap-2">
-            <Logo size={26} wordmark={false} />
-            <Wordmark small />
-          </div>
-          <p className="text-sm text-faint sm:ml-2">
-            Made in South Africa, for South African teams.
+        <div className="mx-auto w-full max-w-5xl px-5 py-10 md:px-8">
+          <p className="max-w-2xl text-sm text-muted">
+            <span className="font-semibold text-ink">Alpha Workspace</span> is
+            the project and work-management app for small South African teams.
+            It follows up on work so people don&apos;t have to: status reports
+            itself, tasks cost nothing to create, and it keeps working offline,
+            priced in rand.
           </p>
-          <nav className="flex gap-4 text-sm text-muted sm:ml-auto">
-            <Link href="/pricing" className="hover:text-ink">
-              Pricing
-            </Link>
-            <Link href="/privacy" className="hover:text-ink">
-              Privacy &amp; POPIA
-            </Link>
-            <Link href="/sign-in" className="hover:text-ink">
-              Sign in
-            </Link>
-          </nav>
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
+              <Logo size={26} wordmark={false} />
+              <Wordmark small />
+            </div>
+            <p className="text-sm text-faint sm:ml-2">
+              Made in South Africa, for South African teams.
+            </p>
+            <nav className="flex gap-4 text-sm text-muted sm:ml-auto">
+              <Link href="/pricing" className="hover:text-ink">
+                Pricing
+              </Link>
+              <Link href="/privacy" className="hover:text-ink">
+                Privacy &amp; POPIA
+              </Link>
+              <Link href="/sign-in" className="hover:text-ink">
+                Sign in
+              </Link>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>

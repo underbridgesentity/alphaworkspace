@@ -11,6 +11,7 @@ import { LimitError, NotFoundError, ValidationError } from "./errors";
 import {
   deleteObject,
   ensureBucket,
+  objectSize,
   signedDownloadUrl,
   signedUploadUrl,
   storageConfigured,
@@ -78,8 +79,19 @@ export async function beginUpload(
   return { attachmentId: id, uploadUrl: url, storagePath };
 }
 
-/** Step 2: the browser confirms the PUT succeeded → log activity. */
-export async function confirmUpload(ctx: Ctx, attachmentId: string): Promise<void> {
+/**
+ * Step 2: the browser confirms the PUT succeeded. Reconcile the real stored
+ * size against what the client declared (the quota gate in beginUpload trusts
+ * the declared number), then log activity. A caller that under-reports to
+ * slip past the quota is corrected here; if the true size busts the per-file
+ * cap or the plan quota, the object and row are removed and the upload fails.
+ * `resolveSize` is injectable for tests.
+ */
+export async function confirmUpload(
+  ctx: Ctx,
+  attachmentId: string,
+  opts: { resolveSize?: (path: string) => Promise<number | null> } = {},
+): Promise<void> {
   const [row] = await ctx.db
     .select()
     .from(attachments)
@@ -90,6 +102,33 @@ export async function confirmUpload(ctx: Ctx, attachmentId: string): Promise<voi
       ),
     );
   if (!row) throw new NotFoundError("Attachment not found");
+
+  const realSize = await (opts.resolveSize ?? objectSize)(row.storagePath);
+  if (realSize !== null && realSize !== row.sizeBytes) {
+    const discard = async () => {
+      await deleteObject(row.storagePath).catch(() => undefined);
+      await ctx.db.delete(attachments).where(eq(attachments.id, row.id));
+    };
+    if (realSize > MAX_FILE_BYTES) {
+      await discard();
+      throw new ValidationError("Files are capped at 25 MB each");
+    }
+    const quotaBytes = ctxEntitlements(ctx).attachmentQuotaMb * 1024 * 1024;
+    const usedExcludingThis = (await usedAttachmentBytes(ctx)) - row.sizeBytes;
+    if (usedExcludingThis + realSize > quotaBytes) {
+      await discard();
+      throw new LimitError(
+        "captures",
+        `Your plan's file storage is full (${ctxEntitlements(ctx).attachmentQuotaMb} MB)`,
+      );
+    }
+    await ctx.db
+      .update(attachments)
+      .set({ sizeBytes: realSize })
+      .where(eq(attachments.id, row.id));
+    row.sizeBytes = realSize;
+  }
+
   await logActivity(ctx.db, {
     workspaceId: ctx.workspace.id,
     type: "attachment_added",
