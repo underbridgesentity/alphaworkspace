@@ -221,6 +221,8 @@ export default function AccountPage() {
         </div>
       </section>
 
+      <PasswordSection />
+
       <section>
         <h2 className="text-sm font-semibold">Notifications</h2>
         <p className="mt-0.5 text-xs text-faint">
@@ -337,5 +339,68 @@ export default function AccountPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+/** Set, change, or drop a password. Passwordless stays a first-class path. */
+function PasswordSection() {
+  const { toast } = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await apiMutate("/api/me/password", {
+        method: "POST",
+        body: { current: current || undefined, next },
+      });
+      setCurrent("");
+      setNext("");
+      toast("Password saved. It works alongside your email link and Google.");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't save the password", {
+        variant: "error",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section>
+      <h2 className="text-sm font-semibold">Password</h2>
+      <p className="mt-0.5 text-xs text-faint">
+        Optional. Add one to sign in without waiting for an email. Leave
+        &quot;current&quot; empty if you&apos;ve never set one.
+      </p>
+      <div className="mt-3 flex max-w-md flex-col gap-2 sm:flex-row">
+        <Input
+          type="password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          placeholder="Current password"
+          aria-label="Current password"
+          autoComplete="current-password"
+        />
+        <Input
+          type="password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="New password (10+ chars)"
+          aria-label="New password"
+          autoComplete="new-password"
+        />
+        <Button
+          variant="quiet"
+          onClick={() => void save()}
+          loading={busy}
+          disabled={next.length < 10}
+        >
+          Save
+        </Button>
+      </div>
+    </section>
   );
 }

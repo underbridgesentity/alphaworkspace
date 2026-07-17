@@ -94,6 +94,8 @@ export const users = pgTable("users", {
     withTimezone: true,
     mode: "date",
   }),
+  /** bcrypt hash; null = passwordless account (magic link / Google only). */
+  passwordHash: text("password_hash"),
   image: text("image"),
   notificationPrefs: jsonb("notification_prefs")
     .$type<NotificationPrefs>()

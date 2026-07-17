@@ -1,15 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signInWithEmail, signInWithGoogle } from "./actions";
+import {
+  createPasswordAccount,
+  signInWithEmail,
+  signInWithGoogle,
+  signInWithPassword,
+} from "./actions";
 
-function EmailSubmit() {
+export type SignInMode = "link" | "password" | "create";
+
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" loading={pending} className="w-full">
-      Email me a sign-in link
+      {label}
     </Button>
   );
 }
@@ -47,29 +55,114 @@ function GoogleSubmit() {
   );
 }
 
+function ModeLink({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="press rounded-control text-sm font-medium text-accent hover:text-accent-hover"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function SignInForm({
   googleEnabled,
   next,
+  initialMode = "link",
 }: {
   googleEnabled: boolean;
   next: string;
+  initialMode?: SignInMode;
 }) {
+  const [mode, setMode] = useState<SignInMode>(initialMode);
+
+  const emailField = (
+    <Input
+      type="email"
+      name="email"
+      required
+      autoComplete="email"
+      inputMode="email"
+      placeholder="you@studio.co.za"
+      aria-label="Email address"
+      className="h-12 text-[1.0625rem]"
+    />
+  );
+
   return (
     <div className="mt-6 space-y-3">
-      <form action={signInWithEmail} className="space-y-3">
-        <input type="hidden" name="next" value={next} />
-        <Input
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          inputMode="email"
-          placeholder="you@studio.co.za"
-          aria-label="Email address"
-          className="h-12 text-[1.0625rem]"
-        />
-        <EmailSubmit />
-      </form>
+      {mode === "link" && (
+        <form action={signInWithEmail} className="space-y-3">
+          <input type="hidden" name="next" value={next} />
+          {emailField}
+          <Submit label="Email me a sign-in link" />
+        </form>
+      )}
+
+      {mode === "password" && (
+        <form action={signInWithPassword} className="space-y-3">
+          <input type="hidden" name="next" value={next} />
+          {emailField}
+          <Input
+            type="password"
+            name="password"
+            required
+            autoComplete="current-password"
+            placeholder="Your password"
+            aria-label="Password"
+            className="h-12 text-[1.0625rem]"
+          />
+          <Submit label="Sign in" />
+        </form>
+      )}
+
+      {mode === "create" && (
+        <form action={createPasswordAccount} className="space-y-3">
+          <input type="hidden" name="next" value={next} />
+          {emailField}
+          <Input
+            type="password"
+            name="password"
+            required
+            minLength={10}
+            autoComplete="new-password"
+            placeholder="Choose a password (10+ characters)"
+            aria-label="New password"
+            className="h-12 text-[1.0625rem]"
+          />
+          <Submit label="Create account" />
+          <p className="text-xs text-faint">
+            We&apos;ll email you a confirmation link. Your password starts
+            working the moment you click it.
+          </p>
+        </form>
+      )}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
+        {mode !== "link" && (
+          <ModeLink onClick={() => setMode("link")}>
+            Email me a link instead
+          </ModeLink>
+        )}
+        {mode !== "password" && (
+          <ModeLink onClick={() => setMode("password")}>
+            Use a password
+          </ModeLink>
+        )}
+        {mode !== "create" && (
+          <ModeLink onClick={() => setMode("create")}>
+            Create an account with a password
+          </ModeLink>
+        )}
+      </div>
 
       {googleEnabled && (
         <>

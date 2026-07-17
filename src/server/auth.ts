@@ -2,6 +2,7 @@ import "server-only";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import ResendProvider from "next-auth/providers/resend";
+import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/server/db";
 import {
@@ -12,6 +13,8 @@ import {
 } from "@/server/db/schema";
 import { sendEmail } from "@/server/email/send";
 import { renderEmail } from "@/server/email/layout";
+import { checkCredentials } from "@/server/auth-password";
+import { checkRateLimit } from "@/server/ai/ratelimit";
 
 /**
  * Auth.js v5. Magic link (Resend-backed; console fallback without a key via
@@ -44,12 +47,35 @@ const providers = [
   ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
     ? [
         Google({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           // Both providers verify email ownership, so linking by email is
           // the friendly behaviour for small teams.
           allowDangerousEmailAccountLinking: true,
         }),
       ]
     : []),
+  Credentials({
+    id: "password",
+    name: "Password",
+    credentials: {
+      email: {},
+      password: {},
+    },
+    async authorize(credentials) {
+      const email = String(credentials?.email ?? "");
+      const password = String(credentials?.password ?? "");
+      if (!email || !password) return null;
+      // Per-email backstop (the server action runs the strict user-facing
+      // limit and also pre-checks, so each attempt hits this twice).
+      if (!checkRateLimit(`pw:${email.toLowerCase()}`, 16, 10 * 60_000)) {
+        return null;
+      }
+      const result = await checkCredentials(db, email, password);
+      if (!result.ok) return null;
+      return result.user;
+    },
+  }),
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
