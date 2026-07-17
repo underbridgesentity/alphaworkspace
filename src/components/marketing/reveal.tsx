@@ -3,7 +3,7 @@
 /**
  * Scroll-appearance wrapper: fades/rises children in when they enter the
  * viewport (once). Stagger siblings with `delay`. prefers-reduced-motion is
- * handled in CSS — content is always visible there.
+ * handled in CSS, content is always visible there.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/cn";
@@ -26,7 +26,7 @@ export function Reveal({
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          // Reveal when entering the viewport — or instantly if the user is
+          // Reveal when entering the viewport, or instantly if the user is
           // already past it (anchor jumps, restored scroll positions).
           if (entry.isIntersecting || entry.boundingClientRect.top < 0) {
             setVisible(true);

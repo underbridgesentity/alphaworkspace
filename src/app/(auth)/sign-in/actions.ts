@@ -5,7 +5,7 @@ import { signIn } from "@/server/auth";
 
 function safeNext(raw: unknown): string {
   const next = typeof raw === "string" ? raw : "";
-  // Only same-app relative paths — never an open redirect.
+  // Only same-app relative paths, never an open redirect.
   return next.startsWith("/") && !next.startsWith("//") ? next : "/app";
 }
 

@@ -2,7 +2,7 @@
  * Seeds a demo agency workspace with three weeks of realistic history so the
  * dashboard, My Work and the weekly narrative have real signal on first open.
  *
- * Run: npm run seed   (needs DATABASE_URL; safe to re-run — it makes a fresh
+ * Run: npm run seed   (needs DATABASE_URL; safe to re-run, it makes a fresh
  * uniquely-slugged workspace each time)
  *
  * Sign in afterwards with lerato@mzansi.studio (magic link prints to the dev
@@ -165,7 +165,7 @@ async function main() {
     { project: vodacom.id, title: "July social calendar", assignee: naledi, created: 12, completed: 9, labels: [copy.id] },
     { project: vodacom.id, title: "Winter campaign banners", assignee: thabo, created: 10, completed: 6, labels: [design.id] },
     { project: vodacom.id, title: "Landing page tweaks", assignee: sipho, created: 8, completed: 4, labels: [dev.id] },
-    { project: vodacom.id, title: "Store locator bug fix", assignee: sipho, created: 6, completed: 2, labels: [dev.id], comment: { by: ctxThabo, body: "Tested on my Samsung — sharp. Shipping it." } },
+    { project: vodacom.id, title: "Store locator bug fix", assignee: sipho, created: 6, completed: 2, labels: [dev.id], comment: { by: ctxThabo, body: "Tested on my Samsung, sharp. Shipping it." } },
     { project: vodacom.id, title: "August content plan", assignee: naledi, created: 5, completed: 1, labels: [copy.id] },
     { project: vodacom.id, title: "Reels batch: 6 cutdowns", assignee: thabo, created: 4, due: d(1), priority: "med", labels: [design.id] },
     { project: vodacom.id, title: "Monthly report for client", assignee: naledi, created: 3, due: today, priority: "high", labels: [admin.id], comment: { by: ctxNaledi, body: "Waiting on the analytics export, will wrap this afternoon." } },
@@ -223,7 +223,7 @@ async function main() {
     userId: lerato,
     source: "voice",
     transcript:
-      "Okay so from the Vodacom call — Naledi to get the monthly report out by end of day today, Thabo the reels cutdowns by tomorrow, and someone needs to start the paid media brief for the spring push.",
+      "Okay so from the Vodacom call. Naledi to get the monthly report out by end of day today, Thabo the reels cutdowns by tomorrow, and someone needs to start the paid media brief for the spring push.",
     extraction: { proposals: [] },
     engine: "seed",
     status: "confirmed",

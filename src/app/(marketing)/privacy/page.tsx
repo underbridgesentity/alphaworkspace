@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "How Alpha Workspace handles your information — plain language, POPIA-conscious.",
+    "How Alpha Workspace handles your information, plain language, POPIA-conscious.",
 };
 
 function Section({
@@ -42,11 +42,11 @@ export default function PrivacyPage() {
           <span className="font-medium text-ink">Your workspace content:</span>{" "}
           projects, tasks, comments, labels, activity history, transcripts you
           approve, and the reports computed from them. This content belongs to
-          your team — we process it only to run the product.
+          your team, we process it only to run the product.
         </p>
         <p>
           <span className="font-medium text-ink">Technical basics:</span>{" "}
-          session cookies (sign-in only — no advertising trackers) and standard
+          session cookies (sign-in only, no advertising trackers) and standard
           server logs kept briefly for security and debugging.
         </p>
       </Section>
@@ -57,8 +57,7 @@ export default function PrivacyPage() {
           where supported.{" "}
           <span className="font-medium text-ink">
             We never record or store the audio itself
-          </span>{" "}
-          — only the transcript, and only so you can review and confirm the
+          </span>{" "}, only the transcript, and only so you can review and confirm the
           tasks extracted from it. Discard a capture and it’s marked discarded;
           delete your workspace and it’s gone entirely.
         </p>
@@ -69,17 +68,16 @@ export default function PrivacyPage() {
           Transcripts and weekly activity summaries are processed server-side
           through Anthropic’s API to extract task proposals and write your
           briefing. This data is not used to train AI models. AI credentials
-          never reach your browser, and the AI never creates or changes work —
-          a person always confirms first.
+          never reach your browser, and the AI never creates or changes work, a person always confirms first.
         </p>
       </Section>
 
       <Section title="Who else touches data">
         <p>
           We use a short list of operators, each doing one job: Supabase
-          (database hosting — we prefer the Cape Town af-south-1 region where
+          (database hosting, we prefer the Cape Town af-south-1 region where
           available), Vercel (application hosting), Resend (email delivery),
-          Anthropic (AI processing as above), and PayFast (payments — card
+          Anthropic (AI processing as above), and PayFast (payments, card
           details go directly to PayFast and never touch Alpha’s servers). We
           don’t sell personal information. Ever.
         </p>
@@ -91,7 +89,7 @@ export default function PrivacyPage() {
           <span className="font-medium text-ink">export your data</span> as
           JSON (Account → Your data → Export), and you can{" "}
           <span className="font-medium text-ink">delete</span> your account or
-          your whole workspace — deletion actually deletes, including
+          your whole workspace, deletion actually deletes, including
           transcripts, reports and activity history.
         </p>
         <p>
@@ -102,14 +100,14 @@ export default function PrivacyPage() {
         <p>
           Questions or complaints: raise them with your workspace owner or
           email the operator of this deployment. You may also approach the
-          Information Regulator (South Africa) — inforegulator.org.za.
+          Information Regulator (South Africa), inforegulator.org.za.
         </p>
       </Section>
 
       <Section title="Consent">
         <p>
           Creating an account is your consent to process the information above
-          for the purpose of running Alpha Workspace — nothing broader. This
+          for the purpose of running Alpha Workspace, nothing broader. This
           page changes only with notice in the product.
         </p>
       </Section>

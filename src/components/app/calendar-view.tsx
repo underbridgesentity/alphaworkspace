@@ -2,7 +2,7 @@
 
 /**
  * Month calendar of due dates. Light by design: a grid and small chips,
- * no drag choreography — tap a chip to open the task.
+ * no drag choreography, tap a chip to open the task.
  */
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";

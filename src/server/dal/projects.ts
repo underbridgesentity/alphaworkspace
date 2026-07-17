@@ -3,14 +3,24 @@
  * limit; archiving is always allowed (never trap data behind a paywall).
  */
 import { and, asc, count, eq, sql } from "drizzle-orm";
-import { projects, tasks } from "@/server/db/schema";
-import type { ProjectDTO } from "@/lib/types";
+import { memberships, projects, tasks, users } from "@/server/db/schema";
+import type { ProjectDTO, UserLite } from "@/lib/types";
 import { todaySAST } from "@/lib/dates";
 import { assertRole, ctxEntitlements, type Ctx } from "./context";
 import { logActivity } from "./activity";
-import { LimitError, NotFoundError } from "./errors";
+import { LimitError, NotFoundError, ValidationError } from "./errors";
 
-function toDTO(row: typeof projects.$inferSelect): ProjectDTO {
+const leadLite = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  image: users.image,
+};
+
+function toDTO(
+  row: typeof projects.$inferSelect,
+  lead: UserLite | null = null,
+): ProjectDTO {
   return {
     id: row.id,
     workspaceId: row.workspaceId,
@@ -18,6 +28,8 @@ function toDTO(row: typeof projects.$inferSelect): ProjectDTO {
     color: row.color,
     status: row.status,
     clientName: row.clientName,
+    leadId: row.leadId,
+    lead,
     position: row.position,
   };
 }
@@ -30,6 +42,7 @@ export async function listProjects(
   const rows = await ctx.db
     .select({
       project: projects,
+      lead: leadLite,
       openCount: count(tasks.id),
       overdueCount: count(sql`case when ${tasks.dueDate} < ${today} then 1 end`),
     })
@@ -41,17 +54,18 @@ export async function listProjects(
         sql`${tasks.status} != 'done'`,
       ),
     )
+    .leftJoin(users, eq(users.id, projects.leadId))
     .where(
       and(
         eq(projects.workspaceId, ctx.workspace.id),
         opts.includeArchived ? undefined : eq(projects.status, "active"),
       ),
     )
-    .groupBy(projects.id)
+    .groupBy(projects.id, users.id)
     .orderBy(asc(projects.position), asc(projects.createdAt));
 
   return rows.map((r) => ({
-    ...toDTO(r.project),
+    ...toDTO(r.project, r.lead?.id ? r.lead : null),
     openCount: r.openCount,
     overdueCount: r.overdueCount,
   }));
@@ -59,13 +73,14 @@ export async function listProjects(
 
 export async function getProject(ctx: Ctx, projectId: string): Promise<ProjectDTO> {
   const [row] = await ctx.db
-    .select()
+    .select({ project: projects, lead: leadLite })
     .from(projects)
+    .leftJoin(users, eq(users.id, projects.leadId))
     .where(
       and(eq(projects.id, projectId), eq(projects.workspaceId, ctx.workspace.id)),
     );
   if (!row) throw new NotFoundError("Project not found");
-  return toDTO(row);
+  return toDTO(row.project, row.lead?.id ? row.lead : null);
 }
 
 export async function createProject(
@@ -88,7 +103,7 @@ export async function createProject(
     if ((row?.n ?? 0) >= limits.maxActiveProjects) {
       throw new LimitError(
         "projects",
-        `Your plan includes ${limits.maxActiveProjects} active projects — archive one or upgrade for unlimited`,
+        `Your plan includes ${limits.maxActiveProjects} active projects, archive one or upgrade for unlimited`,
       );
     }
   }
@@ -132,12 +147,27 @@ export async function updateProject(
     name?: string;
     color?: string;
     clientName?: string | null;
+    leadId?: string | null;
     status?: "active" | "archived";
     position?: number;
   },
 ): Promise<ProjectDTO> {
   assertRole(ctx, "admin");
   const existing = await getProject(ctx, projectId);
+
+  // A lead must be a member of this workspace, never an arbitrary user id.
+  if (input.leadId != null) {
+    const [member] = await ctx.db
+      .select({ userId: memberships.userId })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.workspaceId, ctx.workspace.id),
+          eq(memberships.userId, input.leadId),
+        ),
+      );
+    if (!member) throw new ValidationError("The lead must be a workspace member");
+  }
 
   const archiving = input.status === "archived" && existing.status === "active";
 
@@ -147,6 +177,7 @@ export async function updateProject(
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.color !== undefined ? { color: input.color } : {}),
       ...(input.clientName !== undefined ? { clientName: input.clientName } : {}),
+      ...(input.leadId !== undefined ? { leadId: input.leadId } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.position !== undefined ? { position: input.position } : {}),
       ...(archiving ? { archivedAt: new Date() } : {}),
@@ -166,5 +197,5 @@ export async function updateProject(
     data: archiving ? { name: row.name } : { fields: Object.keys(input) },
   });
 
-  return toDTO(row);
+  return getProject(ctx, projectId);
 }

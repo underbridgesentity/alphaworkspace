@@ -1,7 +1,7 @@
 /**
  * Subscription lifecycle helpers around PayFast's recurring billing.
  * NOTE: the subscriptions API signs ALPHABETICALLY (headers + body params
- * sorted by name, passphrase included as a param) — unlike checkout/ITN
+ * sorted by name, passphrase included as a param), unlike checkout/ITN
  * which sign in field order.
  */
 import { createHash } from "node:crypto";
@@ -51,7 +51,7 @@ function apiSignature(params: Record<string, string>, passphrase?: string): stri
 /**
  * Cancel the workspace's current subscription. Tries the PayFast API when a
  * recurring token exists; regardless of remote success, local state drops to
- * Free (never a lockout — existing work stays).
+ * Free (never a lockout, existing work stays).
  */
 export async function cancelSubscription(
   db: Db,

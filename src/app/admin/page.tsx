@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Operator portal — the business view. Workspaces, plans, usage, MRR/ARR,
+ * Operator portal, the business view. Workspaces, plans, usage, MRR/ARR,
  * and comp/change-plan controls. Never shows tenant content (tasks etc.).
  */
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -111,7 +111,7 @@ export default function AdminPage() {
                     <p className="font-medium">{w.name}</p>
                     <p className="text-xs text-faint">/{w.slug}</p>
                   </td>
-                  <td className="px-3 py-2.5 text-muted">{w.ownerEmail ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-muted">{w.ownerEmail ?? "-"}</td>
                   <td className="px-3 py-2.5 tabular">{w.members}</td>
                   <td className="px-3 py-2.5 tabular">{w.captures}</td>
                   <td className="px-3 py-2.5 text-muted">
@@ -139,7 +139,7 @@ export default function AdminPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-faint">
-          Changing a plan here comps it directly (no PayFast charge) — for
+          Changing a plan here comps it directly (no PayFast charge), for
           support, trials or refunds handled in PayFast.
         </p>
       </div>

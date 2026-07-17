@@ -25,7 +25,7 @@ export default function SettingsLayout({
           Workspace settings
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Settings live with admins — ask one of yours if something needs
+          Settings live with admins, ask one of yours if something needs
           changing. Your personal preferences are under{" "}
           <Link href="/account" className="text-accent hover:text-accent-hover">
             Account

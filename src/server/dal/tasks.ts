@@ -19,6 +19,7 @@ import { nextOccurrence, todaySAST } from "@/lib/dates";
 import { notify } from "@/server/notifications/service";
 import { activityEvents } from "@/server/db/schema";
 import type { Ctx } from "./context";
+import { reactionsForComments } from "./comments";
 import { logActivity, type ActivityInput } from "./activity";
 import { NotFoundError, ValidationError } from "./errors";
 
@@ -262,6 +263,12 @@ export async function taskDetail(ctx: Ctx, taskId: string): Promise<TaskDetail> 
         .where(eq(projects.id, row.projectId)),
     ]);
 
+  const reactionMap = await reactionsForComments(
+    ctx.db,
+    ctx.userId,
+    commentRows.map((c) => c.comment.id),
+  );
+
   return {
     task: toDTO(row, assigneeRows[0] ?? null, labelMap.get(taskId) ?? [], projectRow[0]),
     comments: commentRows.map((c) => ({
@@ -270,6 +277,7 @@ export async function taskDetail(ctx: Ctx, taskId: string): Promise<TaskDetail> 
       body: c.comment.body,
       createdAt: c.comment.createdAt.toISOString(),
       author: c.author,
+      reactions: reactionMap.get(c.comment.id) ?? [],
     })),
     activity: activityRows.map((a) => ({
       id: a.event.id,
@@ -335,7 +343,7 @@ export async function createTask(
 
   const row = inserted[0];
   if (!row) {
-    // Replayed create — return the existing row instead of duplicating.
+    // Replayed create, return the existing row instead of duplicating.
     return (await taskDetail(ctx, input.id!)).task;
   }
 
@@ -444,7 +452,7 @@ export async function updateTask(
     events.push({ ...base, type: "task_updated", data: { fields: contentFields } });
   }
 
-  // A pure reorder (position only) is not "activity" — it would poison
+  // A pure reorder (position only) is not "activity", it would poison
   // staleness and spam the log.
   const meaningful = events.length > 0;
 

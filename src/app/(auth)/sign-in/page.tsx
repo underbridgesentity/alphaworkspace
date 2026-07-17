@@ -7,7 +7,7 @@ import { SignInForm } from "./sign-in-form";
 export const metadata: Metadata = { title: "Sign in" };
 
 const ERROR_COPY: Record<string, string> = {
-  BadEmail: "That email doesn't look right — check it and try again.",
+  BadEmail: "That email doesn't look right, check it and try again.",
   Verification:
     "That sign-in link expired or was already used. Enter your email for a fresh one.",
   OAuthAccountNotLinked:

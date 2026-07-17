@@ -117,8 +117,7 @@ export function ProposalReview({
       <div className="flex items-center gap-2 px-5 pb-2">
         <Sparkles className="size-4 text-accent" />
         <p className="text-sm text-muted">
-          {rows.length === 1 ? "One task heard" : `${rows.length} tasks heard`} —
-          check the guesses
+          {rows.length === 1 ? "One task heard" : `${rows.length} tasks heard`}, check the guesses
           <span className="text-faint"> (dashed = my guess, tap to fix)</span>
         </p>
       </div>

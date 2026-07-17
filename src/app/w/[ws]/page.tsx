@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * My Work — the daily driver and default landing view. Everything assigned
+ * My Work, the daily driver and default landing view. Everything assigned
  * to me, overdue first, grouped so the next action is obvious.
  */
 import { Suspense, useMemo } from "react";
@@ -65,8 +65,8 @@ function MyWorkInner() {
             <CircleCheck className="mx-auto size-9 text-ok" />
             <p className="mt-3 font-medium">Clear runway</p>
             <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
-              Nothing on your plate. When work is assigned to you — by a
-              teammate or by the mic — it shows up here, sorted by what’s due.
+              Nothing on your plate. When work is assigned to you, by a
+              teammate or by the mic, it shows up here, sorted by what’s due.
             </p>
           </div>
         )}

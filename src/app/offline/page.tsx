@@ -6,7 +6,7 @@ import { Logo } from "@/components/ui/logo";
 export const metadata: Metadata = { title: "Offline" };
 
 /**
- * Navigation fallback when a page isn't cached yet. Reached rarely — boards
+ * Navigation fallback when a page isn't cached yet. Reached rarely, boards
  * and My Work you've opened before keep working offline.
  */
 export default function OfflinePage() {
@@ -18,8 +18,8 @@ export default function OfflinePage() {
         You’re offline
       </h1>
       <p className="mt-2 max-w-sm text-muted">
-        This page isn’t cached yet. Screens you’ve opened before — My Work,
-        your boards — still work offline, and anything you change syncs the
+        This page isn’t cached yet. Screens you’ve opened before. My Work,
+        your boards, still work offline, and anything you change syncs the
         moment you’re back.
       </p>
       <Link

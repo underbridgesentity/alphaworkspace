@@ -1,6 +1,6 @@
 /**
  * Typed errors thrown by the DAL. API routes map these to HTTP responses in
- * one place (src/server/api-utils.ts) — friendly messages, never stack traces.
+ * one place (src/server/api-utils.ts), friendly messages, never stack traces.
  */
 
 export class AppError extends Error {
@@ -27,7 +27,7 @@ export class ForbiddenError extends AppError {
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = "That doesn't exist — or it isn't yours") {
+  constructor(message = "That doesn't exist, or it isn't yours") {
     super("not_found", message, 404);
   }
 }
@@ -49,7 +49,7 @@ export class LimitError extends AppError {
 }
 
 export class RateLimitError extends AppError {
-  constructor(message = "Slow down a touch — try again in a minute") {
+  constructor(message = "Slow down a touch, try again in a minute") {
     super("rate_limited", message, 429);
   }
 }

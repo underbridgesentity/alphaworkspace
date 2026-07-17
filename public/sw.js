@@ -1,5 +1,5 @@
 /**
- * Alpha Workspace service worker — hand-rolled (Serwist-equivalent) so the
+ * Alpha Workspace service worker, hand-rolled (Serwist-equivalent) so the
  * offline strategy stays legible and Turbopack-independent:
  *
  *  - static assets (fonts, brand, /_next/static): cache-first (immutable)
@@ -7,7 +7,7 @@
  *  - navigations: network-first, cached copy, then /offline
  *  - Background Sync "aw-outbox": replays the IndexedDB write queue when the
  *    app is closed; open tabs are asked to flush instead (idempotent either
- *    way — creates carry client UUIDs, updates are last-write-wins)
+ *    way, creates carry client UUIDs, updates are last-write-wins)
  *  - web push: notification + deep link
  *
  * Bump VERSION to invalidate caches on deploy of breaking asset changes.

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PayFast ITN webhook. Authenticated by signature + merchant id + server
- * postback inside processItn — never by session. Always 200: PayFast
+ * postback inside processItn, never by session. Always 200: PayFast
  * retries hard on non-200 and we log our own failures.
  */
 export async function POST(req: NextRequest) {

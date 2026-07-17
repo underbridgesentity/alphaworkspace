@@ -2,7 +2,7 @@
 
 /**
  * Billing: flat rand bands via PayFast. The checkout is a plain form POST
- * to PayFast — card details never touch Alpha. Cancelling drops to Free;
+ * to PayFast, card details never touch Alpha. Cancelling drops to Free;
  * nothing is deleted, nothing locks.
  */
 import { useState } from "react";
@@ -35,7 +35,7 @@ interface BillingData {
 const STATUS_COPY: Record<string, { label: string; tone: string }> = {
   active: { label: "Active", tone: "text-ok" },
   pending: { label: "Waiting for PayFast confirmation", tone: "text-warn" },
-  past_due: { label: "Payment past due — we'll retry", tone: "text-warn" },
+  past_due: { label: "Payment past due, we'll retry", tone: "text-warn" },
   cancelled: { label: "Cancelled", tone: "text-faint" },
 };
 
@@ -62,7 +62,7 @@ export default function BillingSettingsPage() {
         { method: "POST", body: { plan, billing: annual ? "annual" : "monthly" } },
       );
       if ("queued" in res && res.queued) {
-        toast("You're offline — billing needs a connection", { variant: "error" });
+        toast("You're offline, billing needs a connection", { variant: "error" });
         return;
       }
       // Hand off to PayFast with a plain form post.
@@ -89,7 +89,7 @@ export default function BillingSettingsPage() {
     try {
       await apiMutate(`/api/w/${workspace.slug}/billing`, { method: "DELETE" });
       await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
-      toast("Subscription cancelled — you're on Free, nothing was deleted", {
+      toast("Subscription cancelled, you're on Free, nothing was deleted", {
         variant: "success",
       });
     } catch (err) {
@@ -103,7 +103,7 @@ export default function BillingSettingsPage() {
     <div className="space-y-6">
       {data?.sandbox && (
         <p className="rounded-control bg-warn/10 px-3 py-2 text-xs text-warn">
-          PayFast sandbox mode — no real money moves.
+          PayFast sandbox mode, no real money moves.
         </p>
       )}
 

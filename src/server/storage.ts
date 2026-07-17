@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Supabase Storage REST access for task attachments — signed upload/download
+ * Supabase Storage REST access for task attachments, signed upload/download
  * URLs so bytes go browser↔Supabase directly (never through our functions).
  * Uses the service-role key (server only). Bucket: "attachments", private.
  */

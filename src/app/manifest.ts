@@ -5,14 +5,14 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Alpha Workspace",
     short_name: "Alpha",
     description:
-      "The workspace that does the following up — tasks, boards and a Monday briefing that writes itself. Built for South African teams.",
+      "The workspace that does the following up, tasks, boards and a Monday briefing that writes itself. Built for South African teams.",
     id: "/app",
     start_url: "/app",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0B1215",
-    theme_color: "#0B1215",
+    background_color: "#FBFAF2",
+    theme_color: "#FBFAF2",
     lang: "en-ZA",
     categories: ["productivity", "business"],
     icons: [

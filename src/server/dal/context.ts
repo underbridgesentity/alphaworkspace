@@ -1,5 +1,5 @@
 /**
- * Workspace context — the only door into tenant data.
+ * Workspace context, the only door into tenant data.
  *
  * Every DAL function takes a `Ctx` produced by `resolveCtx()`, which verifies
  * the calling user's membership of the workspace. Queries inside the DAL
@@ -36,7 +36,7 @@ export interface Ctx {
 /**
  * Resolve a workspace context for a user by slug or id.
  * Throws NotFoundError when the workspace doesn't exist OR the user is not a
- * member — deliberately indistinguishable from the outside.
+ * member, deliberately indistinguishable from the outside.
  */
 export async function resolveCtx(
   db: Db,

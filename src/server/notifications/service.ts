@@ -1,12 +1,12 @@
 /**
- * NotificationService — the single entry point for telling humans something.
+ * NotificationService, the single entry point for telling humans something.
  *
  * Channel adapters live in ./channels/*. In-app always records; push and
  * email respect per-user preferences and sensible defaults. The service
  * batches rather than firehoses: due-soon/overdue arrive as one daily sweep,
  * not one ping per task.
  *
- * Product law: external channels are outbound nudges only — no notification
+ * Product law: external channels are outbound nudges only, no notification
  * ever solicits a reply outside the app.
  */
 import type { Db } from "@/server/db";
@@ -29,7 +29,7 @@ export interface NotifyInput {
     url?: string;
     [key: string]: unknown;
   };
-  /** Who caused it — never notified about their own action. */
+  /** Who caused it, never notified about their own action. */
   actorId?: string | null;
 }
 

@@ -1,10 +1,10 @@
 /**
- * Server-side transcription — the Wispr-grade layer. Deepgram nova-3 with
+ * Server-side transcription, the Wispr-grade layer. Deepgram nova-3 with
  * per-request KEYTERM BIASING: we prime the recognizer with this workspace's
  * project names, client names and teammate names, so South African names and
  * agency jargon land right where the browser's built-in recognizer fumbles.
  *
- * Audio is transcribed and discarded — never stored (POPIA). Falls back to
+ * Audio is transcribed and discarded, never stored (POPIA). Falls back to
  * the client's on-device transcript when no DEEPGRAM_API_KEY is set.
  */
 

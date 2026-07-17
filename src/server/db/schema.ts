@@ -99,7 +99,7 @@ export const users = pgTable("users", {
     .$type<NotificationPrefs>()
     .default({})
     .notNull(),
-  /** Platform operator (Alpha staff) — sees the admin portal. Never tenant data. */
+  /** Platform operator (Alpha staff), sees the admin portal. Never tenant data. */
   isOperator: boolean("is_operator").default(false).notNull(),
   createdAt: createdAt(),
 });
@@ -240,6 +240,8 @@ export const projects = pgTable(
     status: projectStatus("status").default("active").notNull(),
     /** Plain text in Phase 1; becomes a Client entity when shared views land. */
     clientName: text("client_name"),
+    /** The member accountable for the project as a whole. */
+    leadId: text("lead_id").references(() => users.id, { onDelete: "set null" }),
     position: doublePrecision("position").default(0).notNull(),
     createdBy: text("created_by")
       .notNull()
@@ -271,7 +273,7 @@ export const tasks = pgTable(
     priority: taskPriority("priority").default("none").notNull(),
     /** Fractional ordering within a column. */
     position: doublePrecision("position").default(0).notNull(),
-    /** e.g. {freq:"weekly"} — on completion the next occurrence is created. */
+    /** e.g. {freq:"weekly"}, on completion the next occurrence is created. */
     recurrence: jsonb("recurrence").$type<{
       freq: "daily" | "weekly" | "monthly";
       interval?: number;
@@ -285,7 +287,7 @@ export const tasks = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .defaultNow()
       .notNull(),
-    /** Any meaningful touch (status, comment, edit) — powers staleness. */
+    /** Any meaningful touch (status, comment, edit), powers staleness. */
     lastActivityAt: timestamp("last_activity_at", {
       withTimezone: true,
       mode: "date",
@@ -348,11 +350,38 @@ export const comments = pgTable(
   (t) => [index("comments_task_idx").on(t.taskId, t.createdAt)],
 );
 
+/**
+ * Emoji reactions on comments: the cheapest possible acknowledgment, which
+ * is the point, a 👍 here replaces a "thanks, noted" message. Toggling is
+ * idempotent via the unique index. Deliberately no notification fan-out.
+ */
+export const commentReactions = pgTable(
+  "comment_reactions",
+  {
+    id: id(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("comment_reactions_once").on(t.commentId, t.userId, t.emoji),
+    index("comment_reactions_comment_idx").on(t.commentId),
+  ],
+);
+
 /* ------------------------- activity log --------------------------------- */
 
 /**
  * Append-only log of meaningful changes. The KPI computations and the weekly
- * narrative read exclusively from here (plus current task state) — design
+ * narrative read exclusively from here (plus current task state), design
  * changes to this table with care.
  */
 export const activityEvents = pgTable(
@@ -363,7 +392,7 @@ export const activityEvents = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     // set null (not cascade): the log is append-only history and must survive
-    // task/project deletion — KPIs and narratives are computed from it.
+    // task/project deletion. KPIs and narratives are computed from it.
     projectId: text("project_id").references(() => projects.id, {
       onDelete: "set null",
     }),
@@ -374,7 +403,7 @@ export const activityEvents = pgTable(
     actorId: text("actor_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    /** ActivityType in src/lib/types.ts — kept as text so adding types is free. */
+    /** ActivityType in src/lib/types.ts, kept as text so adding types is free. */
     type: text("type").notNull(),
     data: jsonb("data").$type<Record<string, unknown>>().default({}).notNull(),
     createdAt: createdAt(),
@@ -504,7 +533,7 @@ export const narrativeReports = pgTable(
     inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull(),
     narrative: text("narrative").notNull(),
     engine: text("engine").notNull(), // model id or "template"
-    /** Reader reactions, userId -> "up" | "down" — tunes future prompts. */
+    /** Reader reactions, userId -> "up" | "down", tunes future prompts. */
     feedback: jsonb("feedback").$type<Record<string, "up" | "down">>().default({}).notNull(),
     createdAt: createdAt(),
   },

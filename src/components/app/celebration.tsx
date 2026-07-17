@@ -7,7 +7,7 @@ import { useEffect } from "react";
  * from the point of completion. Functional and short (≈700ms), skipped
  * entirely under prefers-reduced-motion.
  */
-const COLORS = ["#FBFAF2", "#E5E3DA", "#9FADB3", "#FFFFFF", "#69787F"];
+const COLORS = ["#17685C", "#45B39A", "#A7D8CB", "#0B1215", "#E5E3DA"];
 
 function burst(x: number, y: number) {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -48,7 +48,7 @@ function burst(x: number, y: number) {
 
   // A soft ring pulse under the particles.
   const ring = document.createElement("span");
-  ring.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:8px;height:8px;margin:-4px;border:2px solid #FBFAF2;border-radius:50%;`;
+  ring.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:8px;height:8px;margin:-4px;border:2px solid #45B39A;border-radius:50%;`;
   root.appendChild(ring);
   ring.animate(
     [

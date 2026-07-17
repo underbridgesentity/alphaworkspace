@@ -40,7 +40,7 @@ export function diffDays(a: string, b: string): number {
 export function weekStart(day: string): string {
   const d = dayToDate(day);
   // getUTCDay on a +02:00-midnight date reflects the SAST weekday at 22:00 UTC
-  // the previous day — normalise via the formatted weekday instead.
+  // the previous day, normalise via the formatted weekday instead.
   const weekday = new Intl.DateTimeFormat("en-GB", {
     timeZone: TZ,
     weekday: "short",

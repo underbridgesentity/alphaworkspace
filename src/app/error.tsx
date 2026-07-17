@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Global error boundary. Errors apologise and offer a way forward —
+ * Global error boundary. Errors apologise and offer a way forward,
  * never a stack trace, never a dead end.
  */
 import { useEffect } from "react";
@@ -24,7 +24,7 @@ export default function ErrorPage({
         Something broke on our side
       </h1>
       <p className="mt-2 max-w-sm text-muted">
-        Sorry about that — it’s been noted. Your work is saved; offline changes
+        Sorry about that, it’s been noted. Your work is saved; offline changes
         are still queued. Try again, and if it keeps happening, refresh.
       </p>
       {error.digest && (

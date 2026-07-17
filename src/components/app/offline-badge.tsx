@@ -5,7 +5,7 @@ import { WifiOff } from "lucide-react";
 import { pendingCount } from "@/lib/client/outbox";
 
 /**
- * Quiet connectivity strip. Offline isn't an error state in Alpha — it's
+ * Quiet connectivity strip. Offline isn't an error state in Alpha, it's
  * expected working life; the copy says so.
  */
 export function OfflineBadge() {
@@ -34,7 +34,7 @@ export function OfflineBadge() {
     <div className="flex items-center gap-2 bg-warn/10 px-4 py-2 text-sm text-warn md:px-6">
       <WifiOff className="size-4 shrink-0" />
       <span>
-        Offline — keep working, everything syncs when you’re back
+        Offline, keep working, everything syncs when you’re back
         {pending > 0 && (
           <span className="text-warn/80">
             {" "}

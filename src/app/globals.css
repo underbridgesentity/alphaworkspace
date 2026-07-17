@@ -3,12 +3,39 @@
 
 /* ---------------------------------------------------------------------------
  * Alpha Workspace design tokens.
- * Calm, minimal, confident. Monochrome: midnight abyss (#0B1215) with a
- * frost white (#FBFAF2) — primary actions are inverted ink, no accent hue.
- * Dark is the default theme; light is a toggle.
+ * Calm, minimal, confident. Frost white (#FBFAF2) paper with midnight ink
+ * (#0B1215) and a deep teal accent used sparingly, plus soft mint tints.
+ * Light is the default theme; dark is a toggle.
  * ------------------------------------------------------------------------- */
 
 :root {
+  color-scheme: light;
+
+  --bg: #fbfaf2;
+  --surface: #ffffff;
+  --raised: #f1efe7;
+  --overlay: #ffffff;
+
+  --ink: #0b1215;
+  --muted: #5c6b6e;
+  --faint: #93a1a3;
+
+  --line: rgba(11, 18, 21, 0.08);
+  --line-strong: rgba(11, 18, 21, 0.16);
+
+  --accent: #17685c;
+  --accent-hover: #125045;
+  --accent-soft: rgba(23, 104, 92, 0.1);
+  --on-accent: #fbfaf2;
+
+  --ok: #2e8b6b;
+  --warn: #a97e22;
+  --danger: #bc584a;
+
+  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+}
+
+[data-theme="dark"] {
   color-scheme: dark;
 
   --bg: #0b1215;
@@ -23,43 +50,16 @@
   --line: rgba(251, 250, 242, 0.08);
   --line-strong: rgba(251, 250, 242, 0.16);
 
-  --accent: #fbfaf2;
-  --accent-hover: #ffffff;
-  --accent-soft: rgba(251, 250, 242, 0.1);
-  --on-accent: #0b1215;
+  --accent: #45b39a;
+  --accent-hover: #5ac7ae;
+  --accent-soft: rgba(69, 179, 154, 0.14);
+  --on-accent: #06231d;
 
   --ok: #67a985;
   --warn: #d2a648;
   --danger: #db6a5c;
 
   --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
-}
-
-[data-theme="light"] {
-  color-scheme: light;
-
-  --bg: #fbfaf2;
-  --surface: #ffffff;
-  --raised: #ffffff;
-  --overlay: #ffffff;
-
-  --ink: #0b1215;
-  --muted: #55666d;
-  --faint: #8b9aa0;
-
-  --line: rgba(11, 18, 21, 0.09);
-  --line-strong: rgba(11, 18, 21, 0.18);
-
-  --accent: #0b1215;
-  --accent-hover: #1b2a30;
-  --accent-soft: rgba(11, 18, 21, 0.08);
-  --on-accent: #fbfaf2;
-
-  --ok: #35735a;
-  --warn: #8f6f1a;
-  --danger: #b04a3d;
-
-  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.25), 0 0 0 1px var(--line);
 }
 
 @theme inline {
@@ -93,8 +93,8 @@
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(10px); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
 }
 @keyframes fade-in {
   from { opacity: 0; }
@@ -145,7 +145,7 @@
     border-radius: 4px;
   }
 
-  /* Quiet scrollbars — content over chrome. */
+  /* Quiet scrollbars, content over chrome. */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
@@ -202,7 +202,7 @@
 
 /* ---------------------------------------------------------------------------
  * Marketing decor: liquid blobs, scroll reveals, dashed cards, hairlines.
- * All monochrome — interest comes from form and motion, never a new hue.
+ * All monochrome, interest comes from form and motion, never a new hue.
  * ------------------------------------------------------------------------- */
 
 @keyframes blob-morph {
@@ -219,14 +219,17 @@
 .reveal {
   opacity: 0;
   transform: translateY(18px);
+  filter: blur(10px);
   transition:
     opacity 0.7s cubic-bezier(0.21, 0.6, 0.35, 1),
-    transform 0.7s cubic-bezier(0.21, 0.6, 0.35, 1);
+    transform 0.7s cubic-bezier(0.21, 0.6, 0.35, 1),
+    filter 0.7s cubic-bezier(0.21, 0.6, 0.35, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
 .reveal.is-visible {
   opacity: 1;
   transform: none;
+  filter: blur(0);
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal {
@@ -249,7 +252,7 @@
   }
 }
 
-/* A hairline that fades out at both ends — quiet section punctuation. */
+/* A hairline that fades out at both ends, quiet section punctuation. */
 @utility hairline-fade {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
@@ -266,29 +269,9 @@
 }
 
 /* Inverted marketing bands: a frost section on the dark theme (and a
- * midnight section when the app theme is light) — the alternation keeps
+ * midnight section when the app theme is light), the alternation keeps
  * its contrast in both modes. Token-scoped, so everything inside adapts. */
 .section-invert {
-  color-scheme: light;
-  --bg: #fbfaf2;
-  --surface: #ffffff;
-  --raised: #ffffff;
-  --overlay: #ffffff;
-  --ink: #0b1215;
-  --muted: #55666d;
-  --faint: #8b9aa0;
-  --line: rgba(11, 18, 21, 0.09);
-  --line-strong: rgba(11, 18, 21, 0.18);
-  --accent: #0b1215;
-  --accent-hover: #1b2a30;
-  --accent-soft: rgba(11, 18, 21, 0.08);
-  --on-accent: #fbfaf2;
-  --ok: #35735a;
-  --warn: #8f6f1a;
-  --danger: #b04a3d;
-  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.25), 0 0 0 1px var(--line);
-}
-[data-theme="light"] .section-invert {
   color-scheme: dark;
   --bg: #0b1215;
   --surface: #111a1e;
@@ -299,12 +282,60 @@
   --faint: #69787f;
   --line: rgba(251, 250, 242, 0.08);
   --line-strong: rgba(251, 250, 242, 0.16);
-  --accent: #fbfaf2;
-  --accent-hover: #ffffff;
-  --accent-soft: rgba(251, 250, 242, 0.1);
-  --on-accent: #0b1215;
+  --accent: #45b39a;
+  --accent-hover: #5ac7ae;
+  --accent-soft: rgba(69, 179, 154, 0.14);
+  --on-accent: #06231d;
   --ok: #67a985;
   --warn: #d2a648;
   --danger: #db6a5c;
   --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
+}
+[data-theme="dark"] .section-invert {
+  color-scheme: light;
+  --bg: #fbfaf2;
+  --surface: #ffffff;
+  --raised: #f1efe7;
+  --overlay: #ffffff;
+  --ink: #0b1215;
+  --muted: #5c6b6e;
+  --faint: #93a1a3;
+  --line: rgba(11, 18, 21, 0.08);
+  --line-strong: rgba(11, 18, 21, 0.16);
+  --accent: #17685c;
+  --accent-hover: #125045;
+  --accent-soft: rgba(23, 104, 92, 0.1);
+  --on-accent: #fbfaf2;
+  --ok: #2e8b6b;
+  --warn: #a97e22;
+  --danger: #bc584a;
+  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+}
+
+
+/* A soft teal streak drifting across a section, the motion-blur moment.
+ * The softness is baked into the gradient (NO filter: a persistent blur
+ * this size re-rasterizes every frame and wedges low-end compositors);
+ * the animation touches transform + opacity only, so it stays composited. */
+@keyframes streak-drift {
+  0% { transform: translateX(-30%) skewX(-12deg); opacity: 0; }
+  20%, 80% { opacity: 1; }
+  100% { transform: translateX(130%) skewX(-12deg); opacity: 0; }
+}
+.streak {
+  position: absolute;
+  pointer-events: none;
+  height: 9rem;
+  width: 36rem;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    color-mix(in oklab, var(--accent) 13%, transparent),
+    color-mix(in oklab, var(--accent) 6%, transparent) 55%,
+    transparent 75%
+  );
+  will-change: transform, opacity;
+  animation: streak-drift 16s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak { animation: none; opacity: 0.5; transform: none; }
 }

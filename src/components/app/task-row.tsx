@@ -8,7 +8,7 @@ import { useUI } from "./shell";
 import { Avatar } from "@/components/ui/avatar";
 import { DueChip, PriorityFlag } from "./status-bits";
 
-/** One task as a list row — My Work, list view, calendar overflow. */
+/** One task as a list row. My Work, list view, calendar overflow. */
 export function TaskRow({
   task,
   showProject = false,

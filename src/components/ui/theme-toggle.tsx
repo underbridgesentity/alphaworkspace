@@ -5,23 +5,23 @@ import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { MenuItem } from "./menu";
 
-/** Dark-first: dark is the default; the toggle persists an explicit choice. */
+/** Light-first: light is the default; the toggle persists an explicit choice. */
 function applyTheme(light: boolean) {
   if (light) {
-    document.documentElement.dataset.theme = "light";
+    delete document.documentElement.dataset.theme;
     localStorage.setItem("aw-theme", "light");
   } else {
-    delete document.documentElement.dataset.theme;
+    document.documentElement.dataset.theme = "dark";
     localStorage.setItem("aw-theme", "dark");
   }
 }
 
 function useThemeState() {
-  const [light, setLight] = useState(false);
+  const [light, setLight] = useState(true);
   useEffect(() => {
     // Deferred a tick: reading external DOM state, then setting.
     const id = window.setTimeout(
-      () => setLight(document.documentElement.dataset.theme === "light"),
+      () => setLight(document.documentElement.dataset.theme !== "dark"),
       0,
     );
     return () => window.clearTimeout(id);

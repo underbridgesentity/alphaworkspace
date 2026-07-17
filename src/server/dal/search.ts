@@ -1,5 +1,5 @@
 /**
- * Global search — tasks and projects, workspace-scoped, ILIKE with a tight
+ * Global search, tasks and projects, workspace-scoped, ILIKE with a tight
  * result budget (this is a phone-first product on expensive data).
  */
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -80,6 +80,7 @@ export async function search(ctx: Ctx, query: string): Promise<SearchResults> {
       color: p.color,
       status: p.status,
       clientName: p.clientName,
+      leadId: p.leadId,
       position: p.position,
     })),
   };

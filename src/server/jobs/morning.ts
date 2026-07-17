@@ -1,10 +1,10 @@
 /**
  * The daily pre-work job (early morning SAST):
  *  1. Precompute + cache morning briefs (Team/Studio feature) and push them
- *     to users who opted in. Deliberately NOT an in-app notification row —
+ *     to users who opted in. Deliberately NOT an in-app notification row,
  *     a daily bell ping for something the home screen already shows would
  *     violate the anti-noise law.
- *  2. One batched due-today/newly-overdue nudge per user per workspace —
+ *  2. One batched due-today/newly-overdue nudge per user per workspace,
  *     a single summary, never one ping per task.
  */
 import { and, eq, inArray, ne } from "drizzle-orm";

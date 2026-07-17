@@ -14,7 +14,7 @@ export default function CheckEmailPage() {
       </h1>
       <p className="mt-2 text-muted">
         Your sign-in link is on its way. It works once and expires in 24
-        hours — the tab can be closed.
+        hours, the tab can be closed.
       </p>
       {process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY && (
         <p className="mt-4 rounded-control bg-raised px-3.5 py-2.5 text-sm text-faint">

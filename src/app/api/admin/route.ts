@@ -27,7 +27,7 @@ const planSchema = z.object({
   plan: z.enum(["free", "team", "studio"]),
 });
 
-/** Operator comp/downgrade — changes a plan without PayFast. */
+/** Operator comp/downgrade, changes a plan without PayFast. */
 export const POST = api(async (req) => {
   const user = await requireUser();
   await requireOperator(user);

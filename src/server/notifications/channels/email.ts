@@ -1,5 +1,5 @@
 /**
- * Email channel (Resend). The fallback nudge and digest carrier — never the
+ * Email channel (Resend). The fallback nudge and digest carrier, never the
  * firehose. Type-specific templates keep messages short and human.
  */
 import { sendEmail } from "@/server/email/send";

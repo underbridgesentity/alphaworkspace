@@ -2,7 +2,7 @@
 
 /**
  * Small shared task glyphs: status dot, due chip, priority flag, label pill.
- * One vocabulary everywhere — board, lists, panel, search.
+ * One vocabulary everywhere, board, lists, panel, search.
  */
 import { Check, Flag } from "lucide-react";
 import { cn } from "@/lib/cn";

@@ -2,7 +2,7 @@
 
 /**
  * Personal account: profile, notification preferences (per type, per
- * channel), push enablement, and POPIA rights — export and deletion.
+ * channel), push enablement, and POPIA rights, export and deletion.
  */
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,7 +62,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Deferred a tick — reading external browser state, then setting.
+    // Deferred a tick, reading external browser state, then setting.
     const id = window.setTimeout(() => {
       void pushStatus().then((s) => {
         if (!cancelled) setPush(s);
@@ -149,22 +149,22 @@ export default function AccountPage() {
 
   const theme = () =>
     typeof document !== "undefined" &&
-    document.documentElement.dataset.theme === "light"
-      ? "light"
-      : "dark";
-  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("dark");
+    document.documentElement.dataset.theme === "dark"
+      ? "dark"
+      : "light";
+  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("light");
   useEffect(() => {
     const id = window.setTimeout(() => setCurrentTheme(theme()), 0);
     return () => window.clearTimeout(id);
   }, []);
   const setTheme = (t: "dark" | "light") => {
     setCurrentTheme(t);
-    if (t === "light") {
-      document.documentElement.dataset.theme = "light";
-      localStorage.setItem("aw-theme", "light");
+    if (t === "dark") {
+      document.documentElement.dataset.theme = "dark";
+      localStorage.setItem("aw-theme", "dark");
     } else {
       delete document.documentElement.dataset.theme;
-      localStorage.setItem("aw-theme", "dark");
+      localStorage.setItem("aw-theme", "light");
     }
   };
 
@@ -220,8 +220,7 @@ export default function AccountPage() {
       <section>
         <h2 className="text-sm font-semibold">Notifications</h2>
         <p className="mt-0.5 text-xs text-faint">
-          In-app is always on (it’s quiet). Push and email are yours to tune —
-          defaults are deliberately conservative.
+          In-app is always on (it’s quiet). Push and email are yours to tune, defaults are deliberately conservative.
         </p>
 
         <div className="mt-3 rounded-card bg-surface p-3">

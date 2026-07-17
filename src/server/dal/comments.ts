@@ -2,9 +2,16 @@
  * Comments. Adding one touches the task's lastActivityAt (it isn't stale if
  * people are talking about it) and quietly tells the people involved.
  */
-import { and, eq } from "drizzle-orm";
-import { comments, memberships, tasks, users } from "@/server/db/schema";
-import type { CommentDTO } from "@/lib/types";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import type { Db } from "@/server/db";
+import {
+  commentReactions,
+  comments,
+  memberships,
+  tasks,
+  users,
+} from "@/server/db/schema";
+import type { CommentDTO, CommentReactionDTO } from "@/lib/types";
 import { notify } from "@/server/notifications/service";
 import { matchMentions } from "@/lib/mentions";
 import type { Ctx } from "./context";
@@ -127,4 +134,90 @@ export async function addComment(
     createdAt: row.createdAt.toISOString(),
     author,
   };
+}
+
+/* ------------------------------ reactions -------------------------------- */
+
+/**
+ * Toggle the caller's reaction. Add wins on the unique index; a second call
+ * with the same emoji removes it. No notification, no activity event, a
+ * reaction is meant to END a thread, not extend one.
+ */
+export async function toggleReaction(
+  ctx: Ctx,
+  commentId: string,
+  emoji: string,
+): Promise<{ added: boolean }> {
+  const [comment] = await ctx.db
+    .select({ id: comments.id })
+    .from(comments)
+    .where(
+      and(eq(comments.id, commentId), eq(comments.workspaceId, ctx.workspace.id)),
+    );
+  if (!comment) throw new NotFoundError("Comment not found");
+
+  const inserted = await ctx.db
+    .insert(commentReactions)
+    .values({
+      workspaceId: ctx.workspace.id,
+      commentId,
+      userId: ctx.userId,
+      emoji,
+    })
+    .onConflictDoNothing({
+      target: [
+        commentReactions.commentId,
+        commentReactions.userId,
+        commentReactions.emoji,
+      ],
+    })
+    .returning({ id: commentReactions.id });
+  if (inserted.length > 0) return { added: true };
+
+  await ctx.db
+    .delete(commentReactions)
+    .where(
+      and(
+        eq(commentReactions.commentId, commentId),
+        eq(commentReactions.userId, ctx.userId),
+        eq(commentReactions.emoji, emoji),
+      ),
+    );
+  return { added: false };
+}
+
+/**
+ * Aggregate reactions for a set of (already workspace-scoped) comment ids,
+ * grouped per emoji in first-reacted order, with the viewer's own marked.
+ */
+export async function reactionsForComments(
+  db: Db,
+  viewerId: string,
+  commentIds: string[],
+): Promise<Map<string, CommentReactionDTO[]>> {
+  const map = new Map<string, CommentReactionDTO[]>();
+  if (commentIds.length === 0) return map;
+
+  const rows = await db
+    .select({
+      commentId: commentReactions.commentId,
+      emoji: commentReactions.emoji,
+      userId: commentReactions.userId,
+    })
+    .from(commentReactions)
+    .where(inArray(commentReactions.commentId, commentIds))
+    .orderBy(asc(commentReactions.createdAt));
+
+  for (const r of rows) {
+    const list = map.get(r.commentId) ?? [];
+    let entry = list.find((e) => e.emoji === r.emoji);
+    if (!entry) {
+      entry = { emoji: r.emoji, count: 0, mine: false };
+      list.push(entry);
+    }
+    entry.count += 1;
+    if (r.userId === viewerId) entry.mine = true;
+    map.set(r.commentId, list);
+  }
+  return map;
 }

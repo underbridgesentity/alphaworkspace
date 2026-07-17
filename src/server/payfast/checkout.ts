@@ -1,7 +1,7 @@
 /**
  * Builds the PayFast subscription checkout form: field list (in the exact
  * order that gets signed) + action URL. The browser POSTs this as a plain
- * form — card details never touch our servers.
+ * form, card details never touch our servers.
  */
 import { PLANS } from "@/lib/plans";
 import { buildSignature } from "./signature";
@@ -54,7 +54,7 @@ export function buildCheckout(input: CheckoutInput): {
     ["email_address", input.userEmail],
     ["m_payment_id", input.mPaymentId],
     ["amount", amount],
-    ["item_name", `Alpha Workspace — ${planName} plan (${input.billing})`],
+    ["item_name", `Alpha Workspace, ${planName} plan (${input.billing})`],
     [
       "item_description",
       `${planName} band for ${input.workspaceName}. VAT inclusive.`,

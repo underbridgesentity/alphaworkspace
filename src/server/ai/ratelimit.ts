@@ -1,6 +1,6 @@
 /**
  * Per-user sliding-window rate limiter for AI routes. In-memory and
- * per-instance — best-effort abuse damping on serverless, not the real
+ * per-instance, best-effort abuse damping on serverless, not the real
  * guard (entitlement caps and max_tokens limits are). Good enough to stop
  * a stuck client hammering the model.
  */

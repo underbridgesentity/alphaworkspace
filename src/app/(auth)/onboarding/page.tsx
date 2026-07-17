@@ -28,7 +28,7 @@ export default async function OnboardingPage({
       </h1>
       <p className="mt-1.5 text-muted">
         Usually your company or team name. You can invite the team right
-        after — this takes under a minute.
+        after, this takes under a minute.
       </p>
       <OnboardingForm />
     </div>

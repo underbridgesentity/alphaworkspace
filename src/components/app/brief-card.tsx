@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The morning brief — "your three things today" — shown on first open of
+ * The morning brief. "your three things today", shown on first open of
  * the day at the top of My Work (Team/Studio plans). Dismisses for the day.
  */
 import { useEffect, useState } from "react";

@@ -1,7 +1,7 @@
 /**
  * Minimal promise IndexedDB helper for the offline outbox. Deliberately
  * dependency-free; the service worker mirrors this shape in plain JS
- * (public/sw.js) — keep DB/store names in sync.
+ * (public/sw.js), keep DB/store names in sync.
  */
 
 export const IDB_NAME = "aw";

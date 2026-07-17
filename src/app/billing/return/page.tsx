@@ -36,7 +36,7 @@ export default async function BillingReturnPage({
               No charge made
             </h1>
             <p className="mt-2 text-muted">
-              You backed out of checkout — nothing changed, and your workspace
+              You backed out of checkout, nothing changed, and your workspace
               is exactly as you left it.
             </p>
           </>
@@ -44,7 +44,7 @@ export default async function BillingReturnPage({
           <>
             <CircleCheck className="mx-auto size-9 text-ok" />
             <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-              Thanks — payment received
+              Thanks, payment received
             </h1>
             <p className="mt-2 text-muted">
               PayFast is confirming the subscription. Your new band activates

@@ -23,7 +23,7 @@ export const POST = api(async (req, params) => {
   const input = await readJson(req, extractRequestSchema);
 
   if (!checkRateLimit(`extract:${ctx.userId}`, 10, 60_000)) {
-    throw new RateLimitError("That's a lot of captures at once — give it a minute");
+    throw new RateLimitError("That's a lot of captures at once, give it a minute");
   }
   if (input.source === "voice") await assertVoiceCaptureAvailable(ctx);
 

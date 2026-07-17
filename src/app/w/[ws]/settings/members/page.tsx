@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Members & invites. The member cap is a band, not a wall — hitting it
+ * Members & invites. The member cap is a band, not a wall, hitting it
  * offers the next band, never blocks existing people.
  */
 import { useState } from "react";

@@ -3,7 +3,7 @@
 /**
  * Web push subscription helpers. Push is the primary nudge channel for our
  * Android-heavy market; subscription needs the service worker (production
- * builds — dev degrades gracefully).
+ * builds, dev degrades gracefully).
  */
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {

@@ -1,5 +1,5 @@
 /**
- * Compiles the compact weekly summary the narrative model is prompted with —
+ * Compiles the compact weekly summary the narrative model is prompted with,
  * its entire world view. Accuracy over cleverness; strictly one workspace.
  */
 import { and, asc, eq, gte, ne } from "drizzle-orm";

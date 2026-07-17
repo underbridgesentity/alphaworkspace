@@ -29,7 +29,7 @@ export async function enqueue(op: Omit<OutboxOp, "id" | "createdAt">): Promise<v
       | undefined;
     await reg?.sync?.register("aw-outbox");
   } catch {
-    // Background Sync unsupported — the online/focus listeners cover it.
+    // Background Sync unsupported, the online/focus listeners cover it.
   }
 }
 
@@ -51,7 +51,7 @@ export interface FlushResult {
 
 /**
  * Replays queued ops in order. Stops on network failure or 401 (resumes on
- * the next trigger); drops ops the server permanently rejects (4xx) — a
+ * the next trigger); drops ops the server permanently rejects (4xx), a
  * replayed DELETE hitting 404 counts as success.
  */
 export async function flushOutbox(): Promise<FlushResult> {
@@ -72,7 +72,7 @@ export async function flushOutbox(): Promise<FlushResult> {
           body: op.body === undefined ? undefined : JSON.stringify(op.body),
         });
       } catch {
-        break; // still offline — try again later
+        break; // still offline, try again later
       }
       if (res.ok || (op.method === "DELETE" && res.status === 404)) {
         await idb.delete(op.id);
@@ -80,7 +80,7 @@ export async function flushOutbox(): Promise<FlushResult> {
         continue;
       }
       if (res.status === 401) break; // needs sign-in; keep the queue intact
-      // Permanent rejection — dropping beats blocking the whole queue.
+      // Permanent rejection, dropping beats blocking the whole queue.
       await idb.delete(op.id);
       dropped++;
       console.warn("[outbox] dropped", op.method, op.url, res.status);

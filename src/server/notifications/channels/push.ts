@@ -1,5 +1,5 @@
 /**
- * Web push channel (VAPID). Primary nudge for our Android-heavy market —
+ * Web push channel (VAPID). Primary nudge for our Android-heavy market,
  * PWA push works well there and costs the user no data plan surprises.
  */
 import webpush from "web-push";
@@ -59,7 +59,7 @@ export const pushChannel: ChannelAdapter = {
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) {
-          // Subscription expired — prune it.
+          // Subscription expired, prune it.
           await db
             .delete(pushSubscriptions)
             .where(eq(pushSubscriptions.id, sub.id));

@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Projects index — primary navigation on mobile, quick overview elsewhere.
+ * Projects index, primary navigation on mobile, quick overview elsewhere.
  */
 import { useState } from "react";
 import Link from "next/link";
 import { FolderKanban, Plus } from "lucide-react";
 import { useWorkspace } from "@/lib/client/workspace";
 import { NewProjectDialog } from "@/components/app/new-project-dialog";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 export default function ProjectsPage() {
@@ -59,6 +60,16 @@ export default function ProjectsPage() {
                 <span className="min-w-0 flex-1 truncate font-medium">
                   {p.name}
                 </span>
+                {p.lead && (
+                  <span title={`Lead: ${p.lead.name ?? p.lead.email}`}>
+                    <Avatar
+                      name={p.lead.name}
+                      email={p.lead.email}
+                      image={p.lead.image}
+                      size={20}
+                    />
+                  </span>
+                )}
               </div>
               <p className="mt-1.5 flex items-center gap-2 text-sm text-muted">
                 {p.clientName && <span className="truncate">{p.clientName}</span>}

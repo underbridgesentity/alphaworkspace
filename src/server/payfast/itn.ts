@@ -1,5 +1,5 @@
 /**
- * ITN (Instant Transaction Notification) processing — the webhook that moves
+ * ITN (Instant Transaction Notification) processing, the webhook that moves
  * money state. Verification order is non-negotiable:
  *   1. signature   2. merchant id   3. server postback   4. amount
  * Only then do we touch the subscription. Always answer 200 upstream;
@@ -113,7 +113,7 @@ export async function processItn(
   const now = new Date();
 
   if (status === "COMPLETE") {
-    // 4. Amount — only for money-moving notifications.
+    // 4. Amount, only for money-moving notifications.
     const gross = Number.parseFloat(get("amount_gross"));
     const expected = sub.amountCents / 100;
     if (!Number.isFinite(gross) || Math.abs(gross - expected) > 0.01) {

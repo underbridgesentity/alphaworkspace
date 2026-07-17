@@ -11,7 +11,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
       {Object.values(PLANS).map((plan, planIndex) => {
         const highlight = plan.id === "team";
         const rows = [
-          `Up to ${plan.maxMembers} people — one flat price`,
+          `Up to ${plan.maxMembers} people, one flat price`,
           plan.maxActiveProjects === null
             ? "Unlimited projects"
             : `${plan.maxActiveProjects} active projects`,
@@ -19,7 +19,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
           "Weekly narrative briefing",
           ...(plan.features.includes("morning_brief") ? ["Personal morning brief"] : []),
           ...(plan.features.includes("scorecards")
-            ? ["Scorecards, time tracking & client reports — as they ship"]
+            ? ["Scorecards, time tracking & client reports, as they ship"]
             : []),
           ...(detailed
             ? ["Offline-first PWA", "Boards, My Work, search, calendar"]
@@ -47,7 +47,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
             <p className="mt-0.5 text-xs text-faint">
               {plan.priceMonthlyZar === 0
                 ? "Free forever"
-                : `or ${formatZar(plan.priceAnnualZar)}/year — two months free`}
+                : `or ${formatZar(plan.priceAnnualZar)}/year, two months free`}
             </p>
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted">
               {rows.map((row) => (

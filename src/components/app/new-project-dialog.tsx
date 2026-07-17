@@ -73,7 +73,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Project name — e.g. Spring campaign"
+          placeholder="Project name, e.g. Spring campaign"
           aria-label="Project name"
           maxLength={120}
           required
@@ -81,7 +81,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
         <Input
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
-          placeholder="Client (optional) — e.g. Karoo Coffee Co."
+          placeholder="Client (optional), e.g. Karoo Coffee Co."
           aria-label="Client name"
           maxLength={120}
         />

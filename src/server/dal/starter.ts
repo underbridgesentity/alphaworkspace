@@ -23,7 +23,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
     .insert(projects)
     .values({
       workspaceId: ctx.workspace.id,
-      name: "Website refresh — Karoo Coffee",
+      name: "Website refresh. Karoo Coffee",
       color: "#5B7C99",
       clientName: "Karoo Coffee Co.",
       position: (maxPos?.max ?? 0) + 1024,
@@ -68,7 +68,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
 
   await t("Kickoff call with Karoo Coffee", {
     description:
-      "Notes live in the task — try the **description**, and leave a comment below.\n\nAlpha tip: hold the mic button after a client call and speak everything that needs doing. You'll get a reviewable task list, not a mess.",
+      "Notes live in the task, try the **description**, and leave a comment below.\n\nAlpha tip: hold the mic button after a client call and speak everything that needs doing. You'll get a reviewable task list, not a mess.",
     status: "in_progress",
     dueDate: today,
     priority: "high",
@@ -92,7 +92,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
     labelIds: [copy.id],
   });
   await t("Product photography shot list", {
-    description: "Drag me to *In progress* when you start — the board is drag and drop (or use the keyboard).",
+    description: "Drag me to *In progress* when you start, the board is drag and drop (or use the keyboard).",
     dueDate: addDays(today, 7),
     labelIds: [design.id],
   });

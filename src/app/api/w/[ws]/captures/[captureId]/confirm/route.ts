@@ -3,7 +3,7 @@ import { withWorkspace } from "@/server/session";
 import { captureConfirmSchema } from "@/lib/validators";
 import { confirmCapture } from "@/server/dal/captures";
 
-/** The only path from AI proposals to real tasks — human confirmation. */
+/** The only path from AI proposals to real tasks, human confirmation. */
 export const POST = api(async (req, params) => {
   const ctx = await withWorkspace(params.ws);
   const { tasks } = await readJson(req, captureConfirmSchema);

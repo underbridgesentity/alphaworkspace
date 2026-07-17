@@ -1,5 +1,5 @@
 /**
- * The extraction service — one brain behind voice capture and quick-add.
+ * The extraction service, one brain behind voice capture and quick-add.
  * Takes a transcript plus workspace context, returns schema-validated task
  * proposals with per-field confidence. Never touches the database; the
  * confirm endpoint does the writing (product law: extract, show, confirm).

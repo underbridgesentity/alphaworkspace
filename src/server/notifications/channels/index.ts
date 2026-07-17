@@ -3,7 +3,7 @@
  * user over one channel and returns a short outcome string ("sent",
  * "skipped:<reason>", ...) recorded on the notification row.
  *
- * NOTE: "inapp" is not an adapter — the service always writes the in-app row.
+ * NOTE: "inapp" is not an adapter, the service always writes the in-app row.
  */
 import type { Db } from "@/server/db";
 import type { NotifyInput } from "../service";

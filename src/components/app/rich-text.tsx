@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Markdown-lite renderer for task descriptions and comments — deliberately
+ * Markdown-lite renderer for task descriptions and comments, deliberately
  * tiny (no wiki, per the product laws). Renders **bold**, *italic*, `code`,
  * `- [ ] / - [x]` checklists (tappable in descriptions), bare URLs as links,
  * and @mentions as chips. Everything is escaped first; no raw HTML.

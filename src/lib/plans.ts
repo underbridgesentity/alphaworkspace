@@ -1,5 +1,5 @@
 /**
- * Pricing bands and entitlements — the single config object.
+ * Pricing bands and entitlements, the single config object.
  * Changing a plan is a config change here, never a code change elsewhere.
  * Client-safe (the pricing page renders from this).
  *
@@ -85,7 +85,7 @@ export interface Entitlements {
   features: Feature[];
 }
 
-/** Loosely-typed stored snapshot (jsonb) — features arrive as plain strings. */
+/** Loosely-typed stored snapshot (jsonb), features arrive as plain strings. */
 export interface EntitlementsSnapshotInput {
   maxMembers?: number;
   maxActiveProjects?: number | null;

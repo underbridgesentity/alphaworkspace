@@ -2,7 +2,7 @@
 
 /**
  * The app chrome: sidebar (desktop), top bar, bottom tab bar with the centre
- * mic FAB (mobile — thumb-reachable, per the product spec), and the global
+ * mic FAB (mobile, thumb-reachable, per the product spec), and the global
  * overlays (task panel, search, quick-add, voice capture, notifications).
  */
 import {
@@ -36,7 +36,7 @@ import { TaskPanel } from "./task-panel";
 import { SearchPalette } from "./search-palette";
 import { NotificationsPanel } from "./notifications-panel";
 
-// Capture surfaces are code-split — they only load when summoned, keeping
+// Capture surfaces are code-split, they only load when summoned, keeping
 // the app shell inside the 3G budget.
 const QuickAddDialog = dynamic(
   () => import("./quick-add").then((m) => m.QuickAddDialog),

@@ -14,14 +14,8 @@ import { Blob } from "@/components/marketing/blob";
 
 export const metadata: Metadata = {
   description:
-    "Alpha Workspace is the project workspace that does the following up — for South African teams of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
+    "Alpha Workspace is the project workspace that does the following up, for South African teams of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
 };
-
-/** Monochrome gradient for display headlines: ink fading toward quiet. */
-const headlineGradient = {
-  backgroundImage:
-    "linear-gradient(180deg, var(--ink) 55%, color-mix(in oklab, var(--ink) 52%, transparent))",
-} as const;
 
 export default function LandingPage() {
   return (
@@ -38,6 +32,7 @@ export default function LandingPage() {
           drift={40}
           strength={0.05}
         />
+        <div aria-hidden className="streak left-[-10%] top-[24%]" />
         <div className="relative mx-auto w-full max-w-5xl px-5 pb-16 pt-16 text-center sm:pt-24 md:px-8">
           <p
             className="animate-fade-up mx-auto w-fit rounded-full border border-dashed border-line-strong px-3.5 py-1 text-xs font-medium text-muted"
@@ -46,8 +41,8 @@ export default function LandingPage() {
             For South African teams of 2–15 people
           </p>
           <h1
-            className="animate-fade-up mx-auto mt-6 max-w-3xl text-balance bg-clip-text text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-transparent sm:text-6xl"
-            style={{ animationDelay: "60ms", ...headlineGradient }}
+            className="animate-fade-up mx-auto mt-6 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] sm:text-6xl"
+            style={{ animationDelay: "60ms" }}
           >
             The workspace that does the following&nbsp;up.
           </h1>
@@ -57,7 +52,7 @@ export default function LandingPage() {
           >
             Stop chasing status on WhatsApp and email. In Alpha, work captures
             itself, reports itself, and keeps moving even when the connection
-            doesn’t — one flat price for the whole team, in rand.
+            doesn’t, one flat price for the whole team, in rand.
           </p>
           <div
             className="animate-fade-up mx-auto mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center"
@@ -67,7 +62,7 @@ export default function LandingPage() {
               href="/sign-in"
               className="press rounded-[0.625rem] bg-accent px-6 py-3 text-center font-semibold text-on-accent shadow-[0_10px_36px_-12px_color-mix(in_oklab,var(--ink)_45%,transparent)] hover:bg-accent-hover"
             >
-              Start free — no card
+              Start free, no card
             </Link>
             <Link
               href="/pricing"
@@ -91,7 +86,7 @@ export default function LandingPage() {
               </div>
               <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink/95">
                 The team closed out 14 tasks this week against 11 new ones.
-                Thabo carried 40% of completions — rebalance before it snaps.
+                Thabo carried 40% of completions, rebalance before it snaps.
                 Liberty has had nothing move in 6 days; quiet client projects
                 are how surprises happen. Watch Friday: the Vodacom July batch
                 and the Karoo Coffee review land on the same day.
@@ -121,17 +116,14 @@ export default function LandingPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-faint">
                 It reports itself
               </p>
-              <h2
-                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
-                style={headlineGradient}
-              >
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                 Nobody compiles a status report. Ever again.
               </h2>
               <p className="mt-3 text-muted">
                 Zero-setup KPIs read straight from the work: what got done, what
                 slipped, who’s overloaded, which client project has gone quiet.
                 Every Monday a short, human briefing lands in-app, by email and
-                by push — written like a sharp ops lead, not a data dump. Each
+                by push, written like a sharp ops lead, not a data dump. Each
                 morning, everyone gets their three things.
               </p>
             </Reveal>
@@ -157,7 +149,7 @@ export default function LandingPage() {
                 <div className="grad-card card-lift rounded-card border border-dashed border-line bg-surface p-4">
                   <p className="text-xs text-muted">
                     <span className="font-semibold text-ink">Morning brief:</span>{" "}
-                    Morning Naledi — two overdue need a decision, then Friday’s
+                    Morning Naledi, two overdue need a decision, then Friday’s
                     deadline. Everything else can wait.
                   </p>
                 </div>
@@ -236,15 +228,12 @@ export default function LandingPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Capturing work costs nothing
               </p>
-              <h2
-                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
-                style={headlineGradient}
-              >
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                 Hold the mic. Talk for ninety seconds. Confirm.
               </h2>
               <p className="mt-3 text-muted">
                 Walk out of a client call and speak everything that needs
-                doing — people, projects, days. Alpha extracts the tasks and
+                doing, people, projects, days. Alpha extracts the tasks and
                 shows you the list before anything is created. Or type{" "}
                 <span className="rounded border border-dashed border-line bg-raised px-1.5 py-0.5 text-sm text-ink">
                   homepage concepts for Liberty, Thabo, Friday
@@ -270,15 +259,12 @@ export default function LandingPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Built for here
               </p>
-              <h2
-                className="mt-2 text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
-                style={headlineGradient}
-              >
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                 Offline-first. Light on data. Priced in rand.
               </h2>
               <p className="mt-3 text-muted">
                 Alpha installs like an app and keeps working when the connection
-                doesn’t — reads come from cache, changes queue and sync the
+                doesn’t, reads come from cache, changes queue and sync the
                 moment you’re back. It’s deliberately light on data. And where
                 dollar-priced tools cost a 10-person team R2,000+ a month,
                 Alpha’s whole-team band is a quarter of that, billed locally
@@ -287,9 +273,9 @@ export default function LandingPage() {
             </Reveal>
             <div className="flex flex-col gap-2">
               {[
-                { icon: WifiOff, label: "Offline-first — work continues without signal" },
+                { icon: WifiOff, label: "Offline-first, work continues without signal" },
                 { icon: Smartphone, label: "Installable app, light on data" },
-                { icon: Check, label: "R499/month — the whole team, VAT incl." },
+                { icon: Check, label: "R499/month, the whole team, VAT incl." },
               ].map((b, i) => (
                 <Reveal key={b.label} delay={120 + i * 90}>
                   <div className="grad-card card-lift flex items-center gap-2.5 rounded-card border border-dashed border-line bg-surface px-4 py-3.5">
@@ -307,11 +293,8 @@ export default function LandingPage() {
       <section className="section-invert border-y border-dashed border-line bg-bg text-ink">
         <Reveal>
           <div className="mx-auto w-full max-w-3xl px-5 py-14 text-center md:px-8">
-            <p
-              className="text-balance bg-clip-text text-lg font-medium tracking-tight text-transparent sm:text-2xl"
-              style={headlineGradient}
-            >
-              “Every feature must reduce follow-up messages between humans — or
+            <p className="text-balance text-lg font-medium tracking-tight sm:text-2xl">
+              “Every feature must reduce follow-up messages between humans, or
               it doesn’t ship.”
             </p>
             <p className="mt-3 text-sm text-faint">
@@ -329,12 +312,10 @@ export default function LandingPage() {
           drift={42}
           strength={0.05}
         />
+        <div aria-hidden className="streak right-[-6%] bottom-[18%]" style={{ animationDelay: "6s" }} />
         <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
           <Reveal>
-            <h2
-              className="bg-clip-text text-center text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
-              style={headlineGradient}
-            >
+            <h2 className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
               Flat bands. No per-seat maths.
             </h2>
             <p className="mx-auto mt-2 max-w-md text-center text-muted">
@@ -361,14 +342,11 @@ export default function LandingPage() {
               strength={0.07}
             />
             <div className="relative">
-              <h2
-                className="text-balance bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl"
-                style={headlineGradient}
-              >
+              <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                 Your Monday briefing could write itself next week.
               </h2>
               <p className="mx-auto mt-2 max-w-md text-muted">
-                Set up in under two minutes. Free for teams of three — no card,
+                Set up in under two minutes. Free for teams of three, no card,
                 no trial clock.
               </p>
               <Link

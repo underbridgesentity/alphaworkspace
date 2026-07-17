@@ -6,11 +6,11 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Alpha Workspace — the workspace that does the following up",
+    default: "Alpha Workspace, the workspace that does the following up",
     template: "%s · Alpha Workspace",
   },
   description:
-    "Status reports itself, tasks cost nothing to create, and your team's day starts inside the product. Built for South African teams — offline-first, light on data, priced in rand.",
+    "Status reports itself, tasks cost nothing to create, and your team's day starts inside the product. Built for South African teams, offline-first, light on data, priced in rand.",
   openGraph: {
     siteName: "Alpha Workspace",
     type: "website",
@@ -25,14 +25,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B1215",
+  themeColor: "#FBFAF2",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
 };
 
-/** Applies the persisted theme before paint. Dark is the default. */
-const themeInit = `try{if(localStorage.getItem("aw-theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
+/** Applies the persisted theme before paint. Light is the default. */
+const themeInit = `try{if(localStorage.getItem("aw-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`;
 
 export default function RootLayout({
   children,

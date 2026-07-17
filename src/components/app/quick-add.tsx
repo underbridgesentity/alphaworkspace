@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Natural-language quick-add: one line in, one structured task out — after
+ * Natural-language quick-add: one line in, one structured task out, after
  * you've seen and confirmed it. "homepage concepts for Liberty, Thabo,
  * Friday" is the whole flow.
  */
@@ -44,7 +44,7 @@ export function QuickAddDialog({
         { method: "POST", body: { transcript, source: "quickadd" } },
       );
       if ("queued" in res && res.queued) {
-        toast("You're offline — quick-add needs a connection for parsing", {
+        toast("You're offline, quick-add needs a connection for parsing", {
           variant: "error",
         });
         setPhase("input");
@@ -103,7 +103,7 @@ export function QuickAddDialog({
             </button>
           </div>
           <p className="mt-2.5 text-xs text-faint">
-            Write it how you’d say it — project, person and day get picked up.
+            Write it how you’d say it, project, person and day get picked up.
             You confirm before anything is created.
           </p>
         </form>

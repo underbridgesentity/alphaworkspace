@@ -15,7 +15,7 @@ import {
 import { apiGet, apiMutate, ApiError } from "./api";
 import { useWorkspace } from "./workspace";
 import { useToast } from "@/components/ui/toast";
-import type { CommentDTO, TaskDTO } from "@/lib/types";
+import type { CommentDTO, CommentReactionDTO, TaskDTO } from "@/lib/types";
 import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validators";
 import type { ActivityDTO } from "@/lib/types";
 
@@ -283,5 +283,57 @@ export function useTaskMutations() {
     },
   });
 
-  return { update, create, remove, comment };
+  const react = useMutation({
+    mutationFn: async (vars: { taskId: string; commentId: string; emoji: string }) =>
+      apiMutate<{ added: boolean }>(
+        `/api/w/${slug}/comments/${vars.commentId}/react`,
+        { method: "POST", body: { emoji: vars.emoji } },
+      ),
+    onMutate: async (vars) => {
+      const detailKey = ["ws", slug, "task", vars.taskId];
+      await qc.cancelQueries({ queryKey: detailKey });
+      const detail = qc.getQueryData<TaskDetailData>(detailKey);
+      if (detail) {
+        qc.setQueryData(detailKey, {
+          ...detail,
+          comments: detail.comments.map((c) =>
+            c.id === vars.commentId
+              ? { ...c, reactions: toggleLocalReaction(c.reactions ?? [], vars.emoji) }
+              : c,
+          ),
+        });
+      }
+      return { detail };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.detail) {
+        qc.setQueryData(["ws", slug, "task", vars.taskId], ctx.detail);
+      }
+      toast(err instanceof Error ? err.message : "Reaction didn't stick", { variant: "error" });
+    },
+    onSettled: (_res, _err, vars) => {
+      void qc.invalidateQueries({ queryKey: ["ws", slug, "task", vars.taskId] });
+    },
+  });
+
+  return { update, create, remove, comment, react };
+}
+
+/** Mirror the server's toggle on the cached aggregate. */
+function toggleLocalReaction(
+  reactions: CommentReactionDTO[],
+  emoji: string,
+): CommentReactionDTO[] {
+  const existing = reactions.find((r) => r.emoji === emoji);
+  if (!existing) return [...reactions, { emoji, count: 1, mine: true }];
+  if (existing.mine) {
+    return reactions
+      .map((r) =>
+        r.emoji === emoji ? { ...r, count: r.count - 1, mine: false } : r,
+      )
+      .filter((r) => r.count > 0);
+  }
+  return reactions.map((r) =>
+    r.emoji === emoji ? { ...r, count: r.count + 1, mine: true } : r,
+  );
 }

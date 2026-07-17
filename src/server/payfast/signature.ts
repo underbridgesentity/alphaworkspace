@@ -5,7 +5,7 @@
  *    -_.  left bare, everything else encoded)
  *  - the checkout/ITN signature hashes fields in the ORDER GIVEN (form
  *    order / received order), never alphabetically. (The subscriptions API
- *    is the opposite — see subscriptions.ts.)
+ *    is the opposite, see subscriptions.ts.)
  */
 import { createHash } from "node:crypto";
 

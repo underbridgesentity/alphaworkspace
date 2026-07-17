@@ -15,13 +15,20 @@ import {
   Plus,
   RefreshCw,
   Repeat,
+  SmilePlus,
   Tag,
   Trash2,
   User,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { addDays, timeAgo, todaySAST } from "@/lib/dates";
-import type { Priority, TaskStatus, ActivityDTO } from "@/lib/types";
+import { REACTION_EMOJI } from "@/lib/reactions";
+import type {
+  Priority,
+  TaskStatus,
+  ActivityDTO,
+  CommentReactionDTO,
+} from "@/lib/types";
 import {
   celebrateAt,
   useTaskDetail,
@@ -75,7 +82,7 @@ export function TaskPanel({
 function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void }) {
   const { workspace, members, labels, projects } = useWorkspace();
   const { data, isLoading, isError } = useTaskDetail(taskId);
-  const { update, remove, comment } = useTaskMutations();
+  const { update, remove, comment, react } = useTaskMutations();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const task = data?.task;
@@ -444,12 +451,18 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
                       <span className="text-xs text-faint">{timeAgo(c.createdAt)}</span>
                     </p>
                     <RichText text={c.body} className="mt-0.5 text-sm text-ink/90" />
+                    <ReactionBar
+                      reactions={c.reactions ?? []}
+                      onToggle={(emoji) =>
+                        react.mutate({ taskId, commentId: c.id, emoji })
+                      }
+                    />
                   </div>
                 </div>
               ))}
               {data.comments.length === 0 && (
                 <p className="text-sm text-faint">
-                  No comments — when the work needs a conversation, have it
+                  No comments, when the work needs a conversation, have it
                   here, not on WhatsApp.
                 </p>
               )}
@@ -503,15 +516,84 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
 function MetaButton({
   icon,
   children,
+  ...rest
 }: {
   icon: React.ReactNode;
   children: React.ReactNode;
-}) {
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  // Spreads the props Menu injects via cloneElement (onClick, aria-*).
+  // Without this the menus never open. Learned the hard way.
   return (
-    <button className="press flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm hover:bg-raised">
+    <button
+      {...rest}
+      className="press flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm hover:bg-raised"
+    >
       <span className="flex size-5 items-center justify-center">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </button>
+  );
+}
+
+/**
+ * Reaction chips + picker under a comment. A tap on a chip toggles your own
+ * reaction; the smiley opens the fixed palette.
+ */
+function ReactionBar({
+  reactions,
+  onToggle,
+}: {
+  reactions: CommentReactionDTO[];
+  onToggle: (emoji: string) => void;
+}) {
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      {reactions.map((r) => (
+        <button
+          key={r.emoji}
+          onClick={() => onToggle(r.emoji)}
+          aria-label={`${r.emoji} ${r.count}, ${r.mine ? "remove your reaction" : "react"}`}
+          aria-pressed={r.mine}
+          className={cn(
+            "press flex h-6 items-center gap-1 rounded-full border px-1.5 text-xs tabular-nums",
+            r.mine
+              ? "border-accent/40 bg-accent-soft text-ink"
+              : "border-line text-muted hover:border-line-strong hover:text-ink",
+          )}
+        >
+          <span className="text-[13px] leading-none">{r.emoji}</span>
+          {r.count}
+        </button>
+      ))}
+      <Menu
+        trigger={
+          <button
+            aria-label="Add reaction"
+            className="press flex size-6 items-center justify-center rounded-full text-faint hover:bg-raised hover:text-ink"
+          >
+            <SmilePlus className="size-3.5" />
+          </button>
+        }
+        className="min-w-0"
+      >
+        {(close) => (
+          <div className="flex gap-0.5 px-1 py-0.5">
+            {REACTION_EMOJI.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  close();
+                  onToggle(emoji);
+                }}
+                aria-label={`React with ${emoji}`}
+                className="press flex size-8 items-center justify-center rounded-control text-base hover:bg-raised"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+      </Menu>
+    </div>
   );
 }
 
@@ -620,7 +702,7 @@ function DescriptionEditor({
       defaultValue={value}
       onInput={resize}
       onBlur={(e) => commit(e.target.value)}
-      placeholder="Add context — links, decisions, a - [ ] checklist. Plain text keeps it light."
+      placeholder="Add context, links, decisions, a - [ ] checklist. Plain text keeps it light."
       aria-label="Description"
       className="mt-4 w-full resize-none rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
     />

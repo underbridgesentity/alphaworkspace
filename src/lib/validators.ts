@@ -3,6 +3,7 @@
  * payloads; route handlers must parse with them before touching the DAL.
  */
 import { z } from "zod";
+import { REACTION_EMOJI } from "@/lib/reactions";
 
 export const uuid = z.uuid();
 export const dayString = z.iso.date(); // YYYY-MM-DD
@@ -65,6 +66,10 @@ export const commentCreateSchema = z.object({
   body: z.string().trim().min(1, "Say something").max(5_000),
 });
 
+export const reactionToggleSchema = z.object({
+  emoji: z.enum(REACTION_EMOJI),
+});
+
 /* ------------------------------ projects -------------------------------- */
 
 export const projectCreateSchema = z.object({
@@ -79,6 +84,7 @@ export const projectUpdateSchema = z
     name: z.string().trim().min(1).max(120),
     color: hexColor,
     clientName: z.string().trim().max(120).nullable(),
+    leadId: uuid.nullable(),
     status: z.enum(["active", "archived"]),
     position: z.number().finite(),
   })
@@ -145,7 +151,7 @@ export const captureConfirmSchema = z.object({
   tasks: z
     .array(
       taskCreateSchema.extend({
-        projectId: uuid, // required on confirm — review UI forces a choice
+        projectId: uuid, // required on confirm, review UI forces a choice
       }),
     )
     .min(1)

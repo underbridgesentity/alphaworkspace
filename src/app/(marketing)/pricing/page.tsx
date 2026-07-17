@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Why flat bands instead of per-seat pricing?",
-    a: "Per-seat pricing punishes adoption — every new teammate becomes a line item to justify. A band is one number your finance lead approves once. Add people freely until the band is full; then the next band is one click.",
+    a: "Per-seat pricing punishes adoption, every new teammate becomes a line item to justify. A band is one number your finance lead approves once. Add people freely until the band is full; then the next band is one click.",
   },
   {
     q: "Is VAT included?",
@@ -21,19 +21,19 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What happens when we hit a limit?",
-    a: "A friendly prompt shows you the next band — that's all. Nothing is deleted, nothing locks, and everything you've made stays exactly where it is. Limits gate adding more, never using what exists.",
+    a: "A friendly prompt shows you the next band, that's all. Nothing is deleted, nothing locks, and everything you've made stays exactly where it is. Limits gate adding more, never using what exists.",
   },
   {
     q: "How do we pay?",
-    a: "Through PayFast, South Africa's payment provider — debit order off a card, in rand. Card details never touch Alpha's servers. Annual billing gives you two months free.",
+    a: "Through PayFast, South Africa's payment provider, debit order off a card, in rand. Card details never touch Alpha's servers. Annual billing gives you two months free.",
   },
   {
     q: "What if we cancel?",
-    a: `You drop to the Free band and keep everything — every project, task, comment and briefing. If you're within Free's limits (${PLANS.free.maxMembers} people, ${PLANS.free.maxActiveProjects} active projects) nothing even changes day to day.`,
+    a: `You drop to the Free band and keep everything, every project, task, comment and briefing. If you're within Free's limits (${PLANS.free.maxMembers} people, ${PLANS.free.maxActiveProjects} active projects) nothing even changes day to day.`,
   },
   {
     q: "What does the weekly narrative cost?",
-    a: "Nothing extra — it's included on every band, including Free. It's the whole point of the product; we want you to taste it.",
+    a: "Nothing extra, it's included on every band, including Free. It's the whole point of the product; we want you to taste it.",
   },
 ];
 
@@ -45,7 +45,7 @@ export default function PricingPage() {
       </h1>
       <p className="mx-auto mt-3 max-w-md text-center text-muted">
         Rand pricing, VAT inclusive, via PayFast. Annual billing is two months
-        free — {formatZar(PLANS.team.priceAnnualZar)}/year for Team,{" "}
+        free, {formatZar(PLANS.team.priceAnnualZar)}/year for Team,{" "}
         {formatZar(PLANS.studio.priceAnnualZar)}/year for Studio.
       </p>
 
@@ -77,7 +77,7 @@ export default function PricingPage() {
             href="/sign-in"
             className="press inline-block rounded-[0.625rem] bg-accent px-6 py-3 font-semibold text-on-accent hover:bg-accent-hover"
           >
-            Start free — upgrade when it earns it
+            Start free, upgrade when it earns it
           </Link>
         </p>
         </div>

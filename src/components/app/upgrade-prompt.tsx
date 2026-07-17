@@ -20,7 +20,7 @@ interface LimitDetail {
 const HEADLINES: Record<string, string> = {
   members: "Room for the whole team",
   projects: "More projects, same calm",
-  captures: "Keep talking — we'll keep writing",
+  captures: "Keep talking, we'll keep writing",
 };
 
 export function UpgradePrompt() {
@@ -54,7 +54,7 @@ export function UpgradePrompt() {
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-accent" />
             <p className="font-semibold">
-              {nextPlan.name} — {formatZar(nextPlan.priceMonthlyZar)}/month
+              {nextPlan.name}, {formatZar(nextPlan.priceMonthlyZar)}/month
             </p>
           </div>
           <p className="mt-1 text-sm text-muted">

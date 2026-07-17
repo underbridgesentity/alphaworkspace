@@ -7,7 +7,7 @@ import { useWorkspace } from "@/lib/client/workspace";
 import { TaskRow } from "./task-row";
 import { statusLabel } from "./status-bits";
 
-/** Flat, scannable list grouped by status — the board without the columns. */
+/** Flat, scannable list grouped by status, the board without the columns. */
 export function ListView({ projectId }: { projectId: string }) {
   const { workspace } = useWorkspace();
   const { data: tasks, isLoading } = useBoard(projectId);
@@ -38,7 +38,7 @@ export function ListView({ projectId }: { projectId: string }) {
   if (groups.length === 0) {
     return (
       <p className="px-6 pt-12 text-center text-sm text-muted">
-        No tasks yet — add one from the board, the mic, or press N.
+        No tasks yet, add one from the board, the mic, or press N.
       </p>
     );
   }

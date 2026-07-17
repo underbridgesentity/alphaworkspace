@@ -316,7 +316,7 @@ export async function createInvite(
     subject: `Join ${ctx.workspace.name} on Alpha Workspace`,
     html: renderEmail({
       heading: `You're invited to ${escapeHtml(ctx.workspace.name)}`,
-      bodyHtml: `<p style="margin:0;">Your team runs their projects on Alpha Workspace — tasks, boards and a Monday briefing that writes itself. Accept the invite to jump in.</p>`,
+      bodyHtml: `<p style="margin:0;">Your team runs their projects on Alpha Workspace, tasks, boards and a Monday briefing that writes itself. Accept the invite to jump in.</p>`,
       cta: { label: "Accept invite", url },
       footnote: "This invite expires in 14 days. If you weren't expecting it, you can ignore this email.",
     }),
@@ -364,7 +364,7 @@ export async function acceptInvite(
     throw new NotFoundError("This invite is no longer valid");
   }
   if (invite.invite.expiresAt < new Date()) {
-    throw new ValidationError("This invite has expired — ask for a fresh one");
+    throw new ValidationError("This invite has expired, ask for a fresh one");
   }
   const isLink = invite.invite.email === null;
   if (!isLink && invite.invite.email!.toLowerCase() !== user.email.toLowerCase()) {
@@ -397,7 +397,7 @@ export async function acceptInvite(
   if ((membersNow?.n ?? 0) >= limits.maxMembers) {
     throw new LimitError(
       "members",
-      "This workspace is at its plan's member limit — ask the owner to upgrade",
+      "This workspace is at its plan's member limit, ask the owner to upgrade",
     );
   }
 

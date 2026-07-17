@@ -1,7 +1,7 @@
 /**
  * POPIA account rights: per-user data export (JSON) and deletion that
  * actually deletes. Deleting the last owner of a multi-member workspace is
- * blocked until ownership moves — nobody's team vanishes by accident.
+ * blocked until ownership moves, nobody's team vanishes by accident.
  */
 import { and, count, eq, ne } from "drizzle-orm";
 import type { Db } from "@/server/db";
@@ -90,7 +90,7 @@ export async function deleteAccount(db: Db, userId: string): Promise<void> {
         `You own “${ws.name}” which still has members. Hand over ownership or remove them first.`,
       );
     }
-    // Sole member — the workspace goes with the account (cascade).
+    // Sole member, the workspace goes with the account (cascade).
     await db.delete(workspaces).where(eq(workspaces.id, ws.workspaceId));
   }
 

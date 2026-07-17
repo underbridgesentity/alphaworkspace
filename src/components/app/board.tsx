@@ -300,7 +300,7 @@ function QuickAddRow({
         submit();
         setOpen(false);
       }}
-      placeholder="Task title — Enter to add"
+      placeholder="Task title. Enter to add"
       aria-label="New task title"
       className="w-full rounded-control bg-raised px-3 py-2 text-sm outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
     />

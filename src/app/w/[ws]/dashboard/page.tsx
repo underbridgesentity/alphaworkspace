@@ -4,7 +4,7 @@
  * The "it reports itself" surface: the Monday narrative front and centre,
  * zero-setup KPIs beneath it. Stat tiles carry the headline numbers; the
  * only charts are a single-series throughput bar and member-load bars
- * (thin marks, rounded data-ends, values as text — never colour alone).
+ * (thin marks, rounded data-ends, values as text, never colour alone).
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -154,7 +154,7 @@ function NarrativeFeedback({ narrativeId }: { narrativeId: string }) {
       >
         <ThumbsDown className="size-3.5" />
       </button>
-      {vote && <span className="text-xs text-faint">Thanks — noted.</span>}
+      {vote && <span className="text-xs text-faint">Thanks, noted.</span>}
     </div>
   );
 }
@@ -210,7 +210,7 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
         ) : preview ? (
           <>
             <p className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">
-              Preview — the real one lands Monday 06:30
+              Preview, the real one lands Monday 06:30
             </p>
             <div className="mt-2 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-ink/95">
               {preview.narrative}
@@ -219,7 +219,7 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
         ) : (
           <div className="mt-3">
             <p className="text-sm text-muted">
-              Every Monday at 06:30 a short, human briefing lands here — what
+              Every Monday at 06:30 a short, human briefing lands here, what
               got done, what’s at risk, who’s carrying too much, what to watch.
               Written from your team’s actual activity. Nobody compiles a
               status report again.
@@ -272,7 +272,7 @@ function KpiTiles({ kpis }: { kpis: WorkspaceKpis }) {
     <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
       <Tile
         label="Completion rate"
-        value={kpis.completionRatePct !== null ? `${kpis.completionRatePct}%` : "—"}
+        value={kpis.completionRatePct !== null ? `${kpis.completionRatePct}%` : "-"}
         context="of this week's plate got done"
       />
       <Tile
@@ -294,7 +294,7 @@ function KpiTiles({ kpis }: { kpis: WorkspaceKpis }) {
       />
       <Tile
         label="Cycle time"
-        value={kpis.avgCycleTimeDays !== null ? `${kpis.avgCycleTimeDays}d` : "—"}
+        value={kpis.avgCycleTimeDays !== null ? `${kpis.avgCycleTimeDays}d` : "-"}
         context="created → done, this week"
       />
       <Tile label="Open now" value={String(kpis.openNow)} context="across active projects" />
@@ -394,7 +394,7 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
   return (
     <section className="rounded-card bg-surface p-4" aria-label="Load per person">
       <h3 className="text-sm font-semibold">Who’s carrying what</h3>
-      <p className="text-xs text-faint">open tasks per person — spot the overload</p>
+      <p className="text-xs text-faint">open tasks per person, spot the overload</p>
       <div className="mt-4 space-y-2.5">
         {kpis.memberLoad.map((m) => (
           <div key={m.user.id} className="flex items-center gap-2.5">
@@ -420,7 +420,7 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
                 m.overdue > 0 ? "font-semibold text-danger" : "text-faint",
               )}
             >
-              {m.overdue > 0 ? `${m.overdue} overdue` : "—"}
+              {m.overdue > 0 ? `${m.overdue} overdue` : "-"}
             </span>
           </div>
         ))}

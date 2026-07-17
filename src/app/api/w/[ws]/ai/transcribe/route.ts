@@ -31,7 +31,7 @@ export const POST = api(async (req, params) => {
     );
   }
   if (!checkRateLimit(`transcribe:${ctx.userId}`, 20, 60_000)) {
-    throw new RateLimitError("Too many recordings at once — give it a minute");
+    throw new RateLimitError("Too many recordings at once, give it a minute");
   }
   await assertVoiceCaptureAvailable(ctx);
 
@@ -39,7 +39,7 @@ export const POST = api(async (req, params) => {
   const audio = await req.arrayBuffer();
   if (audio.byteLength === 0) throw new ValidationError("No audio received");
   if (audio.byteLength > 20 * 1024 * 1024) {
-    throw new ValidationError("Recording is too long — keep captures under ~10 minutes");
+    throw new ValidationError("Recording is too long, keep captures under ~10 minutes");
   }
 
   const [projects, members, labels] = await Promise.all([

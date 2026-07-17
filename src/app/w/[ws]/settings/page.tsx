@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * General workspace settings — the whole page is four decisions. If a
+ * General workspace settings, the whole page is four decisions. If a
  * feature needed more than this, it should have been redesigned.
  */
 import { useState } from "react";
@@ -85,7 +85,7 @@ export default function GeneralSettingsPage() {
 
         <Field
           label="Extra board column"
-          hint="Optional fourth column between In progress and Done — e.g. “Review”. Leave empty for the calm three."
+          hint="Optional fourth column between In progress and Done, e.g. “Review”. Leave empty for the calm three."
         >
           <Input
             value={customColumn}
@@ -97,11 +97,11 @@ export default function GeneralSettingsPage() {
 
         <Field
           label="WhatsApp doorbell"
-          hint="Outbound-only nudges (“New task assigned — open Alpha”) arrive in a later release. Never two-way, never an input surface."
+          hint="Outbound-only nudges (“New task assigned, open Alpha”) arrive in a later release. Never two-way, never an input surface."
         >
           <label className="flex items-center gap-2 text-sm text-faint">
             <input type="checkbox" disabled checked={false} className="size-4" />
-            Coming later — off by default
+            Coming later, off by default
           </label>
         </Field>
 

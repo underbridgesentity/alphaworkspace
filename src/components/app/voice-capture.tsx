@@ -3,7 +3,7 @@
 /**
  * Voice capture: hold a thought for ninety seconds, get a reviewable task
  * list. Live on-device transcription (Web Speech API) with a typed fallback
- * where it's unsupported. Audio is never stored — POPIA by design.
+ * where it's unsupported. Audio is never stored. POPIA by design.
  */
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
@@ -69,7 +69,7 @@ export function VoiceCaptureSheet({
         setPhase((p) => (p === "recording" ? "review" : p));
       },
       onError: (message) => {
-        // Server transcription unavailable at runtime — retry on-device.
+        // Server transcription unavailable at runtime, retry on-device.
         if (message === "__fallback__") {
           start(true);
           return;
@@ -96,7 +96,7 @@ export function VoiceCaptureSheet({
         { method: "POST", body: { transcript, source: "voice" } },
       );
       if ("queued" in res && res.queued) {
-        toast("You're offline — hold that thought and try once you're back", {
+        toast("You're offline, hold that thought and try once you're back", {
           variant: "error",
         });
         setPhase("review");
@@ -143,8 +143,7 @@ export function VoiceCaptureSheet({
       {phase === "idle" && (
         <div className="px-5 pb-8 pt-2 text-center">
           <p className="mx-auto max-w-sm text-sm text-muted">
-            Just finished a call? Talk through everything that needs doing —
-            people, projects, days. You’ll review before anything is created.
+            Just finished a call? Talk through everything that needs doing, people, projects, days. You’ll review before anything is created.
           </p>
           <button
             onClick={() => start()}
@@ -160,8 +159,7 @@ export function VoiceCaptureSheet({
               : "monthly captures used up"}
           </p>
           <p className="mx-auto mt-4 max-w-xs text-[11px] leading-relaxed text-faint">
-            Transcribed on your device. Audio is never recorded or stored —
-            only the text you approve.
+            Transcribed on your device. Audio is never recorded or stored, only the text you approve.
           </p>
         </div>
       )}
@@ -172,7 +170,7 @@ export function VoiceCaptureSheet({
             {finalText}
             <span className="text-faint">{interim}</span>
             {!finalText && !interim && (
-              <span className="text-faint">Speak naturally — I’m writing…</span>
+              <span className="text-faint">Speak naturally. I’m writing…</span>
             )}
           </div>
           <div className="mt-6 flex justify-center">
@@ -193,7 +191,7 @@ export function VoiceCaptureSheet({
         <div className="px-5 pb-5 pt-1">
           {!supported && (
             <p className="mb-3 rounded-control bg-raised px-3 py-2 text-xs text-muted">
-              Live transcription isn’t available in this browser — type or
+              Live transcription isn’t available in this browser, type or
               paste what needs doing instead. Everything else works the same.
             </p>
           )}

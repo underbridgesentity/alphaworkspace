@@ -1,7 +1,7 @@
 /**
  * Minimal branded email shell, consistent with the design language:
  * off-white paper, near-black ink, one burnt-orange action. Inline styles
- * only (email clients). Keep emails short — they are nudges, not surfaces.
+ * only (email clients). Keep emails short, they are nudges, not surfaces.
  */
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -37,14 +37,14 @@ export function renderEmail({ heading, bodyHtml, cta, footnote }: EmailLayoutInp
           <div style="font-size:15px;line-height:1.6;color:#3c4a50;">${bodyHtml}</div>
           ${
             cta
-              ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;"><tr><td style="border-radius:10px;background:#0b1215;">
+              ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;"><tr><td style="border-radius:10px;background:#17685c;">
                    <a href="${cta.url}" style="display:inline-block;padding:11px 22px;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:600;color:#fbfaf2;text-decoration:none;border-radius:10px;">${escapeHtml(cta.label)}</a>
                  </td></tr></table>`
               : ""
           }
         </td></tr>
         <tr><td style="padding:18px 8px 0;font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;font-size:12px;line-height:1.5;color:#8b9aa0;">
-          ${footnote ?? "Alpha Workspace — the workspace that does the following up."}
+          ${footnote ?? "Alpha Workspace, the workspace that does the following up."}
         </td></tr>
       </table>
     </td></tr>

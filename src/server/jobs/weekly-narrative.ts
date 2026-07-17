@@ -1,5 +1,5 @@
 /**
- * The Monday 06:30 SAST job — generates each workspace's weekly narrative
+ * The Monday 06:30 SAST job, generates each workspace's weekly narrative
  * from the compiled summary, stores it with its input for auditability, and
  * delivers it in-app / push / email. Idempotent per workspace+week, so cron
  * retries are safe.
@@ -85,7 +85,7 @@ export async function runWeeklyNarratives(
         userIds: members.map((m) => m.userId),
         type: "narrative_ready",
         payload: {
-          title: `Monday briefing — ${ws.name}`,
+          title: `Monday briefing, ${ws.name}`,
           body: narrative,
           url: `/w/${ws.slug}/dashboard`,
         },

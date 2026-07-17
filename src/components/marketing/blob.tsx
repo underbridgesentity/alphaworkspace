@@ -26,13 +26,14 @@ export function Blob({
       aria-hidden
       className={cn("pointer-events-none absolute", className)}
       style={{
-        background: `linear-gradient(135deg, color-mix(in oklab, var(--ink) ${Math.round(
+        background: `linear-gradient(135deg, color-mix(in oklab, var(--accent) ${Math.round(
           strength * 100,
-        )}%, transparent), color-mix(in oklab, var(--ink) ${Math.round(
+        )}%, transparent), color-mix(in oklab, var(--accent) ${Math.round(
           strength * 25,
         )}%, transparent) 60%, transparent)`,
+        // Softness comes from the gradient fade, deliberately no filter:
+        // blur + the border-radius morph would re-rasterize every frame.
         animation: `blob-morph ${morph}s ease-in-out infinite, blob-drift ${drift}s ease-in-out infinite`,
-        filter: "blur(6px)",
         ...style,
       }}
     />

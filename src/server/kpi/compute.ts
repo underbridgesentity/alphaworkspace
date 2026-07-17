@@ -3,7 +3,7 @@
  *
  * These functions take (db, workspaceId) rather than a user Ctx because the
  * cron jobs call them without a session. API routes MUST resolve workspace
- * membership first (withWorkspace) and pass ctx.workspace.id — never a raw
+ * membership first (withWorkspace) and pass ctx.workspace.id, never a raw
  * param.
  *
  * Conventions: all "day" values are YYYY-MM-DD in Africa/Johannesburg; weeks
@@ -129,7 +129,7 @@ export async function workspaceKpis(
       ? Math.round((Number(cycleRow.avgSeconds) / 86_400) * 10) / 10
       : null;
 
-  // Per-member open load (includes zero-load members — the point is seeing
+  // Per-member open load (includes zero-load members, the point is seeing
   // the imbalance). Two simple queries merged in JS beat one clever join.
   const [memberRows, loadRows] = await Promise.all([
     db

@@ -9,7 +9,7 @@ import { composeMorningBrief } from "@/server/ai/brief";
 import type { MorningBriefContent } from "@/lib/types";
 
 /**
- * Today's morning brief for the signed-in user — cached once per user per
+ * Today's morning brief for the signed-in user, cached once per user per
  * day (the cron precomputes; this computes on first open if needed).
  */
 export const GET = api(async (_req, params) => {

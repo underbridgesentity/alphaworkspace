@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Minimal toast system — bottom-anchored (thumb zone), quiet by default.
+ * Minimal toast system, bottom-anchored (thumb zone), quiet by default.
  * Errors apologise and offer a way forward; that copy comes from callers.
  */
 import {

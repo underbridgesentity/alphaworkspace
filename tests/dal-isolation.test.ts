@@ -27,7 +27,7 @@ import {
   taskDetail,
   updateTask,
 } from "@/server/dal/tasks";
-import { addComment } from "@/server/dal/comments";
+import { addComment, toggleReaction } from "@/server/dal/comments";
 import { createLabel } from "@/server/dal/labels";
 import { search } from "@/server/dal/search";
 import {
@@ -155,6 +155,44 @@ describe("cross-workspace isolation", () => {
         labelIds: [foreignLabel.id],
       }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("scopes reactions to the workspace and leads to its members", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const ctxB = await ctxFor(db, ben.id, ws2.slug);
+    const [projectA] = await listProjects(ctxA);
+    const task = await createTask(ctxA, {
+      projectId: projectA.id,
+      title: "React to me",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+    const comment = await addComment(ctxA, task.id, { body: "shipped" });
+
+    // Toggle on, toggle off; aggregation is viewer-aware.
+    expect(await toggleReaction(ctxA, comment.id, "👍")).toEqual({ added: true });
+    const caraCtx = await ctxFor(db, cara.id, ws1.slug);
+    expect(await toggleReaction(caraCtx, comment.id, "👍")).toEqual({ added: true });
+    const detail = await taskDetail(caraCtx, task.id);
+    expect(detail.comments[0].reactions).toEqual([
+      { emoji: "👍", count: 2, mine: true },
+    ]);
+    expect(await toggleReaction(ctxA, comment.id, "👍")).toEqual({ added: false });
+
+    // Another tenant can't react to it, indistinguishable from non-existence.
+    await expect(toggleReaction(ctxB, comment.id, "👍")).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+
+    // A project lead must be a member of the workspace.
+    await expect(
+      updateProject(ctxA, projectA.id, { leadId: ben.id }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    const led = await updateProject(ctxA, projectA.id, { leadId: cara.id });
+    expect(led.leadId).toBe(cara.id);
+    expect(led.lead?.email).toBe(cara.email);
   });
 });
 

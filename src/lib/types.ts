@@ -98,6 +98,9 @@ export interface ProjectDTO {
   color: string;
   status: "active" | "archived";
   clientName: string | null;
+  leadId: string | null;
+  /** Present on list/get reads; the person accountable for the project. */
+  lead?: UserLite | null;
   position: number;
   openCount?: number;
   overdueCount?: number;
@@ -109,6 +112,14 @@ export interface CommentDTO {
   body: string;
   createdAt: string;
   author: UserLite;
+  /** Aggregated per emoji; `mine` marks the viewer's own reaction. */
+  reactions?: CommentReactionDTO[];
+}
+
+export interface CommentReactionDTO {
+  emoji: string;
+  count: number;
+  mine: boolean;
 }
 
 export interface ActivityDTO {
@@ -156,7 +167,7 @@ export type Confidence = "high" | "medium" | "low";
 /**
  * One proposed task from voice/quick-add extraction. Field-level confidence
  * lets the review UI highlight guesses. The service never writes to the
- * database — confirmation does.
+ * database, confirmation does.
  */
 export interface TaskProposal {
   title: string;

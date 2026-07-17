@@ -1,5 +1,5 @@
 /**
- * @mention matching — shared by the server (notify on comment) and the
+ * @mention matching, shared by the server (notify on comment) and the
  * composer autocomplete. Matches @Full Name, @First or @email-prefix,
  * longest candidate first so "@Thabo Nkosi" beats "@Thabo".
  */

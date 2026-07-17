@@ -5,7 +5,7 @@ import { AppError, LimitError, ValidationError } from "@/server/dal/errors";
 
 /**
  * Route-handler plumbing: one place that turns DAL/zod errors into friendly
- * JSON. Error states apologise and offer a way forward — never stack traces.
+ * JSON. Error states apologise and offer a way forward, never stack traces.
  */
 
 type Params = Record<string, string>;
@@ -56,7 +56,7 @@ export function errorResponse(err: unknown): NextResponse {
     {
       error: {
         code: "internal",
-        message: "Something broke on our side. It's been noted — try again.",
+        message: "Something broke on our side. It's been noted, try again.",
       },
     },
     { status: 500 },

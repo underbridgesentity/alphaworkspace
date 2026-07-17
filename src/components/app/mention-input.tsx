@@ -111,7 +111,7 @@ export function MentionInput({ onSend }: { onSend: (body: string) => void }) {
             }
           }}
           rows={1}
-          placeholder="Comment — @ to mention, Enter to send"
+          placeholder="Comment, @ to mention, Enter to send"
           aria-label="Write a comment"
           className="max-h-32 min-h-10 w-full flex-1 resize-none rounded-control bg-raised px-3.5 py-2.5 text-sm outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
         />

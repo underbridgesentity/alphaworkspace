@@ -1,6 +1,6 @@
 /**
  * Client API access. Reads are plain fetches (the service worker serves
- * cached copies offline); mutations are offline-aware — when the network
+ * cached copies offline); mutations are offline-aware, when the network
  * isn't there, they queue in the outbox and the UI stays optimistic.
  */
 import { enqueue } from "./outbox";
@@ -35,7 +35,7 @@ async function throwFrom(res: Response): Promise<never> {
     message = body.error?.message ?? message;
     limit = body.error?.limit;
   } catch {
-    // non-JSON error body — keep defaults
+    // non-JSON error body, keep defaults
   }
   throw new ApiError(code, message, res.status, limit);
 }
@@ -51,7 +51,7 @@ export type MutateResult<T> = { queued: true } | ({ queued?: false } & T);
 /**
  * Fire a mutation. Offline (or on network failure) it queues for background
  * sync and resolves { queued: true } so callers keep their optimistic state.
- * Server-side rejections (4xx/5xx) throw — those are real answers.
+ * Server-side rejections (4xx/5xx) throw, those are real answers.
  */
 export async function apiMutate<T>(
   path: string,

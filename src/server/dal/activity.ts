@@ -1,5 +1,5 @@
 /**
- * Activity log writer. Called from inside DAL mutations only — one place,
+ * Activity log writer. Called from inside DAL mutations only, one place,
  * so the append-only log that powers KPIs and the narrative can't drift.
  */
 import type { Db } from "@/server/db";

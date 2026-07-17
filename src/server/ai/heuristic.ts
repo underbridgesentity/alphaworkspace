@@ -86,7 +86,7 @@ export function parseNaturalDay(phrase: string, today = todaySAST()): string | n
     }
   }
 
-  // "21/07" (dd/mm — SA convention)
+  // "21/07" (dd/mm. SA convention)
   const slash = p.match(/\b(\d{1,2})\/(\d{1,2})\b/);
   if (slash) {
     const dayNum = Number(slash[1]);
@@ -157,7 +157,7 @@ function matchProject(
       const t = token.trim().toLowerCase();
       if (t.length < 3) continue;
       // Try the full token, then meaningful words of it.
-      const words = [t, ...t.split(/[\s—–-]+/).filter((w) => w.length >= 4)];
+      const words = [t, ...t.split(/[\s-–-]+/).filter((w) => w.length >= 4)];
       for (const w of words) {
         if (lower.includes(w) && (!best || w.length > best.len)) {
           best = { id: p.id, len: w.length };
@@ -211,7 +211,7 @@ export function heuristicExtract(
     const priority = detectPriority(segment);
 
     // For quick-add, comma-separated tail hints ("…, Thabo, Friday") are
-    // hints, not title content — strip fully-consumed hint fragments.
+    // hints, not title content, strip fully-consumed hint fragments.
     let titleSource = segment;
     if (input.source === "quickadd") {
       const parts = segment.split(",").map((s) => s.trim());

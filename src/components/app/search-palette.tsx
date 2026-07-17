@@ -32,7 +32,7 @@ export function SearchPalette({
   open: boolean;
   onClose: () => void;
 }) {
-  // Mounted fresh on every open — state resets for free, no effects needed.
+  // Mounted fresh on every open, state resets for free, no effects needed.
   return (
     <Dialog open={open} onClose={onClose} ariaLabel="Search" variant="center">
       {open && <PaletteBody onClose={onClose} />}

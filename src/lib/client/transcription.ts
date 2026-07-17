@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * TranscriptionProvider — the seam between capture UX and the engine doing
+ * TranscriptionProvider, the seam between capture UX and the engine doing
  * the listening. Phase 1 ships the on-device Web Speech API (covers the
  * Android-Chrome majority; audio never leaves the phone and is never
  * stored). Swapping in a server-side provider later (Whisper/Deepgram over
  * chunked upload) means implementing this interface and changing the
- * factory below — the capture UI doesn't change.
+ * factory below, the capture UI doesn't change.
  */
 
 export interface TranscriptionCallbacks {
@@ -84,8 +84,8 @@ class WebSpeechProvider implements TranscriptionProvider {
       if (e.error === "no-speech" || e.error === "aborted") return;
       cb.onError(
         e.error === "not-allowed"
-          ? "Microphone access was blocked — allow it in your browser settings"
-          : "The microphone hit a snag — try again",
+          ? "Microphone access was blocked, allow it in your browser settings"
+          : "The microphone hit a snag, try again",
       );
     };
     rec.onend = () => {
@@ -113,7 +113,7 @@ class WebSpeechProvider implements TranscriptionProvider {
 
 /**
  * Records mic audio (MediaRecorder) and transcribes server-side via Deepgram
- * with workspace keyterm biasing — far better on SA names/accents than the
+ * with workspace keyterm biasing, far better on SA names/accents than the
  * browser recognizer. Falls back to Web Speech if recording is unsupported.
  */
 class ServerRecordingProvider implements TranscriptionProvider {
@@ -130,7 +130,7 @@ class ServerRecordingProvider implements TranscriptionProvider {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      cb.onError("Microphone access was blocked — allow it in your browser settings");
+      cb.onError("Microphone access was blocked, allow it in your browser settings");
       return;
     }
     this.chunks = [];
@@ -169,7 +169,7 @@ class ServerRecordingProvider implements TranscriptionProvider {
       }
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        cb.onError(body?.error?.message ?? "Transcription failed — try again");
+        cb.onError(body?.error?.message ?? "Transcription failed, try again");
         return;
       }
       const { transcript } = (await res.json()) as { transcript: string };

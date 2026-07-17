@@ -1,5 +1,5 @@
 /**
- * The weekly narrative engine — the single most important feature in the
+ * The weekly narrative engine, the single most important feature in the
  * product. Input is a compact, pre-computed WeeklySummary (the model never
  * sees raw data and never invents beyond it); output reads like a sharp ops
  * lead wrote it in ninety seconds of your Monday.
@@ -47,12 +47,12 @@ export function templateNarrative(summary: WeeklySummary): string {
 
   if (totals.completed === 0 && totals.created === 0) {
     parts.push(
-      `A quiet week in ${summary.workspaceName} — nothing was completed and nothing new came in. If that's accurate, enjoy it; if work happened off the board, it didn't count because nobody could see it.`,
+      `A quiet week in ${summary.workspaceName}, nothing was completed and nothing new came in. If that's accurate, enjoy it; if work happened off the board, it didn't count because nobody could see it.`,
     );
   } else {
     let opener = `The team closed out ${totals.completed} task${totals.completed === 1 ? "" : "s"} this week against ${totals.created} new one${totals.created === 1 ? "" : "s"} coming in`;
     if (topMember && topMember.completed > 0 && members.length > 1) {
-      opener += `. ${topMember.name} led the way with ${topMember.completed} completion${topMember.completed === 1 ? "" : "s"}${share >= 35 ? ` — ${share}% of everything finished` : ""}`;
+      opener += `. ${topMember.name} led the way with ${topMember.completed} completion${topMember.completed === 1 ? "" : "s"}${share >= 35 ? `, ${share}% of everything finished` : ""}`;
     }
     opener += `.`;
     if (totals.avgCycleTimeDays !== null) {
@@ -84,14 +84,14 @@ export function templateNarrative(summary: WeeklySummary): string {
   );
   if (quiet.length > 0) {
     parts.push(
-      `${quiet.map((p) => `${p.name}${p.clientName ? ` (${p.clientName})` : ""}`).join(" and ")} ${quiet.length === 1 ? "has" : "have"} gone quiet — ${quiet[0].daysSinceActivity} days without movement. Quiet client projects are how surprises happen.`,
+      `${quiet.map((p) => `${p.name}${p.clientName ? ` (${p.clientName})` : ""}`).join(" and ")} ${quiet.length === 1 ? "has" : "have"} gone quiet, ${quiet[0].daysSinceActivity} days without movement. Quiet client projects are how surprises happen.`,
     );
   }
 
   const loaded = members.filter((m) => m.open >= 8);
   if (loaded.length > 0) {
     parts.push(
-      `${loaded.map((m) => `${m.name} (${m.open} open)`).join(", ")} ${loaded.length === 1 ? "is" : "are"} carrying a heavy plate — rebalance before it snaps.`,
+      `${loaded.map((m) => `${m.name} (${m.open} open)`).join(", ")} ${loaded.length === 1 ? "is" : "are"} carrying a heavy plate, rebalance before it snaps.`,
     );
   }
 

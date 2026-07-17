@@ -8,14 +8,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
   Calendar,
+  Check,
   Columns3,
   List,
   Mic,
   MoreHorizontal,
   Pencil,
   Plus,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import type { ProjectDTO } from "@/lib/types";
+import { Avatar } from "@/components/ui/avatar";
 import { useWorkspace } from "@/lib/client/workspace";
 import { apiMutate } from "@/lib/client/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -82,6 +86,7 @@ function ProjectInner({ projectId }: { projectId: string }) {
             {project.clientName}
           </span>
         )}
+        <LeadPicker project={project} canEdit={isAdmin} />
         <div className="flex-1" />
 
         <button
@@ -160,6 +165,106 @@ function ProjectInner({ projectId }: { projectId: string }) {
   );
 }
 
+/**
+ * Who's accountable for this project. Admins pick from members; everyone
+ * else sees the lead at a glance. Lives in the header so ownership is never
+ * a question someone has to ask.
+ */
+function LeadPicker({
+  project,
+  canEdit,
+}: {
+  project: ProjectDTO;
+  canEdit: boolean;
+}) {
+  const { workspace, members } = useWorkspace();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const setLead = async (leadId: string | null) => {
+    try {
+      await apiMutate(`/api/w/${workspace.slug}/projects/${project.id}`, {
+        method: "PATCH",
+        body: { leadId },
+      });
+      await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't change the lead", {
+        variant: "error",
+      });
+    }
+  };
+
+  const chip = (
+    <button
+      aria-label={
+        project.lead
+          ? `Project lead: ${project.lead.name ?? project.lead.email}`
+          : "Set a project lead"
+      }
+      disabled={!canEdit}
+      className={cn(
+        "press flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-line px-2 text-xs text-muted",
+        canEdit && "hover:border-line-strong hover:text-ink",
+      )}
+    >
+      {project.lead ? (
+        <>
+          <Avatar
+            name={project.lead.name}
+            email={project.lead.email}
+            image={project.lead.image}
+            size={16}
+          />
+          <span className="hidden max-w-28 truncate sm:inline">
+            {(project.lead.name ?? project.lead.email).split(" ")[0]}
+          </span>
+          <span className="hidden text-faint sm:inline">lead</span>
+        </>
+      ) : (
+        <>
+          <UserPlus className="size-3.5" />
+          <span className="hidden sm:inline">Lead</span>
+        </>
+      )}
+    </button>
+  );
+
+  if (!canEdit) return project.lead ? chip : null;
+
+  return (
+    <Menu trigger={chip}>
+      {(close) => (
+        <>
+          {members.map((m) => (
+            <MenuItem
+              key={m.id}
+              onClick={() => {
+                close();
+                if (m.id !== project.leadId) void setLead(m.id);
+              }}
+            >
+              <Avatar name={m.name} email={m.email} image={m.image} size={20} />
+              <span className="min-w-0 flex-1 truncate">{m.name ?? m.email}</span>
+              {m.id === project.leadId && <Check className="size-4 text-accent" />}
+            </MenuItem>
+          ))}
+          {project.leadId && (
+            <MenuItem
+              onClick={() => {
+                close();
+                void setLead(null);
+              }}
+            >
+              Remove lead
+            </MenuItem>
+          )}
+        </>
+      )}
+    </Menu>
+  );
+}
+
 function ProjectMenu({
   projectId,
   close,
@@ -192,7 +297,7 @@ function ProjectMenu({
             body: { status: "archived" },
           });
           await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
-          toast("Project archived — nothing was deleted");
+          toast("Project archived, nothing was deleted");
           router.push(`/w/${workspace.slug}`);
         }}
       >

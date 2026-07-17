@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Native <dialog>-based modal — free focus trap, Escape handling and inert
+ * Native <dialog>-based modal, free focus trap, Escape handling and inert
  * background. Variants: centered card, right slide-over (task panel), and
  * bottom sheet on mobile.
  */

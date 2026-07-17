@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Route protection (Next 16 proxy). This is UX-level only — a cheap cookie
+ * Route protection (Next 16 proxy). This is UX-level only, a cheap cookie
  * presence check that bounces signed-out visitors to /sign-in. Real
  * authorisation happens server-side on every request (requireUser +
  * workspace membership in the DAL); nothing trusts this check.
