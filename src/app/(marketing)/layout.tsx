@@ -17,7 +17,10 @@ export default function MarketingLayout({
   return (
     <div className="min-h-dvh">
       <ForceLight />
-      <header className="mx-auto flex h-[4.5rem] w-full max-w-5xl items-center gap-3 px-4 sm:px-5 md:px-8">
+      {/* Sticky so the CTA travels with the reader; translucent solid, not
+          backdrop-blur, which repaints every scrolled frame on weak GPUs. */}
+      <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/95">
+        <div className="mx-auto flex h-[4.5rem] w-full max-w-5xl items-center gap-3 px-4 sm:px-5 md:px-8">
         <Link href="/" className="press flex min-w-0 items-center gap-2.5" aria-label="Alpha Workspace home">
           <Logo size={32} wordmark={false} />
           <Wordmark />
@@ -48,6 +51,7 @@ export default function MarketingLayout({
             Start free
           </Link>
         </nav>
+        </div>
       </header>
 
       <main>{children}</main>
