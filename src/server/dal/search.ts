@@ -69,6 +69,7 @@ export async function search(ctx: Ctx, query: string): Promise<SearchResults> {
       createdAt: r.task.createdAt.toISOString(),
       updatedAt: r.task.updatedAt.toISOString(),
       completedAt: r.task.completedAt?.toISOString() ?? null,
+      recurrence: r.task.recurrence ?? null,
       projectName: r.project.name,
       projectColor: r.project.color,
     })),

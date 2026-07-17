@@ -14,7 +14,7 @@ import { Blob } from "@/components/marketing/blob";
 
 export const metadata: Metadata = {
   description:
-    "Alpha Workspace is the project workspace that does the following up — for South African agencies of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
+    "Alpha Workspace is the project workspace that does the following up — for South African teams of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
 };
 
 /** Monochrome gradient for display headlines: ink fading toward quiet. */
@@ -43,7 +43,7 @@ export default function LandingPage() {
             className="animate-fade-up mx-auto w-fit rounded-full border border-dashed border-line-strong px-3.5 py-1 text-xs font-medium text-muted"
             style={{ animationDelay: "0ms" }}
           >
-            For South African agencies of 2–15 people
+            For South African teams of 2–15 people
           </p>
           <h1
             className="animate-fade-up mx-auto mt-6 max-w-3xl text-balance bg-clip-text text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-transparent sm:text-6xl"
@@ -338,7 +338,7 @@ export default function LandingPage() {
               Flat bands. No per-seat maths.
             </h2>
             <p className="mx-auto mt-2 max-w-md text-center text-muted">
-              Your finance person will read this once and nod.
+              Your finance lead will read this once and nod.
             </p>
           </Reveal>
           <div className="mt-8">

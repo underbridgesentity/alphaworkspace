@@ -24,6 +24,8 @@ export interface BootstrapData {
       whatsappDoorbell?: boolean;
     };
   };
+  serverTranscribe?: boolean;
+  isOperator?: boolean;
   me: UserLite;
   projects: ProjectDTO[];
   members: MemberDTO[];

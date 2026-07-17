@@ -27,6 +27,8 @@ export interface PlanConfig {
   /** null = unlimited. */
   maxActiveProjects: number | null;
   voiceCapturesPerMonth: number;
+  /** Total attachment storage per workspace. */
+  attachmentQuotaMb: number;
   features: Feature[];
 }
 
@@ -40,6 +42,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxMembers: 3,
     maxActiveProjects: 2,
     voiceCapturesPerMonth: 20,
+    attachmentQuotaMb: 200,
     features: ["weekly_narrative"],
   },
   team: {
@@ -51,17 +54,19 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxMembers: 10,
     maxActiveProjects: null,
     voiceCapturesPerMonth: 200,
+    attachmentQuotaMb: 2_048,
     features: ["weekly_narrative", "morning_brief"],
   },
   studio: {
     id: "studio",
     name: "Studio",
-    tagline: "For studios running serious volume.",
+    tagline: "For teams running serious volume.",
     priceMonthlyZar: 999,
     priceAnnualZar: 9990,
     maxMembers: 25,
     maxActiveProjects: null,
     voiceCapturesPerMonth: 1000,
+    attachmentQuotaMb: 10_240,
     features: [
       "weekly_narrative",
       "morning_brief",
@@ -76,6 +81,7 @@ export interface Entitlements {
   maxMembers: number;
   maxActiveProjects: number | null;
   voiceCapturesPerMonth: number;
+  attachmentQuotaMb: number;
   features: Feature[];
 }
 
@@ -84,6 +90,7 @@ export interface EntitlementsSnapshotInput {
   maxMembers?: number;
   maxActiveProjects?: number | null;
   voiceCapturesPerMonth?: number;
+  attachmentQuotaMb?: number;
   features?: string[];
 }
 
@@ -101,6 +108,7 @@ export function entitlementsFor(
         : base.maxActiveProjects,
     voiceCapturesPerMonth:
       snapshot?.voiceCapturesPerMonth ?? base.voiceCapturesPerMonth,
+    attachmentQuotaMb: snapshot?.attachmentQuotaMb ?? base.attachmentQuotaMb,
     features: (snapshot?.features as Feature[] | undefined) ?? base.features,
   };
 }

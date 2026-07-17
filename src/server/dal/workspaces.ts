@@ -239,6 +239,24 @@ export async function listInvites(ctx: Ctx) {
     .orderBy(asc(invites.createdAt));
 }
 
+/** A single reusable link anyone can use to join (admin-created, revocable). */
+export async function createInviteLink(
+  ctx: Ctx,
+  role: "admin" | "member",
+): Promise<{ token: string; url: string }> {
+  assertRole(ctx, "admin");
+  const token = crypto.randomUUID().replace(/-/g, "");
+  await ctx.db.insert(invites).values({
+    workspaceId: ctx.workspace.id,
+    email: null,
+    role,
+    token,
+    invitedBy: ctx.userId,
+    expiresAt: new Date(Date.now() + 90 * 86_400_000),
+  });
+  return { token, url: `${APP_URL()}/invite/${token}` };
+}
+
 export async function createInvite(
   ctx: Ctx,
   input: { email: string; role: "admin" | "member" },
@@ -348,7 +366,8 @@ export async function acceptInvite(
   if (invite.invite.expiresAt < new Date()) {
     throw new ValidationError("This invite has expired — ask for a fresh one");
   }
-  if (invite.invite.email.toLowerCase() !== user.email.toLowerCase()) {
+  const isLink = invite.invite.email === null;
+  if (!isLink && invite.invite.email!.toLowerCase() !== user.email.toLowerCase()) {
     throw new ForbiddenError(
       `This invite was sent to ${invite.invite.email}. Sign in with that address to accept it.`,
     );
@@ -387,10 +406,13 @@ export async function acceptInvite(
     userId: user.id,
     role: invite.invite.role === "admin" ? "admin" : "member",
   });
-  await db
-    .update(invites)
-    .set({ acceptedAt: new Date() })
-    .where(eq(invites.id, invite.invite.id));
+  // Email invites are single-use; shareable links stay open until revoked.
+  if (!isLink) {
+    await db
+      .update(invites)
+      .set({ acceptedAt: new Date() })
+      .where(eq(invites.id, invite.invite.id));
+  }
   await logActivity(db, {
     workspaceId: invite.invite.workspaceId,
     type: "member_joined",

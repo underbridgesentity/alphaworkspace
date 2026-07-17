@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, X } from "lucide-react";
+import { Check, Copy, Link2, Mail, X } from "lucide-react";
 import { apiGet, apiMutate, ApiError } from "@/lib/client/api";
 import { raiseLimit } from "@/lib/client/tasks";
 import { useWorkspace } from "@/lib/client/workspace";
@@ -109,6 +109,7 @@ export default function MembersSettingsPage() {
             Send invite
           </Button>
         </form>
+        <InviteLink />
       </section>
 
       {(invites.data?.length ?? 0) > 0 && (
@@ -216,6 +217,72 @@ export default function MembersSettingsPage() {
           arrives with shared views.
         </p>
       </section>
+    </div>
+  );
+}
+
+function InviteLink() {
+  const { workspace } = useWorkspace();
+  const { toast } = useToast();
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const generate = async () => {
+    setBusy(true);
+    try {
+      const res = await apiMutate<{ url: string }>(
+        `/api/w/${workspace.slug}/invite-link`,
+        { method: "POST", body: { role: "member" } },
+      );
+      if (!("queued" in res && res.queued)) setLink(res.url);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't create a link", {
+        variant: "error",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <div className="mt-3 rounded-card border border-dashed border-line bg-surface/60 p-3">
+      {link ? (
+        <div className="flex items-center gap-2">
+          <Link2 className="size-4 shrink-0 text-faint" />
+          <input
+            readOnly
+            value={link}
+            onFocus={(e) => e.target.select()}
+            className="min-w-0 flex-1 truncate bg-transparent text-sm outline-none"
+            aria-label="Shareable invite link"
+          />
+          <Button size="sm" variant="quiet" onClick={() => void copy()}>
+            {copied ? <Check className="size-4 text-ok" /> : <Copy className="size-4" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+      ) : (
+        <button
+          onClick={() => void generate()}
+          disabled={busy}
+          className="press inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-ink disabled:opacity-50"
+        >
+          <Link2 className="size-4" />
+          {busy ? "Creating…" : "Create a shareable invite link"}
+        </button>
+      )}
+      <p className="mt-1.5 text-xs text-faint">
+        Anyone with the link can join as a member. Revoke it any time from
+        pending invites.
+      </p>
     </div>
   );
 }

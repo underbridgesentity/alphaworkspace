@@ -91,3 +91,22 @@ export function timeAgo(iso: string | Date, now: Date = new Date()): string {
   if (d < 7) return `${d}d ago`;
   return formatDay(toDayString(then));
 }
+
+/** Next occurrence of a recurring task, from its previous due day. */
+export function nextOccurrence(
+  fromDay: string,
+  freq: "daily" | "weekly" | "monthly",
+  interval = 1,
+): string {
+  const n = Math.max(1, Math.min(interval, 12));
+  if (freq === "daily") return addDays(fromDay, n);
+  if (freq === "weekly") return addDays(fromDay, 7 * n);
+  // Monthly: same day-of-month, clamped to the target month's length.
+  const [y, m, d] = fromDay.split("-").map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + n, 1));
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  const day = Math.min(d, lastDay);
+  return `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}

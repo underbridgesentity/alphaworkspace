@@ -4,8 +4,9 @@
  */
 import { and, count, desc, eq, isNull, lt } from "drizzle-orm";
 import type { Db } from "@/server/db";
-import { notifications } from "@/server/db/schema";
+import { narrativeReports, notifications } from "@/server/db/schema";
 import type { NotificationDTO } from "@/lib/types";
+import type { Ctx } from "./context";
 
 export async function listNotifications(
   db: Db,
@@ -62,4 +63,31 @@ export async function markRead(
       .set({ readAt: now })
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
   }
+}
+
+/* --------------------------- narrative feedback -------------------------- */
+
+/** Store a reader's 👍/👎 on a weekly narrative (tunes future prompts). */
+export async function rateNarrative(
+  ctx: Ctx,
+  narrativeId: string,
+  vote: "up" | "down" | null,
+): Promise<void> {
+  const [row] = await ctx.db
+    .select({ id: narrativeReports.id, feedback: narrativeReports.feedback })
+    .from(narrativeReports)
+    .where(
+      and(
+        eq(narrativeReports.id, narrativeId),
+        eq(narrativeReports.workspaceId, ctx.workspace.id),
+      ),
+    );
+  if (!row) return;
+  const feedback = { ...(row.feedback ?? {}) };
+  if (vote === null) delete feedback[ctx.userId];
+  else feedback[ctx.userId] = vote;
+  await ctx.db
+    .update(narrativeReports)
+    .set({ feedback })
+    .where(eq(narrativeReports.id, narrativeId));
 }

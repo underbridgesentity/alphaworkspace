@@ -12,6 +12,13 @@ export const prioritySchema = z.enum(["none", "low", "med", "high"]);
 export const roleSchema = z.enum(["owner", "admin", "member"]);
 export const invitableRoleSchema = z.enum(["admin", "member"]);
 
+export const recurrenceSchema = z
+  .object({
+    freq: z.enum(["daily", "weekly", "monthly"]),
+    interval: z.number().int().min(1).max(12).optional(),
+  })
+  .nullable();
+
 export const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb colour");
@@ -29,6 +36,7 @@ export const taskCreateSchema = z.object({
   dueDate: dayString.nullish(),
   priority: prioritySchema.default("none"),
   position: z.number().finite().optional(),
+  recurrence: recurrenceSchema.optional(),
   labelIds: z.array(uuid).max(20).default([]),
 });
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
@@ -43,6 +51,7 @@ export const taskUpdateSchema = z
     priority: prioritySchema,
     position: z.number().finite(),
     projectId: uuid,
+    recurrence: recurrenceSchema,
     labelIds: z.array(uuid).max(20),
   })
   .partial()

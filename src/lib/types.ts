@@ -19,6 +19,7 @@ export const ACTIVITY_TYPES = [
   "task_reopened",
   "task_deleted",
   "comment_added",
+  "attachment_added",
   "project_created",
   "project_updated",
   "project_archived",
@@ -34,6 +35,7 @@ export const NOTIFICATION_TYPES = [
   "task_due_soon",
   "task_overdue",
   "comment_added",
+  "mentioned",
   "narrative_ready",
   "morning_brief",
 ] as const;
@@ -73,9 +75,20 @@ export interface TaskDTO {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  recurrence: { freq: "daily" | "weekly" | "monthly"; interval?: number } | null;
   /** Populated on cross-project views (My Work, search, calendar). */
   projectName?: string;
   projectColor?: string;
+}
+
+export interface AttachmentDTO {
+  id: string;
+  taskId: string;
+  name: string;
+  mime: string;
+  sizeBytes: number;
+  createdAt: string;
+  uploader: UserLite | null;
 }
 
 export interface ProjectDTO {

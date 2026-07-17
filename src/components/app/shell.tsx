@@ -68,7 +68,7 @@ export function useUI(): UIState {
 }
 
 function ShellInner({ children }: { children: React.ReactNode }) {
-  const { workspace, me, unread } = useWorkspace();
+  const { workspace, me, unread, isOperator } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -245,6 +245,16 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                   >
                     Account &amp; notifications
                   </MenuItem>
+                  {isOperator && (
+                    <MenuItem
+                      onClick={() => {
+                        close();
+                        router.push("/admin");
+                      }}
+                    >
+                      Operator portal
+                    </MenuItem>
+                  )}
                   <ThemeToggleItem />
                   <MenuSeparator />
                   <SignOutItem />

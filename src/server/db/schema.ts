@@ -9,6 +9,7 @@
  * - Phase 2 tables (kpi_*, time_entries, notes) ship now, UI later.
  */
 import {
+  boolean,
   date,
   doublePrecision,
   index,
@@ -98,6 +99,8 @@ export const users = pgTable("users", {
     .$type<NotificationPrefs>()
     .default({})
     .notNull(),
+  /** Platform operator (Alpha staff) — sees the admin portal. Never tenant data. */
+  isOperator: boolean("is_operator").default(false).notNull(),
   createdAt: createdAt(),
 });
 
@@ -206,7 +209,8 @@ export const invites = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
+    /** Null email = shareable multi-use invite link. */
+    email: text("email"),
     role: workspaceRole("role").default("member").notNull(),
     token: text("token").notNull().unique(),
     invitedBy: text("invited_by")
@@ -267,6 +271,13 @@ export const tasks = pgTable(
     priority: taskPriority("priority").default("none").notNull(),
     /** Fractional ordering within a column. */
     position: doublePrecision("position").default(0).notNull(),
+    /** e.g. {freq:"weekly"} — on completion the next occurrence is created. */
+    recurrence: jsonb("recurrence").$type<{
+      freq: "daily" | "weekly" | "monthly";
+      interval?: number;
+    } | null>(),
+    /** Set on tasks spawned by recurrence (parent task id). */
+    recurrenceOf: text("recurrence_of"),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -493,6 +504,8 @@ export const narrativeReports = pgTable(
     inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull(),
     narrative: text("narrative").notNull(),
     engine: text("engine").notNull(), // model id or "template"
+    /** Reader reactions, userId -> "up" | "down" — tunes future prompts. */
+    feedback: jsonb("feedback").$type<Record<string, "up" | "down">>().default({}).notNull(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("narratives_ws_week_uq").on(t.workspaceId, t.weekStart)],
@@ -514,6 +527,34 @@ export const dailyBriefs = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("briefs_user_ws_day_uq").on(t.userId, t.workspaceId, t.day)],
+);
+
+/* ----------------------------- attachments ------------------------------- */
+
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: id(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    uploaderId: text("uploader_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    mime: text("mime").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    /** Object key in the Supabase Storage "attachments" bucket. */
+    storagePath: text("storage_path").notNull().unique(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("attachments_task_idx").on(t.taskId),
+    index("attachments_ws_idx").on(t.workspaceId),
+  ],
 );
 
 /* ------------------- Phase 2 (schema now, UI later) ---------------------- */

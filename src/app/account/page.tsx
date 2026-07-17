@@ -38,6 +38,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   task_due_soon: "Due today (daily batch)",
   task_overdue: "Slipped past due (daily batch)",
   comment_added: "Comments on my tasks",
+  mentioned: "When someone @mentions me",
   narrative_ready: "Weekly narrative (Monday)",
   morning_brief: "Morning brief push",
 };

@@ -15,6 +15,20 @@
       "when": 1784268350932,
       "tag": "0001_illegal_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784275237604,
+      "tag": "0002_tricky_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784276103110,
+      "tag": "0003_redundant_ben_urich",
+      "breakpoints": true
     }
   ]
 }

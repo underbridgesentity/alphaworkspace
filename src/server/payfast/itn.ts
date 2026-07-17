@@ -24,7 +24,7 @@ function validateUrl(): string {
     : "https://www.payfast.co.za/eng/query/validate";
 }
 
-function entitlementsSnapshot(plan: PlanId) {
+export function entitlementsSnapshot(plan: PlanId) {
   const p = PLANS[plan];
   return {
     maxMembers: p.maxMembers,

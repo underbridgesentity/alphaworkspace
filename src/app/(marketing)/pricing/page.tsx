@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Why flat bands instead of per-seat pricing?",
-    a: "Per-seat pricing punishes adoption — every new teammate becomes a line item to justify. A band is one number your finance person approves once. Add people freely until the band is full; then the next band is one click.",
+    a: "Per-seat pricing punishes adoption — every new teammate becomes a line item to justify. A band is one number your finance lead approves once. Add people freely until the band is full; then the next band is one click.",
   },
   {
     q: "Is VAT included?",

@@ -3,9 +3,10 @@
  * people are talking about it) and quietly tells the people involved.
  */
 import { and, eq } from "drizzle-orm";
-import { comments, tasks, users } from "@/server/db/schema";
+import { comments, memberships, tasks, users } from "@/server/db/schema";
 import type { CommentDTO } from "@/lib/types";
 import { notify } from "@/server/notifications/service";
+import { matchMentions } from "@/lib/mentions";
 import type { Ctx } from "./context";
 import { logActivity } from "./activity";
 import { NotFoundError } from "./errors";
@@ -74,17 +75,42 @@ export async function addComment(
     data: { preview: input.body.slice(0, 120) },
   });
 
+  // @mentions get their own (louder) ping; others involved get the quiet one.
+  const memberRows = await ctx.db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(memberships)
+    .innerJoin(users, eq(memberships.userId, users.id))
+    .where(eq(memberships.workspaceId, ctx.workspace.id));
+  const mentioned = matchMentions(input.body, memberRows);
+  const mentionedIds = new Set(mentioned.map((m) => m.id));
+  const url = `/w/${ctx.workspace.slug}/p/${task.projectId}?task=${taskId}`;
+
+  if (mentioned.length > 0) {
+    await notify(ctx.db, {
+      workspaceId: ctx.workspace.id,
+      userIds: [...mentionedIds],
+      actorId: ctx.userId,
+      type: "mentioned",
+      payload: {
+        title: `You were mentioned on “${task.title}”`,
+        body: input.body.slice(0, 200),
+        url,
+        taskId,
+      },
+    });
+  }
+
   await notify(ctx.db, {
     workspaceId: ctx.workspace.id,
     userIds: [task.assigneeId, task.createdBy].filter(
-      (id): id is string => !!id,
+      (id): id is string => !!id && !mentionedIds.has(id),
     ),
     actorId: ctx.userId,
     type: "comment_added",
     payload: {
       title: `Comment on “${task.title}”`,
       body: input.body.slice(0, 200),
-      url: `/w/${ctx.workspace.slug}/p/${task.projectId}?task=${taskId}`,
+      url,
       taskId,
     },
   });

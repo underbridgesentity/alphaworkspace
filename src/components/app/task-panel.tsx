@@ -14,7 +14,7 @@ import {
   FolderKanban,
   Plus,
   RefreshCw,
-  Send,
+  Repeat,
   Tag,
   Trash2,
   User,
@@ -42,7 +42,16 @@ import {
   statusLabel,
   StatusDot,
 } from "./status-bits";
+import { Attachments } from "./attachments";
+import { MentionInput } from "./mention-input";
+import { RichText } from "./rich-text";
 import type { LabelDTO } from "@/lib/types";
+
+const RECUR_LABELS: Record<"daily" | "weekly" | "monthly", string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+};
 
 export function TaskPanel({
   taskId,
@@ -328,7 +337,53 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
                 ))
               }
             </Menu>
+
+            {/* Recurrence */}
+            <Menu
+              trigger={
+                <MetaButton icon={<Repeat className="size-4 text-faint" />}>
+                  {task.recurrence
+                    ? RECUR_LABELS[task.recurrence.freq]
+                    : "Repeat"}
+                </MetaButton>
+              }
+            >
+              {(close) => (
+                <>
+                  {(["daily", "weekly", "monthly"] as const).map((freq) => (
+                    <MenuItem
+                      key={freq}
+                      onClick={() => {
+                        close();
+                        patch({ recurrence: { freq } });
+                      }}
+                    >
+                      <Repeat className="size-4 text-faint" />
+                      <span className="flex-1">{RECUR_LABELS[freq]}</span>
+                      {task.recurrence?.freq === freq && (
+                        <Check className="size-4 text-accent" />
+                      )}
+                    </MenuItem>
+                  ))}
+                  {task.recurrence && (
+                    <>
+                      <MenuSeparator />
+                      <MenuItem onClick={() => { close(); patch({ recurrence: null }); }}>
+                        Don&apos;t repeat
+                      </MenuItem>
+                    </>
+                  )}
+                </>
+              )}
+            </Menu>
           </div>
+
+          {task.recurrence && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-faint">
+              <Repeat className="size-3.5" />
+              Completing this creates the next one ({RECUR_LABELS[task.recurrence.freq].toLowerCase()}).
+            </p>
+          )}
 
           {/* Labels */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -350,6 +405,9 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
               description !== task.description && patch({ description })
             }
           />
+
+          {/* Attachments */}
+          <Attachments taskId={taskId} />
 
           {/* Activity */}
           <details className="mt-6 group">
@@ -385,9 +443,7 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
                       </span>{" "}
                       <span className="text-xs text-faint">{timeAgo(c.createdAt)}</span>
                     </p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink/90">
-                      {c.body}
-                    </p>
+                    <RichText text={c.body} className="mt-0.5 text-sm text-ink/90" />
                   </div>
                 </div>
               ))}
@@ -404,7 +460,7 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
 
       {/* Composer + danger zone */}
       <div className="border-t border-line px-4 py-3 sm:px-5">
-        <CommentComposer
+        <MentionInput
           onSend={(body) =>
             comment.mutate({ taskId, id: crypto.randomUUID(), body })
           }
@@ -513,6 +569,10 @@ function DescriptionEditor({
   onSave: (v: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  // Rendered (checkboxes/links live) when idle; raw textarea while editing.
+  const [editing, setEditing] = useState(initial.trim().length === 0);
+  const [value, setValue] = useState(initial);
+
   const resize = () => {
     const el = ref.current;
     if (el) {
@@ -520,15 +580,47 @@ function DescriptionEditor({
       el.style.height = `${Math.max(el.scrollHeight, 60)}px`;
     }
   };
-  useEffect(resize, []);
+  useEffect(() => {
+    if (editing) resize();
+  }, [editing]);
+
+  const commit = (v: string) => {
+    setValue(v);
+    if (v !== initial) onSave(v);
+    setEditing(v.trim().length === 0);
+  };
+
+  /** Toggle a `- [ ]` line from the rendered view without entering edit mode. */
+  const toggleCheck = (lineIndex: number, checked: boolean) => {
+    const lines = value.split("\n");
+    lines[lineIndex] = lines[lineIndex].replace(
+      /- \[( |x|X)\]/,
+      `- [${checked ? "x" : " "}]`,
+    );
+    const next = lines.join("\n");
+    setValue(next);
+    onSave(next);
+  };
+
+  if (!editing) {
+    return (
+      <div
+        onClick={() => setEditing(true)}
+        className="mt-4 cursor-text rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed"
+      >
+        <RichText text={value} onToggleCheck={toggleCheck} />
+      </div>
+    );
+  }
 
   return (
     <textarea
       ref={ref}
-      defaultValue={initial}
+      autoFocus
+      defaultValue={value}
       onInput={resize}
-      onBlur={(e) => onSave(e.target.value)}
-      placeholder="Add context — links, decisions, the why. Plain text keeps it light."
+      onBlur={(e) => commit(e.target.value)}
+      placeholder="Add context — links, decisions, a - [ ] checklist. Plain text keeps it light."
       aria-label="Description"
       className="mt-4 w-full resize-none rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
     />
@@ -666,37 +758,6 @@ function LabelPicker({
   );
 }
 
-function CommentComposer({ onSend }: { onSend: (body: string) => void }) {
-  const [body, setBody] = useState("");
-  const send = () => {
-    const v = body.trim();
-    if (!v) return;
-    onSend(v);
-    setBody("");
-  };
-  return (
-    <div className="flex items-end gap-2">
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            send();
-          }
-        }}
-        rows={1}
-        placeholder="Comment — Enter to send"
-        aria-label="Write a comment"
-        className="max-h-32 min-h-10 w-full flex-1 resize-none rounded-control bg-raised px-3.5 py-2.5 text-sm outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
-      />
-      <Button size="sm" variant="quiet" onClick={send} disabled={!body.trim()} aria-label="Send comment">
-        <Send className="size-4" />
-      </Button>
-    </div>
-  );
-}
-
 function ActivityRow({ activity }: { activity: ActivityDTO }) {
   const who = activity.actor?.name ?? activity.actor?.email ?? "Someone";
   const text = humanize(activity);
@@ -727,6 +788,8 @@ function humanize(a: ActivityDTO): string {
     }
     case "comment_added":
       return "commented";
+    case "attachment_added":
+      return `attached ${typeof d.name === "string" ? d.name : "a file"}`;
     default:
       return a.type.replaceAll("_", " ");
   }

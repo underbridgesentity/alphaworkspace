@@ -37,6 +37,7 @@ export default async function InvitePage({
   }
 
   const emailMismatch =
+    invite.email !== null &&
     invite.email.toLowerCase() !== user.email.toLowerCase();
 
   return (

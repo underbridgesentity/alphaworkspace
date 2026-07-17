@@ -38,7 +38,7 @@ export function VoiceCaptureSheet({
   defaultProjectId?: string;
   onClose: () => void;
 }) {
-  const { workspace, usage } = useWorkspace();
+  const { workspace, usage, serverTranscribe } = useWorkspace();
   const { toast } = useToast();
   const supported = transcriptionSupported();
   const [phase, setPhase] = useState<Phase>(supported ? "idle" : "review");
@@ -52,13 +52,16 @@ export function VoiceCaptureSheet({
 
   useEffect(() => () => providerRef.current?.stop(), []);
 
-  const start = () => {
-    const provider = createTranscriptionProvider();
+  const start = (forceOnDevice = false) => {
+    const provider = createTranscriptionProvider({
+      serverSlug: !forceOnDevice && serverTranscribe ? workspace.slug : null,
+    });
     providerRef.current = provider;
     setPhase("recording");
-    provider.start({
+    void provider.start({
       onResult: (final, live) => {
-        setFinalText(final);
+        // Server provider appends its transcript; keep prior text on re-record.
+        setFinalText((prev) => (provider.kind === "server-deepgram" && final ? (prev ? `${prev} ${final}` : final) : final));
         setInterim(live);
       },
       onEnd: () => {
@@ -66,6 +69,11 @@ export function VoiceCaptureSheet({
         setPhase((p) => (p === "recording" ? "review" : p));
       },
       onError: (message) => {
+        // Server transcription unavailable at runtime — retry on-device.
+        if (message === "__fallback__") {
+          start(true);
+          return;
+        }
         toast(message, { variant: "error" });
         setPhase("review");
       },
@@ -139,7 +147,7 @@ export function VoiceCaptureSheet({
             people, projects, days. You’ll review before anything is created.
           </p>
           <button
-            onClick={start}
+            onClick={() => start()}
             className="press mx-auto mt-6 flex size-20 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] hover:bg-accent-hover"
             aria-label="Start recording"
           >
@@ -202,7 +210,7 @@ export function VoiceCaptureSheet({
           />
           <div className="mt-3 flex items-center justify-between gap-2">
             {supported ? (
-              <Button variant="ghost" size="sm" onClick={start}>
+              <Button variant="ghost" size="sm" onClick={() => start()}>
                 <Mic className="size-4" />
                 Add more
               </Button>

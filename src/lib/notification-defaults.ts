@@ -15,6 +15,7 @@ const MATRIX: Record<NotificationType, ChannelDefaults> = {
   task_due_soon: { push: true, email: false }, // one daily sweep, not per task
   task_overdue: { push: true, email: false }, // ditto
   comment_added: { push: true, email: false },
+  mentioned: { push: true, email: true }, // being named is the one email-worthy ping
   narrative_ready: { push: true, email: true }, // the Monday flagship
   morning_brief: { push: false, email: false }, // opt-in
 };

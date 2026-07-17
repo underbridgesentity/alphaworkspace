@@ -35,7 +35,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
           >
             {highlight && (
               <p className="mb-2 w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
-                Most agencies land here
+                Most teams land here
               </p>
             )}
             <h3 className="text-lg font-semibold tracking-tight">{plan.name}</h3>

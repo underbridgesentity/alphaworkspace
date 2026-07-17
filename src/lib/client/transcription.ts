@@ -18,7 +18,7 @@ export interface TranscriptionCallbacks {
 
 export interface TranscriptionProvider {
   readonly kind: string;
-  start(cb: TranscriptionCallbacks): void;
+  start(cb: TranscriptionCallbacks): void | Promise<void>;
   stop(): void;
 }
 
@@ -111,6 +111,102 @@ class WebSpeechProvider implements TranscriptionProvider {
   }
 }
 
-export function createTranscriptionProvider(): TranscriptionProvider {
+/**
+ * Records mic audio (MediaRecorder) and transcribes server-side via Deepgram
+ * with workspace keyterm biasing — far better on SA names/accents than the
+ * browser recognizer. Falls back to Web Speech if recording is unsupported.
+ */
+class ServerRecordingProvider implements TranscriptionProvider {
+  readonly kind = "server-deepgram";
+  private recorder: MediaRecorder | null = null;
+  private stream: MediaStream | null = null;
+  private chunks: Blob[] = [];
+  private cb: TranscriptionCallbacks | null = null;
+
+  constructor(private slug: string) {}
+
+  async start(cb: TranscriptionCallbacks): Promise<void> {
+    this.cb = cb;
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      cb.onError("Microphone access was blocked — allow it in your browser settings");
+      return;
+    }
+    this.chunks = [];
+    const mime = MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+    this.recorder = new MediaRecorder(this.stream, { mimeType: mime });
+    this.recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) this.chunks.push(e.data);
+    };
+    this.recorder.onstop = () => void this.finish(mime);
+    this.recorder.start();
+    // Show the recording is live even though transcript arrives at the end.
+    cb.onResult("", "Listening…");
+  }
+
+  private async finish(mime: string) {
+    this.stream?.getTracks().forEach((t) => t.stop());
+    const blob = new Blob(this.chunks, { type: mime });
+    const cb = this.cb;
+    if (!cb) return;
+    if (blob.size === 0) {
+      cb.onEnd();
+      return;
+    }
+    cb.onResult("", "Transcribing…");
+    try {
+      const res = await fetch(`/api/w/${this.slug}/ai/transcribe`, {
+        method: "POST",
+        headers: { "content-type": mime },
+        body: blob,
+      });
+      if (res.status === 501) {
+        cb.onError("__fallback__");
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        cb.onError(body?.error?.message ?? "Transcription failed — try again");
+        return;
+      }
+      const { transcript } = (await res.json()) as { transcript: string };
+      cb.onResult(transcript, "");
+      cb.onEnd();
+    } catch {
+      cb.onError("Couldn't reach the transcription service");
+    }
+  }
+
+  stop(): void {
+    if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop();
+    this.recorder = null;
+  }
+}
+
+/**
+ * Provider factory. Prefers server transcription (Deepgram) when the server
+ * advertises it and the browser can record; otherwise on-device Web Speech.
+ */
+export function createTranscriptionProvider(opts?: {
+  serverSlug?: string | null;
+}): TranscriptionProvider {
+  const canRecord =
+    typeof window !== "undefined" &&
+    typeof MediaRecorder !== "undefined" &&
+    !!navigator.mediaDevices?.getUserMedia;
+  if (opts?.serverSlug && canRecord) {
+    return new ServerRecordingProvider(opts.serverSlug);
+  }
   return new WebSpeechProvider();
+}
+
+export function serverTranscriptionPossible(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof MediaRecorder !== "undefined" &&
+    !!navigator.mediaDevices?.getUserMedia
+  );
 }

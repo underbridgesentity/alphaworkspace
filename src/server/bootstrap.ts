@@ -5,16 +5,19 @@ import { listProjects } from "@/server/dal/projects";
 import { listMembers, workspaceUsage } from "@/server/dal/workspaces";
 import { listLabels } from "@/server/dal/labels";
 import { unreadCount } from "@/server/dal/notifications";
+import { transcriptionConfigured } from "@/server/ai/transcribe";
+import { isOperator } from "@/server/admin/operator";
 import { db } from "@/server/db";
 
 /** Everything the app shell needs, in one query burst. */
 export async function getBootstrap(ctx: Ctx, user: SessionUser) {
-  const [projects, members, labels, usage, unread] = await Promise.all([
+  const [projects, members, labels, usage, unread, operator] = await Promise.all([
     listProjects(ctx),
     listMembers(ctx),
     listLabels(ctx),
     workspaceUsage(ctx),
     unreadCount(db, user.id),
+    isOperator(user),
   ]);
 
   return {
@@ -26,6 +29,8 @@ export async function getBootstrap(ctx: Ctx, user: SessionUser) {
       role: ctx.role,
       settings: ctx.workspace.settings,
     },
+    serverTranscribe: transcriptionConfigured(),
+    isOperator: operator,
     me: user,
     projects,
     members,

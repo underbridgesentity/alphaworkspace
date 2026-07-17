@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
@@ -118,6 +118,47 @@ function ScopeChip({
 
 /* ---------------------------- narrative ---------------------------------- */
 
+function NarrativeFeedback({ narrativeId }: { narrativeId: string }) {
+  const { workspace } = useWorkspace();
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+
+  const rate = (next: "up" | "down") => {
+    const value = vote === next ? null : next;
+    setVote(value);
+    void apiMutate(`/api/w/${workspace.slug}/narrative/${narrativeId}/rate`, {
+      method: "POST",
+      body: { vote: value },
+    }).catch(() => undefined);
+  };
+
+  return (
+    <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-2.5">
+      <span className="text-xs text-faint">Was this useful?</span>
+      <button
+        onClick={() => rate("up")}
+        aria-label="Helpful"
+        className={cn(
+          "press rounded-control p-1.5 hover:bg-raised",
+          vote === "up" ? "text-ok" : "text-faint",
+        )}
+      >
+        <ThumbsUp className="size-3.5" />
+      </button>
+      <button
+        onClick={() => rate("down")}
+        aria-label="Not helpful"
+        className={cn(
+          "press rounded-control p-1.5 hover:bg-raised",
+          vote === "down" ? "text-danger" : "text-faint",
+        )}
+      >
+        <ThumbsDown className="size-3.5" />
+      </button>
+      {vote && <span className="text-xs text-faint">Thanks — noted.</span>}
+    </div>
+  );
+}
+
 function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
   const { workspace } = useWorkspace();
   const { toast } = useToast();
@@ -160,9 +201,12 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
         </div>
 
         {latest ? (
-          <div className="mt-3 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-ink/95">
-            {latest.narrative}
-          </div>
+          <>
+            <div className="mt-3 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-ink/95">
+              {latest.narrative}
+            </div>
+            <NarrativeFeedback narrativeId={latest.id} />
+          </>
         ) : preview ? (
           <>
             <p className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">

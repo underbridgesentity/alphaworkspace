@@ -15,7 +15,7 @@ import {
 } from "@/server/db/schema";
 import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validators";
 import type { ActivityDTO, CommentDTO, TaskDTO, UserLite } from "@/lib/types";
-import { todaySAST } from "@/lib/dates";
+import { nextOccurrence, todaySAST } from "@/lib/dates";
 import { notify } from "@/server/notifications/service";
 import { activityEvents } from "@/server/db/schema";
 import type { Ctx } from "./context";
@@ -80,6 +80,7 @@ function toDTO(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
+    recurrence: row.recurrence ?? null,
     ...(project ? { projectName: project.name, projectColor: project.color } : {}),
   };
 }
@@ -325,6 +326,7 @@ export async function createTask(
       dueDate: input.dueDate ?? null,
       priority: input.priority,
       position,
+      recurrence: input.recurrence ?? null,
       createdBy: ctx.userId,
       completedAt: input.status === "done" ? now : null,
     })
@@ -436,7 +438,7 @@ export async function updateTask(
   }
 
   const contentFields = (
-    ["title", "description", "dueDate", "priority", "projectId", "labelIds"] as const
+    ["title", "description", "dueDate", "priority", "projectId", "labelIds", "recurrence"] as const
   ).filter((f) => input[f] !== undefined);
   if (contentFields.length > 0) {
     events.push({ ...base, type: "task_updated", data: { fields: contentFields } });
@@ -457,6 +459,7 @@ export async function updateTask(
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.position !== undefined ? { position: input.position } : {}),
       ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+      ...(input.recurrence !== undefined ? { recurrence: input.recurrence } : {}),
       ...(statusChanged
         ? { completedAt: input.status === "done" ? now : null }
         : {}),
@@ -479,6 +482,61 @@ export async function updateTask(
   }
 
   await logActivity(ctx.db, events);
+
+  // Recurring tasks: completing one spawns the next occurrence. The
+  // recurrenceOf + dueDate pair guards against offline replays doubling up.
+  if (statusChanged && input.status === "done" && existing.recurrence) {
+    const rec = existing.recurrence;
+    const base = existing.dueDate ?? todaySAST();
+    const nextDue = nextOccurrence(base, rec.freq, rec.interval ?? 1);
+    const [dupe] = await ctx.db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.workspaceId, ctx.workspace.id),
+          eq(tasks.recurrenceOf, existing.id),
+          eq(tasks.dueDate, nextDue),
+        ),
+      )
+      .limit(1);
+    if (!dupe) {
+      const [next] = await ctx.db
+        .insert(tasks)
+        .values({
+          workspaceId: ctx.workspace.id,
+          projectId: existing.projectId,
+          title: existing.title,
+          description: existing.description,
+          status: "todo",
+          assigneeId: existing.assigneeId,
+          dueDate: nextDue,
+          priority: existing.priority,
+          position: await nextPosition(ctx, existing.projectId, "todo"),
+          recurrence: rec,
+          recurrenceOf: existing.id,
+          createdBy: existing.createdBy,
+        })
+        .returning({ id: tasks.id, title: tasks.title });
+      const labelRows = await ctx.db
+        .select({ labelId: taskLabels.labelId })
+        .from(taskLabels)
+        .where(eq(taskLabels.taskId, existing.id));
+      if (labelRows.length > 0) {
+        await ctx.db
+          .insert(taskLabels)
+          .values(labelRows.map((l) => ({ taskId: next.id, labelId: l.labelId })));
+      }
+      await logActivity(ctx.db, {
+        workspaceId: ctx.workspace.id,
+        type: "task_created",
+        actorId: ctx.userId,
+        projectId: existing.projectId,
+        taskId: next.id,
+        data: { title: next.title, recurrenceOf: existing.id },
+      });
+    }
+  }
 
   if (assigneeChanged && input.assigneeId && input.assigneeId !== ctx.userId) {
     await notify(ctx.db, {

@@ -27,7 +27,7 @@ export default async function OnboardingPage({
         Name your workspace
       </h1>
       <p className="mt-1.5 text-muted">
-        Usually your studio or agency name. You can invite the team right
+        Usually your company or team name. You can invite the team right
         after — this takes under a minute.
       </p>
       <OnboardingForm />

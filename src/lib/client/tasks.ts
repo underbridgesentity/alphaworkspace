@@ -204,6 +204,7 @@ export function useTaskMutations() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         completedAt: null,
+        recurrence: input.recurrence ?? null,
       };
       const boardKey = ["ws", slug, "board", input.projectId];
       const board = qc.getQueryData<{ tasks: TaskDTO[] }>(boardKey);
