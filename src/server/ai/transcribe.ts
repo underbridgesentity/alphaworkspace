@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Server-side transcription, the Wispr-grade layer. Deepgram nova-3 with
  * per-request KEYTERM BIASING: we prime the recognizer with this workspace's

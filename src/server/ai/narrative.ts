@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * The weekly narrative engine, the single most important feature in the
  * product. Input is a compact, pre-computed WeeklySummary (the model never

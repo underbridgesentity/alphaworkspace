@@ -28,6 +28,10 @@ connectivity, priced in rand.
 4. Minimal and calm: few concepts, strong defaults, no settings mazes.
 5. Fast on cheap phones: app shell interactive < 3s on 3G mid-range Android.
 
+## Security
+
+- **The platform's security invariants are enforced by the `security-guardian` agent** (`.claude/agents/security-guardian.md`). Run it before shipping any security-relevant change (auth, DAL, API routes, entitlements/billing, webhooks, storage, roles/visibility, headers/CSP, anything touching secrets or tenant data): `/security-review` (current diff) or `/security-review full` (whole-codebase sweep). It is read-only and reports findings + fixes ranked by severity. The five standing invariants: tenant isolation is absolute; money/entitlements can't be forged; secrets never leak; every boundary (auth, input, webhook, secret compare) is verified; privacy (POPIA) is respected. The test suite is the executable contract — when a gap isn't covered by a test, add one.
+
 ## Architecture
 
 - Next.js App Router (v16, Turbopack), TypeScript strict, Tailwind v4 tokens in `src/app/globals.css`.

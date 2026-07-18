@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * The extraction service, one brain behind voice capture and quick-add.
  * Takes a transcript plus workspace context, returns schema-validated task

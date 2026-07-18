@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Meeting summarizer: transcript in, {tldr, decisions, risks, actionItems}
  * out. Same discipline as extraction.ts: forced tool call for strict JSON,
