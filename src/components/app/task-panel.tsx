@@ -121,11 +121,13 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
 
   return (
     <>
-      {/* Header */}
+      {/* Header. Cap the project name on narrow screens so the Complete and
+          close buttons never get pushed off the edge (the Menu wrapper is
+          inline-block and won't shrink on its own). */}
       <div className="flex items-center gap-2 border-b border-line px-4 py-3 sm:px-5">
         <Menu
           trigger={
-            <button className="press flex min-w-0 items-center gap-2 rounded-control px-2 py-1 text-sm text-muted hover:bg-raised">
+            <button className="press flex min-w-0 max-w-[42vw] items-center gap-2 rounded-control px-2 py-1 text-sm text-muted hover:bg-raised sm:max-w-none">
               <FolderKanban
                 className="size-4 shrink-0"
                 style={{ color: project?.color }}

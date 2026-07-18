@@ -120,14 +120,14 @@ async function main() {
   const admin = await createLabel(ctx, { name: "Admin", color: "#66757C" });
 
   const liberty = await createProject(ctx, {
-    name: "Liberty rebrand",
+    name: "Sable rebrand",
     color: "#5B7C99",
-    clientName: "Liberty",
+    clientName: "Sable",
   });
   const vodacom = await createProject(ctx, {
-    name: "Vodacom retainer",
+    name: "Karoo Coffee retainer",
     color: "#6FAE87",
-    clientName: "Vodacom",
+    clientName: "Karoo Coffee",
   });
   const karoo = await createProject(ctx, {
     name: "Karoo Coffee website",
@@ -154,14 +154,14 @@ async function main() {
   }
 
   const tasks: SeedTask[] = [
-    // ---- Liberty rebrand: a project quietly going sideways ----
+    // ---- Sable rebrand: a project quietly going sideways ----
     { project: liberty.id, title: "Stakeholder interviews", assignee: thabo, created: 19, completed: 15, labels: [admin.id] },
     { project: liberty.id, title: "Brand audit deck", assignee: thabo, created: 18, completed: 12, labels: [design.id] },
     { project: liberty.id, title: "Moodboards: three directions", assignee: naledi, created: 14, completed: 8, labels: [design.id] },
     { project: liberty.id, title: "Logo exploration round 1", assignee: naledi, created: 10, due: d(-2), priority: "high", labels: [design.id], touched: 7, description: "Client leans geometric. Avoid anything close to the old serif mark." },
     { project: liberty.id, title: "Tone of voice document", assignee: sipho, created: 9, due: d(-1), priority: "med", labels: [copy.id], touched: 6 },
     { project: liberty.id, title: "Client review: direction lock", assignee: lerato, created: 8, due: d(2), priority: "high", labels: [admin.id], touched: 6 },
-    // ---- Vodacom retainer: the healthy engine ----
+    // ---- Karoo Coffee retainer: the healthy engine ----
     { project: vodacom.id, title: "July social calendar", assignee: naledi, created: 12, completed: 9, labels: [copy.id] },
     { project: vodacom.id, title: "Winter campaign banners", assignee: thabo, created: 10, completed: 6, labels: [design.id] },
     { project: vodacom.id, title: "Landing page tweaks", assignee: sipho, created: 8, completed: 4, labels: [dev.id] },
@@ -223,7 +223,7 @@ async function main() {
     userId: lerato,
     source: "voice",
     transcript:
-      "Okay so from the Vodacom call. Naledi to get the monthly report out by end of day today, Thabo the reels cutdowns by tomorrow, and someone needs to start the paid media brief for the spring push.",
+      "Okay so from the Karoo Coffee call. Naledi to get the monthly report out by end of day today, Thabo the reels cutdowns by tomorrow, and someone needs to start the paid media brief for the spring push.",
     extraction: { proposals: [] },
     engine: "seed",
     status: "confirmed",

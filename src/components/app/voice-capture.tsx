@@ -201,7 +201,7 @@ export function VoiceCaptureSheet({
             onChange={(e) => setFinalText(e.target.value)}
             rows={5}
             placeholder={
-              "e.g. Naledi to send the Vodacom report by Friday, then homepage concepts for Liberty next week Tuesday…"
+              "e.g. Naledi to send the Karoo Coffee report by Friday, then homepage concepts for Sable next week Tuesday…"
             }
             aria-label="Transcript"
             className="w-full resize-y rounded-card bg-raised p-4 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"

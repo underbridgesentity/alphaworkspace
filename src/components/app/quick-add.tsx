@@ -2,7 +2,7 @@
 
 /**
  * Natural-language quick-add: one line in, one structured task out, after
- * you've seen and confirmed it. "homepage concepts for Liberty, Thabo,
+ * you've seen and confirmed it. "homepage concepts for Sable, Thabo,
  * Friday" is the whole flow.
  */
 import { useState } from "react";
@@ -88,7 +88,7 @@ export function QuickAddDialog({
               autoFocus
               value={line}
               onChange={(e) => setLine(e.target.value)}
-              placeholder="homepage concepts for Liberty, Thabo, Friday"
+              placeholder="homepage concepts for Sable, Thabo, Friday"
               aria-label="Describe the task"
               maxLength={500}
               className="h-12 w-full bg-transparent text-[1.0625rem] outline-none placeholder:text-faint"

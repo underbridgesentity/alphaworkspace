@@ -46,8 +46,8 @@ type QueuedRow = {
 };
 
 const QUEUED: QueuedRow[] = [
-  { title: "Draft Vodacom status update", status: "todo", delay: 400 },
-  { title: "Liberty rebrand moodboard", status: "doing", delay: 650 },
+  { title: "Draft Karoo Coffee status update", status: "todo", delay: 400 },
+  { title: "Sable rebrand moodboard", status: "doing", delay: 650 },
   { title: "Karoo Coffee label copy", status: "done", delay: 900 },
 ];
 

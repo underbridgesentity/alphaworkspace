@@ -66,8 +66,8 @@ export function Capture() {
                     startDelay={300}
                     step={500}
                     lines={[
-                      "“Naledi to send the Vodacom report by Friday,",
-                      "then homepage concepts for Liberty next week Tuesday”",
+                      "“Naledi to send the Karoo Coffee report by Friday,",
+                      "then homepage concepts for Sable next week Tuesday”",
                     ]}
                     lineClassName="text-sm italic text-muted"
                   />
@@ -79,7 +79,7 @@ export function Capture() {
                       style={{ animationDelay: "1500ms" }}
                     >
                       <p className="text-sm font-medium">
-                        Send the Vodacom report
+                        Send the Karoo Coffee report
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="flex items-center gap-1.5">
@@ -88,7 +88,7 @@ export function Capture() {
                             style={{ backgroundColor: "#5B7C99" }}
                           />
                           <span className="text-[11px] text-muted">
-                            Vodacom retainer
+                            Karoo Coffee retainer
                           </span>
                         </span>
                         <span
@@ -112,7 +112,7 @@ export function Capture() {
                             style={{ backgroundColor: "#B48EAD" }}
                           />
                           <span className="text-[11px] text-muted">
-                            Liberty rebrand
+                            Sable rebrand
                           </span>
                         </span>
                         <span className="rounded-full border border-dashed border-line-strong px-2 py-0.5 text-[11px] text-faint">
@@ -163,7 +163,7 @@ export function Capture() {
               people, projects, days. Alpha extracts the tasks and shows you
               the list before anything is created. Or type{" "}
               <span className="rounded border border-dashed border-line bg-raised px-1.5 py-0.5 text-sm text-ink">
-                homepage concepts for Liberty, Thabo, Friday
+                homepage concepts for Sable, Thabo, Friday
               </span>{" "}
               and press enter. The AI proposes; you always confirm.
             </p>

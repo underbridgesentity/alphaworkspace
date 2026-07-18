@@ -80,7 +80,7 @@ export function WelcomeCard() {
           <span className="text-sm">
             <span className="font-medium">Press N</span>
             <span className="block text-xs text-muted">
-              “banner for Liberty, Thabo, Friday” becomes a task.
+              “banner for Sable, Thabo, Friday” becomes a task.
             </span>
           </span>
         </button>

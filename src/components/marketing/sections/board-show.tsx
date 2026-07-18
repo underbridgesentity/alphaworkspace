@@ -244,7 +244,7 @@ export function BoardShow() {
                   <span className="size-2.5 rounded-full bg-raised" />
                 </div>
                 <span className="text-xs text-faint">
-                  alpha · Vodacom retainer
+                  alpha · Karoo Coffee retainer
                 </span>
               </div>
 
@@ -264,7 +264,7 @@ export function BoardShow() {
                     <TaskCard
                       title="Retainer report deck"
                       state="todo"
-                      project="Vodacom retainer"
+                      project="Karoo Coffee retainer"
                       projectColour="#5B7C99"
                       initial="T"
                       avatarColour="#5B7C99"
@@ -277,7 +277,7 @@ export function BoardShow() {
                     <TaskCard
                       title="Homepage concepts"
                       state="doing"
-                      project="Liberty rebrand"
+                      project="Sable rebrand"
                       projectColour="#B48EAD"
                       initial="N"
                       avatarColour="#7A9BD1"
@@ -289,7 +289,7 @@ export function BoardShow() {
                     <TaskCard
                       title="June invoices"
                       state="done"
-                      project="Vodacom retainer"
+                      project="Karoo Coffee retainer"
                       projectColour="#5B7C99"
                       initial="S"
                       avatarColour="#6FAE87"

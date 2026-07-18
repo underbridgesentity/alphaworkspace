@@ -136,7 +136,7 @@ export function Report() {
                     lines={[
                       "The team closed out 14 tasks this week against 11 new ones.",
                       "Thabo carried 40% of completions, rebalance before it snaps.",
-                      "Liberty has had nothing move in 6 days; quiet client projects are how surprises happen.",
+                      "Sable has had nothing move in 6 days; quiet client projects are how surprises happen.",
                     ]}
                     startDelay={900}
                     step={700}

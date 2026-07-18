@@ -7,9 +7,10 @@
  * Without ANTHROPIC_API_KEY it returns null and the meeting ships with a
  * transcript only, which is still most of the value.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import { meetingSummarySchema } from "@/lib/validators";
 import type { MeetingActionItem, MeetingSummary } from "@/lib/types";
+import { anthropicClient, anthropicConfigured } from "./anthropic";
 
 export interface MeetingSummaryInput {
   title: string;
@@ -30,13 +31,15 @@ export interface MeetingSummaryResult {
   engine: string;
 }
 
-const MODEL = () => process.env.AI_MODEL_MEETING ?? "claude-sonnet-5";
+// Haiku by default to keep per-meeting cost low; set AI_MODEL_MEETING to a
+// Sonnet model when a workspace wants richer summaries.
+const MODEL = () => process.env.AI_MODEL_MEETING ?? "claude-haiku-4-5";
 
 /** Keep the prompt inside a sane token budget for two-hour meetings. */
 const TRANSCRIPT_CHAR_CAP = 120_000;
 
 export function summarizerConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return anthropicConfigured();
 }
 
 function speakerScript(input: MeetingSummaryInput): string {
@@ -151,7 +154,7 @@ export async function summarizeMeeting(
   if (!summarizerConfigured()) return null;
   if (!input.transcript.trim()) return null;
 
-  const client = new Anthropic();
+  const client = anthropicClient();
   const { system, user } = buildPrompt(input, context);
 
   // Ids the model is allowed to reference; anything else gets nulled.

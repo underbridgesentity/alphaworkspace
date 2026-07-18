@@ -201,14 +201,14 @@ export function Hero() {
                 <div className="mt-2.5 space-y-2">
                   <MiniTask
                     title="Homepage concepts"
-                    project="Liberty rebrand"
+                    project="Sable rebrand"
                     dot={PROJECTS.liberty}
                     initial="N"
                     avatar={PEOPLE.naledi}
                   />
                   <MiniTask
-                    title="Send the Vodacom report"
-                    project="Vodacom retainer"
+                    title="Send the Karoo Coffee report"
+                    project="Karoo Coffee retainer"
                     dot={PROJECTS.vodacom}
                     initial="T"
                     avatar={PEOPLE.thabo}
@@ -231,7 +231,7 @@ export function Hero() {
                 <TypeLines
                   lines={[
                     "The team closed out 14 tasks against 11 new ones.",
-                    "Liberty has had nothing move in 6 days; watch it.",
+                    "Sable has had nothing move in 6 days; watch it.",
                   ]}
                   startDelay={650}
                   step={420}

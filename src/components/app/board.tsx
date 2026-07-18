@@ -140,9 +140,9 @@ export function Board({ projectId }: { projectId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 gap-3 overflow-x-auto px-4 pb-4 md:px-6">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:px-6">
         {columns.map((c) => (
-          <div key={c} className="w-[86vw] max-w-80 shrink-0 sm:w-72 space-y-2 pt-2">
+          <div key={c} className="w-full space-y-2 pt-2 md:w-72 md:max-w-80 md:shrink-0">
             <div className="skeleton h-5 w-24" />
             <div className="skeleton h-20" />
             <div className="skeleton h-20" />
@@ -164,7 +164,10 @@ export function Board({ projectId }: { projectId: string }) {
         setActiveId(null);
       }}
     >
-      <div className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:snap-none md:px-6">
+      {/* Mobile: columns stack vertically into one scroll (To do, then In
+          progress below it), which reads far better on a phone than swiping
+          sideways. Desktop/tablet-landscape: the classic side-by-side board. */}
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:px-6">
         {columns.map((status) => (
           <Column
             key={status}
@@ -203,7 +206,7 @@ function Column({
 
   return (
     <section
-      className="flex w-[86vw] max-w-80 shrink-0 snap-center flex-col sm:w-72"
+      className="flex flex-col md:w-72 md:max-w-80 md:shrink-0"
       aria-label={statusLabel(status, customName)}
     >
       <header className="flex items-center gap-2 px-1 pb-2 pt-2">
@@ -216,7 +219,9 @@ function Column({
       <div
         ref={setNodeRef}
         className={cn(
-          "mt-2 flex-1 space-y-2 overflow-y-auto rounded-card pb-8 transition-colors",
+          // Mobile: natural height, the whole board scrolls as one. Desktop:
+          // each column fills the row height and scrolls on its own.
+          "mt-2 space-y-2 rounded-card pb-4 transition-colors md:flex-1 md:overflow-y-auto md:pb-8",
           isOver && "bg-raised/40",
         )}
       >

@@ -7,9 +7,10 @@
  * With ANTHROPIC_API_KEY: Claude with a forced tool call for strict JSON,
  * one retry on invalid output, then heuristic fallback. Without: heuristic.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import { extractionResultSchema } from "@/lib/validators";
 import type { ExtractionResult } from "@/lib/types";
+import { anthropicClient, anthropicConfigured } from "./anthropic";
 import { heuristicExtract } from "./heuristic";
 
 export interface ExtractionInput {
@@ -117,11 +118,11 @@ export async function extractTasks(
   input: ExtractionInput,
   context: ExtractionContext,
 ): Promise<ExtractionResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!anthropicConfigured()) {
     return heuristicExtract(input, context);
   }
 
-  const client = new Anthropic();
+  const client = anthropicClient();
   const { system, user } = buildExtractionPrompt(input, context);
 
   try {

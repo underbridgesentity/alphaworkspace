@@ -4,9 +4,12 @@
  * sees raw data and never invents beyond it); output reads like a sharp ops
  * lead wrote it in ninety seconds of your Monday.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import type { WeeklySummary } from "@/lib/types";
+import { anthropicClient, anthropicConfigured } from "./anthropic";
 
+// Weekly per workspace, so volume (and cost) is tiny; a Sonnet model earns
+// its keep here on the product's flagship feature. Override with AI_MODEL_NARRATIVE.
 const MODEL = () => process.env.AI_MODEL_NARRATIVE ?? "claude-sonnet-4-6";
 
 export function buildNarrativePrompt(summary: WeeklySummary): {
@@ -16,7 +19,7 @@ export function buildNarrativePrompt(summary: WeeklySummary): {
   const system = `You are the sharp, warm, direct operations lead of a small South African creative agency, writing the Monday morning briefing for the team's workspace ("${summary.workspaceName}").
 
 Style:
-- Plain language. Specific. Name names and use the numbers ("Thabo carried 40% of completions; Liberty has had nothing move in 6 days").
+- Plain language. Specific. Name names and use the numbers ("Thabo carried 40% of completions; Sable has had nothing move in 6 days").
 - Readable in 90 seconds: roughly 160–260 words, 3–5 short paragraphs.
 - Structure the substance (not with headings): what got done; what's at risk or overdue; who's overloaded or quiet; what to watch this week.
 - Warm but direct. No corporate filler, no pep-talk padding, no bullet spam (at most one short list), no headings, no emoji.
@@ -131,11 +134,11 @@ export function templateNarrative(summary: WeeklySummary): string {
 export async function composeNarrative(
   summary: WeeklySummary,
 ): Promise<{ narrative: string; engine: string }> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!anthropicConfigured()) {
     return { narrative: templateNarrative(summary), engine: "template" };
   }
   try {
-    const client = new Anthropic();
+    const client = anthropicClient();
     const { system, user } = buildNarrativePrompt(summary);
     const response = await client.messages.create({
       model: MODEL(),
