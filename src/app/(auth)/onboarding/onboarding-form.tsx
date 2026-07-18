@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createWorkspaceAction, type OnboardingState } from "./actions";
 
-export function OnboardingForm() {
+export function OnboardingForm({ plan }: { plan?: string | null }) {
   const [state, action, pending] = useActionState<OnboardingState, FormData>(
     createWorkspaceAction,
     {},
@@ -13,6 +13,7 @@ export function OnboardingForm() {
 
   return (
     <form action={action} className="mt-6 space-y-4">
+      {plan && <input type="hidden" name="plan" value={plan} />}
       <Input
         name="name"
         required

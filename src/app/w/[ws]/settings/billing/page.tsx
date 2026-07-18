@@ -6,8 +6,9 @@
  * nothing is deleted, nothing locks.
  */
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, ShieldCheck } from "lucide-react";
 import { apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import { PLANS, formatZar, type PlanId } from "@/lib/plans";
@@ -45,6 +46,13 @@ export default function BillingSettingsPage() {
   const { toast } = useToast();
   const [annual, setAnnual] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  // A plan carried from the pricing page: "Start with Team" lands here so the
+  // final checkout step is one obvious click, not a hunt through the bands.
+  const searchParams = useSearchParams();
+  const wantedRaw = searchParams.get("plan");
+  const wantedPlan: "team" | "studio" | null =
+    wantedRaw === "team" || wantedRaw === "studio" ? wantedRaw : null;
 
   const { data } = useQuery({
     queryKey: ["ws", workspace.slug, "billing"],
@@ -105,6 +113,35 @@ export default function BillingSettingsPage() {
         <p className="rounded-control bg-warn/10 px-3 py-2 text-xs text-warn">
           PayFast sandbox mode, no real money moves.
         </p>
+      )}
+
+      {/* Checkout hand-off from the pricing page: one obvious next step. */}
+      {wantedPlan && isOwner && currentPlan !== wantedPlan && (
+        <section className="rounded-card border border-accent/40 bg-accent-soft p-4">
+          <div className="flex items-center gap-2">
+            <BadgeCheck className="size-4 text-accent" />
+            <h2 className="flex-1 text-sm font-semibold">
+              Start with {PLANS[wantedPlan].name}
+            </h2>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            {formatZar(
+              annual
+                ? PLANS[wantedPlan].priceAnnualZar
+                : PLANS[wantedPlan].priceMonthlyZar,
+            )}
+            /{annual ? "year" : "month"}, VAT inclusive. You finish on PayFast,
+            nothing is charged until you confirm there.
+          </p>
+          <Button
+            className="mt-3"
+            loading={busy === wantedPlan}
+            onClick={() => void checkout(wantedPlan)}
+          >
+            Continue to PayFast
+            <ArrowRight className="size-4" />
+          </Button>
+        </section>
       )}
 
       {/* Current state */}
@@ -186,6 +223,7 @@ export default function BillingSettingsPage() {
                 className={cn(
                   "flex flex-col rounded-card bg-surface p-4",
                   isCurrent && "ring-1 ring-accent/50",
+                  !isCurrent && plan.id === wantedPlan && "ring-2 ring-accent",
                 )}
               >
                 <h3 className="font-semibold">{plan.name}</h3>

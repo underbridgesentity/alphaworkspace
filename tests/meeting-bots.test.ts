@@ -54,13 +54,17 @@ const stubs = (over: Partial<MeetingDeps> = {}): MeetingDeps => ({
 });
 
 async function enableBots(): Promise<void> {
+  // A complete snapshot, exactly as production writes it, with the add-on
+  // flag and room for several test meetings before the minutes gate bites.
   await db
     .update(schema.workspaces)
     .set({
       entitlements: {
-        features: [...PLANS.free.features, "meeting_bots"],
-        // Room for several test meetings without tripping the minutes gate.
+        maxMembers: PLANS.free.maxMembers,
+        maxActiveProjects: PLANS.free.maxActiveProjects,
+        voiceCapturesPerMonth: PLANS.free.voiceCapturesPerMonth,
         meetingMinutesPerMonth: 1_000,
+        features: [...PLANS.free.features, "meeting_bots"],
       },
     })
     .where(eq(schema.workspaces.id, ws.id));

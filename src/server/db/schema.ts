@@ -166,6 +166,8 @@ export type EntitlementsSnapshot = {
   maxMembers: number;
   maxActiveProjects: number | null;
   voiceCapturesPerMonth: number;
+  /** Optional: absent on snapshots taken before meetings shipped (M1). */
+  meetingMinutesPerMonth?: number;
   features: string[];
 };
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -55,10 +56,13 @@ function GoogleSubmit() {
   );
 }
 
-function ModeLink({
+/** Segmented method switch, so "Password" is a visible peer to the link. */
+function MethodTab({
+  active,
   onClick,
   children,
 }: {
+  active: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -66,7 +70,11 @@ function ModeLink({
     <button
       type="button"
       onClick={onClick}
-      className="press rounded-control text-sm font-medium text-accent hover:text-accent-hover"
+      aria-pressed={active}
+      className={cn(
+        "press h-9 rounded-[0.5rem] text-sm font-medium transition-colors",
+        active ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink",
+      )}
     >
       {children}
     </button>
@@ -83,6 +91,7 @@ export function SignInForm({
   initialMode?: SignInMode;
 }) {
   const [mode, setMode] = useState<SignInMode>(initialMode);
+  const isPassword = mode === "password" || mode === "create";
 
   const emailField = (
     <Input
@@ -98,71 +107,86 @@ export function SignInForm({
   );
 
   return (
-    <div className="mt-6 space-y-3">
+    <div className="mt-6 space-y-4">
+      {/* Two equal doors: an email link, or a password. */}
+      <div className="grid grid-cols-2 gap-1 rounded-control bg-raised p-1">
+        <MethodTab active={mode === "link"} onClick={() => setMode("link")}>
+          Email link
+        </MethodTab>
+        <MethodTab
+          active={isPassword}
+          onClick={() => setMode((m) => (m === "create" ? "create" : "password"))}
+        >
+          Password
+        </MethodTab>
+      </div>
+
       {mode === "link" && (
         <form action={signInWithEmail} className="space-y-3">
           <input type="hidden" name="next" value={next} />
           {emailField}
           <Submit label="Email me a sign-in link" />
-        </form>
-      )}
-
-      {mode === "password" && (
-        <form action={signInWithPassword} className="space-y-3">
-          <input type="hidden" name="next" value={next} />
-          {emailField}
-          <Input
-            type="password"
-            name="password"
-            required
-            autoComplete="current-password"
-            placeholder="Your password"
-            aria-label="Password"
-            className="h-12 text-[1.0625rem]"
-          />
-          <Submit label="Sign in" />
-        </form>
-      )}
-
-      {mode === "create" && (
-        <form action={createPasswordAccount} className="space-y-3">
-          <input type="hidden" name="next" value={next} />
-          {emailField}
-          <Input
-            type="password"
-            name="password"
-            required
-            minLength={10}
-            autoComplete="new-password"
-            placeholder="Choose a password (10+ characters)"
-            aria-label="New password"
-            className="h-12 text-[1.0625rem]"
-          />
-          <Submit label="Create account" />
           <p className="text-xs text-faint">
-            We&apos;ll email you a confirmation link. Your password starts
-            working the moment you click it.
+            No password to remember. New here? The link creates your account.
           </p>
         </form>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
-        {mode !== "link" && (
-          <ModeLink onClick={() => setMode("link")}>
-            Email me a link instead
-          </ModeLink>
-        )}
-        {mode !== "password" && (
-          <ModeLink onClick={() => setMode("password")}>
-            Use a password
-          </ModeLink>
-        )}
-        {mode !== "create" && (
-          <ModeLink onClick={() => setMode("create")}>
-            Create an account with a password
-          </ModeLink>
-        )}
-      </div>
+      {isPassword && (
+        <form
+          action={mode === "create" ? createPasswordAccount : signInWithPassword}
+          className="space-y-3"
+        >
+          <input type="hidden" name="next" value={next} />
+          {emailField}
+          <Input
+            type="password"
+            name="password"
+            required
+            minLength={mode === "create" ? 10 : undefined}
+            autoComplete={mode === "create" ? "new-password" : "current-password"}
+            placeholder={
+              mode === "create"
+                ? "Choose a password (10+ characters)"
+                : "Your password"
+            }
+            aria-label={mode === "create" ? "New password" : "Password"}
+            className="h-12 text-[1.0625rem]"
+          />
+          <Submit label={mode === "create" ? "Create account" : "Sign in"} />
+          <p className="text-sm text-faint">
+            {mode === "create" ? (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("password")}
+                  className="font-medium text-accent hover:text-accent-hover"
+                >
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <>
+                New here?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("create")}
+                  className="font-medium text-accent hover:text-accent-hover"
+                >
+                  Create an account with a password
+                </button>
+              </>
+            )}
+          </p>
+          {mode === "create" && (
+            <p className="text-xs text-faint">
+              We&apos;ll email you a confirmation link. Your password starts
+              working the moment you click it.
+            </p>
+          )}
+        </form>
+      )}
 
       {googleEnabled && (
         <>

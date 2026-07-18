@@ -67,7 +67,11 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
               ))}
             </ul>
             <Link
-              href="/sign-in"
+              href={
+                plan.id === "free"
+                  ? "/sign-in"
+                  : `/sign-in?next=${encodeURIComponent(`/app?plan=${plan.id}`)}`
+              }
               className={cn(
                 "press mt-5 rounded-control py-2.5 text-center text-sm font-semibold",
                 highlight
