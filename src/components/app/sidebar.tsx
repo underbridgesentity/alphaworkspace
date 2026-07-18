@@ -9,6 +9,7 @@ import {
   ChartNoAxesColumn,
   Check,
   ChevronsUpDown,
+  CreditCard,
   Home,
   Plus,
   Settings,
@@ -188,10 +189,27 @@ function NavLink({
   );
 }
 
-/** Shared between the sidebar switcher (desktop) and top bar (mobile). */
-export function WorkspaceMenuItems({ close }: { close: () => void }) {
+/**
+ * Shared between the sidebar switcher (desktop) and the top bar (mobile).
+ * On mobile there's no sidebar, so `nav` adds the workspace destinations
+ * (Meetings, and Settings/Members/Billing for admins) that would otherwise
+ * be unreachable on a phone.
+ */
+export function WorkspaceMenuItems({
+  close,
+  nav = false,
+}: {
+  close: () => void;
+  nav?: boolean;
+}) {
   const { workspace } = useWorkspace();
   const router = useRouter();
+  const base = `/w/${workspace.slug}`;
+  const isAdmin = workspace.role !== "member";
+  const go = (href: string) => {
+    close();
+    router.push(href);
+  };
   const { data } = useQuery({
     queryKey: ["me", "workspaces"],
     queryFn: () =>
@@ -203,6 +221,31 @@ export function WorkspaceMenuItems({ close }: { close: () => void }) {
 
   return (
     <>
+      {nav && (
+        <>
+          <MenuItem onClick={() => go(`${base}/meetings`)}>
+            <AudioLines className="size-4" />
+            Meetings
+          </MenuItem>
+          {isAdmin && (
+            <>
+              <MenuItem onClick={() => go(`${base}/settings/members`)}>
+                <UserPlus className="size-4" />
+                Members &amp; invites
+              </MenuItem>
+              <MenuItem onClick={() => go(`${base}/settings/billing`)}>
+                <CreditCard className="size-4" />
+                Billing
+              </MenuItem>
+              <MenuItem onClick={() => go(`${base}/settings`)}>
+                <Settings className="size-4" />
+                Workspace settings
+              </MenuItem>
+            </>
+          )}
+          <MenuSeparator />
+        </>
+      )}
       {(data?.workspaces ?? [{ id: workspace.id, name: workspace.name, slug: workspace.slug }]).map(
         (w) => (
           <MenuItem

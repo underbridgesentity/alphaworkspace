@@ -47,6 +47,8 @@ interface DashboardData {
 export default function DashboardPage() {
   const { workspace, projects } = useWorkspace();
   const [projectId, setProjectId] = useState<string | null>(null);
+  // Per-person load and scorecards are a manager's view (see the API route).
+  const isManager = workspace.role !== "member";
 
   const { data, isLoading } = useQuery({
     queryKey: ["ws", workspace.slug, "dashboard", projectId ?? "all"],
@@ -92,11 +94,16 @@ export default function DashboardPage() {
         <>
           <KpiTiles kpis={data.kpis} />
           <Momentum days={data.kpis.completionsByDay} />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div
+            className={cn(
+              "mt-4 grid gap-4",
+              isManager && "md:grid-cols-2",
+            )}
+          >
             <ThroughputChart weeks={data.kpis.throughputByWeek} />
-            <MemberLoad kpis={data.kpis} />
+            {isManager && <MemberLoad kpis={data.kpis} />}
           </div>
-          {projectId === null && (
+          {projectId === null && isManager && (
             <PhaseTwo scorecards={data.scorecards} timeWeek={data.timeWeek} />
           )}
         </>

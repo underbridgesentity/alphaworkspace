@@ -153,7 +153,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                   </button>
                 }
               >
-                {(close) => <WorkspaceMenuItems close={close} />}
+                {(close) => <WorkspaceMenuItems close={close} nav />}
               </Menu>
             </div>
 
