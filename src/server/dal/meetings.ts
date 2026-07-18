@@ -13,6 +13,7 @@
  * External deps (storage, Deepgram, Claude) are injectable for tests.
  */
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import type { Db } from "@/server/db";
 import { meetings, projects, users } from "@/server/db/schema";
 import type {
   MeetingActionItem,
@@ -21,7 +22,8 @@ import type {
   UserLite,
 } from "@/lib/types";
 import { MEETING_MAX_BYTES, MEETING_MAX_SECONDS } from "@/lib/validators";
-import { ctxEntitlements, type Ctx } from "./context";
+import { can } from "@/lib/plans";
+import { ctxEntitlements, resolveCtx, type Ctx } from "./context";
 import { createTask } from "./tasks";
 import { listProjects } from "./projects";
 import { listMembers } from "./workspaces";
@@ -32,10 +34,16 @@ import {
   deleteObject,
   ensureBucket,
   objectSize,
+  putObject,
   signedDownloadUrl,
   signedUploadUrl,
   storageConfigured,
 } from "@/server/storage";
+import {
+  botAudioUrl,
+  createBot,
+  recallConfigured,
+} from "@/server/meetingbot/recall";
 import {
   transcribeUrlDiarized,
   transcriptionConfigured,
@@ -57,12 +65,18 @@ export interface MeetingDeps {
   signDownload?: (path: string) => Promise<string>;
   resolveSize?: (path: string) => Promise<number | null>;
   removeObject?: (path: string) => Promise<void>;
+  storeObject?: (path: string, body: Uint8Array, mime: string) => Promise<void>;
   prepareBucket?: () => Promise<void>;
   transcriber?: (
     url: string,
     context: TranscribeContext,
   ) => Promise<DiarizedResult>;
   summarizer?: typeof summarizeMeeting;
+  /** Recall.ai (bots). */
+  botCreate?: typeof createBot;
+  botAudio?: typeof botAudioUrl;
+  /** Fetch the bot's finished MP3 (webhook path); returns bytes or null. */
+  fetchAudio?: (url: string) => Promise<Uint8Array | null>;
 }
 
 const AUDIO_MIME = /^(audio\/[\w.+-]+|video\/(webm|mp4))$/i;
@@ -104,12 +118,15 @@ function toDTO(
     projectId: row.projectId,
     visibility: row.visibility,
     status: row.status,
+    source: row.source === "bot" ? "bot" : "device",
+    botStatus: row.botStatus,
     durationSec: row.durationSec,
     hasAudio: Boolean(row.audioPath),
     createdBy: creator,
     createdAt: row.createdAt.toISOString(),
     summary: row.summary ?? null,
     actionItems: row.actionItems ?? [],
+    speakerNames: row.speakerNames ?? null,
     ...(opts.withTranscript ? { transcript: row.transcript ?? null } : {}),
     error: row.error,
     engine: row.engine,
@@ -225,70 +242,32 @@ export async function beginMeeting(
   return { meetingId: id, uploadUrl: url, storagePath };
 }
 
-/**
- * Step 2: the upload finished; transcribe, summarize, store. Long-running,
- * the route sets maxDuration accordingly. A failure is recorded on the row
- * (status "failed" + friendly error) and returned, not thrown, so the UI can
- * offer retry; retry re-enters here from status "failed".
- */
-export async function processMeeting(
-  ctx: Ctx,
+/** Record a failure on the row and return the DTO (never thrown at callers). */
+async function markFailed(
+  db: Ctx["db"],
   meetingId: string,
-  deps: MeetingDeps = {},
+  message: string,
 ): Promise<MeetingDTO> {
-  const [row] = await ctx.db
-    .select()
-    .from(meetings)
-    .where(creatorOnly(ctx, meetingId));
-  if (!row) throw new NotFoundError("Meeting not found");
-  if (row.status === "ready") {
-    throw new ValidationError("This meeting was already processed");
-  }
-  if (row.status === "processing") {
-    throw new ValidationError("This meeting is already being processed");
-  }
-  if (!row.audioPath) {
-    throw new ValidationError("This meeting has no audio to process");
-  }
-
-  const fail = async (message: string): Promise<MeetingDTO> => {
-    const [updated] = await ctx.db
-      .update(meetings)
-      .set({ status: "failed", error: message.slice(0, 500) })
-      .where(eq(meetings.id, row.id))
-      .returning();
-    return toDTO(updated, null, { withTranscript: true });
-  };
-
-  if (!deps.transcriber && !transcriptionConfigured()) {
-    return fail("Transcription isn't configured on this server yet");
-  }
-
-  await ctx.db
+  const [updated] = await db
     .update(meetings)
-    .set({ status: "processing", error: null })
-    .where(eq(meetings.id, row.id));
+    .set({ status: "failed", error: message.slice(0, 500) })
+    .where(eq(meetings.id, meetingId))
+    .returning();
+  return toDTO(updated, null, { withTranscript: true });
+}
 
+/**
+ * The shared back half of every meeting: Deepgram from a URL, Claude when
+ * configured, store, log activity. Device processing and the bot webhook
+ * both land here. Catches its own errors into status "failed".
+ */
+async function runPipeline(
+  ctx: Ctx,
+  row: MeetingRow,
+  audioUrl: string,
+  deps: MeetingDeps,
+): Promise<MeetingDTO> {
   try {
-    // Reconcile the real stored size; the begin gate trusted the client.
-    const realSize = await (deps.resolveSize ?? objectSize)(row.audioPath);
-    if (realSize !== null && realSize > MEETING_MAX_BYTES) {
-      await (deps.removeObject ?? deleteObject)(row.audioPath).catch(
-        () => undefined,
-      );
-      await ctx.db
-        .update(meetings)
-        .set({ audioPath: null, sizeBytes: 0 })
-        .where(eq(meetings.id, row.id));
-      return fail("The recording was over the 50 MB cap and was removed");
-    }
-    if (realSize !== null && realSize !== row.sizeBytes) {
-      await ctx.db
-        .update(meetings)
-        .set({ sizeBytes: realSize })
-        .where(eq(meetings.id, row.id));
-    }
-
     const [projectList, memberList, labelList] = await Promise.all([
       listProjects(ctx),
       listMembers(ctx),
@@ -303,14 +282,17 @@ export async function processMeeting(
       labels: labelList,
     });
 
-    const url = await (deps.signDownload ?? signedDownloadUrl)(row.audioPath);
-    const t = await (deps.transcriber ?? transcribeUrlDiarized)(url, { keyterms });
+    const t = await (deps.transcriber ?? transcribeUrlDiarized)(audioUrl, {
+      keyterms,
+    });
 
     // Deepgram's measured duration is billing truth; a recording that ran
     // past the client's declared length is kept (never punish a finished
     // meeting), it just meters more.
     const durationSec =
-      t.durationSec > 0 ? Math.min(t.durationSec, MEETING_MAX_SECONDS) : row.durationSec;
+      t.durationSec > 0
+        ? Math.min(t.durationSec, MEETING_MAX_SECONDS)
+        : row.durationSec;
 
     let summarized: MeetingSummaryResult | null = null;
     if (t.transcript.trim()) {
@@ -360,13 +342,266 @@ export async function processMeeting(
         // A private meeting's title stays private, even in the activity log.
         title: updated.visibility === "workspace" ? updated.title : null,
         durationSec,
+        source: updated.source,
       },
     });
 
     return toDTO(updated, null, { withTranscript: true });
   } catch (err) {
     console.error("[meetings] processing failed", err);
-    return fail("Something went wrong while transcribing. Try again.");
+    return markFailed(
+      ctx.db,
+      row.id,
+      "Something went wrong while transcribing. Try again.",
+    );
+  }
+}
+
+/**
+ * Step 2: the upload finished; transcribe, summarize, store. Long-running,
+ * the route sets maxDuration accordingly. A failure is recorded on the row
+ * (status "failed" + friendly error) and returned, not thrown, so the UI can
+ * offer retry; retry re-enters here from status "failed".
+ */
+export async function processMeeting(
+  ctx: Ctx,
+  meetingId: string,
+  deps: MeetingDeps = {},
+): Promise<MeetingDTO> {
+  const [row] = await ctx.db
+    .select()
+    .from(meetings)
+    .where(creatorOnly(ctx, meetingId));
+  if (!row) throw new NotFoundError("Meeting not found");
+  if (row.status === "ready") {
+    throw new ValidationError("This meeting was already processed");
+  }
+  if (row.status === "processing") {
+    throw new ValidationError("This meeting is already being processed");
+  }
+  // A bot meeting normally processes itself off the webhook; manual retry is
+  // only possible once its audio has been copied into our storage.
+  if (row.source === "bot" && !row.audioPath) {
+    throw new ValidationError("Bot recordings arrive on their own when the call ends");
+  }
+  if (!row.audioPath) {
+    throw new ValidationError("This meeting has no audio to process");
+  }
+
+  if (!deps.transcriber && !transcriptionConfigured()) {
+    return markFailed(
+      ctx.db,
+      row.id,
+      "Transcription isn't configured on this server yet",
+    );
+  }
+
+  await ctx.db
+    .update(meetings)
+    .set({ status: "processing", error: null })
+    .where(eq(meetings.id, row.id));
+
+  // Reconcile the real stored size; the begin gate trusted the client.
+  try {
+    const realSize = await (deps.resolveSize ?? objectSize)(row.audioPath);
+    if (realSize !== null && realSize > MEETING_MAX_BYTES) {
+      await (deps.removeObject ?? deleteObject)(row.audioPath).catch(
+        () => undefined,
+      );
+      await ctx.db
+        .update(meetings)
+        .set({ audioPath: null, sizeBytes: 0 })
+        .where(eq(meetings.id, row.id));
+      return markFailed(
+        ctx.db,
+        row.id,
+        "The recording was over the 50 MB cap and was removed",
+      );
+    }
+    if (realSize !== null && realSize !== row.sizeBytes) {
+      await ctx.db
+        .update(meetings)
+        .set({ sizeBytes: realSize })
+        .where(eq(meetings.id, row.id));
+    }
+    const url = await (deps.signDownload ?? signedDownloadUrl)(row.audioPath);
+    return await runPipeline(ctx, row, url, deps);
+  } catch (err) {
+    console.error("[meetings] processing failed", err);
+    return markFailed(
+      ctx.db,
+      row.id,
+      "Something went wrong while transcribing. Try again.",
+    );
+  }
+}
+
+/* ------------------------------ bots (M3) -------------------------------- */
+
+/**
+ * Send a Recall.ai notetaker into a Zoom/Meet/Teams call. Add-on gated:
+ * "meeting_bots" lives only in a workspace's entitlements snapshot (operator
+ * portal), never in a band. Same lenient minutes gate as recording, the
+ * duration is only known when the call ends.
+ */
+export async function sendBot(
+  ctx: Ctx,
+  input: { meetingUrl: string; title: string; projectId?: string | null },
+  deps: MeetingDeps = {},
+): Promise<MeetingDTO> {
+  if (!can(ctx.workspace.plan, "meeting_bots", ctx.workspace.entitlements)) {
+    throw new LimitError(
+      "feature",
+      "Meeting bots are an add-on. Ask us to switch them on for your workspace",
+      "meeting_bots",
+    );
+  }
+  if (!deps.botCreate && !recallConfigured()) {
+    throw new ValidationError("Meeting bots aren't enabled on this server yet");
+  }
+
+  const { usedMinutes, limitMinutes } = await meetingUsage(ctx);
+  if (usedMinutes >= limitMinutes) {
+    throw new LimitError(
+      "meetings",
+      `Your workspace has used its ${limitMinutes} meeting minutes this month`,
+    );
+  }
+
+  let projectId: string | null = input.projectId ?? null;
+  if (projectId) {
+    const [p] = await ctx.db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(
+        and(eq(projects.id, projectId), eq(projects.workspaceId, ctx.workspace.id)),
+      );
+    if (!p) throw new NotFoundError("Project not found");
+  }
+
+  const id = crypto.randomUUID();
+  const { botId } = await (deps.botCreate ?? createBot)({
+    meetingUrl: input.meetingUrl,
+    metadata: { meetingId: id, workspaceId: ctx.workspace.id },
+  });
+
+  const [row] = await ctx.db
+    .insert(meetings)
+    .values({
+      id,
+      workspaceId: ctx.workspace.id,
+      createdBy: ctx.userId,
+      projectId,
+      visibility: projectId ? "workspace" : "private",
+      title: input.title.slice(0, 200),
+      status: "uploading",
+      source: "bot",
+      botId,
+      botStatus: "joining_call",
+    })
+    .returning();
+  return toDTO(row, null);
+}
+
+/** Grab the finished MP3 bytes; null when it doesn't fit our storage cap. */
+async function defaultFetchAudio(url: string): Promise<Uint8Array | null> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`bot audio fetch ${res.status}`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  return buf.byteLength <= MEETING_MAX_BYTES ? buf : null;
+}
+
+/**
+ * Webhook entry: a Recall status change for some bot. SYSTEM-level (no
+ * session); authority is the verified Svix signature, and the acting user is
+ * the meeting's creator (their ctx re-derives the same privacy semantics).
+ * Idempotent: Svix retries and duplicate "done" events no-op.
+ */
+export async function handleBotStatus(
+  db: Db,
+  botId: string,
+  code: string,
+  deps: MeetingDeps = {},
+): Promise<"ok" | "ignored"> {
+  const [row] = await db
+    .select()
+    .from(meetings)
+    .where(eq(meetings.botId, botId));
+  if (!row) return "ignored";
+
+  const FATAL: Record<string, string> = {
+    fatal: "The bot couldn't join the call",
+    recording_permission_denied:
+      "The meeting host declined the recording permission",
+  };
+
+  if (FATAL[code]) {
+    await db
+      .update(meetings)
+      .set({
+        botStatus: code,
+        // Only fail it if it never produced a recording.
+        ...(row.status === "uploading"
+          ? { status: "failed" as const, error: FATAL[code] }
+          : {}),
+      })
+      .where(eq(meetings.id, row.id));
+    return "ok";
+  }
+
+  if (code !== "done") {
+    await db.update(meetings).set({ botStatus: code }).where(eq(meetings.id, row.id));
+    return "ok";
+  }
+
+  // done → fetch the recording exactly once.
+  const [claimed] = await db
+    .update(meetings)
+    .set({ status: "processing", botStatus: code, error: null })
+    .where(
+      and(
+        eq(meetings.id, row.id),
+        sql`${meetings.status} in ('uploading', 'failed')`,
+      ),
+    )
+    .returning();
+  if (!claimed) return "ignored"; // another delivery got here first
+
+  const ctx = await resolveCtx(db, row.createdBy, row.workspaceId);
+
+  try {
+    const mediaUrl = await (deps.botAudio ?? botAudioUrl)(botId);
+    if (!mediaUrl) {
+      await markFailed(db, row.id, "The bot finished but there's no recording");
+      return "ok";
+    }
+
+    // Keep a copy for playback when it fits our storage cap; transcribe
+    // straight off Recall's presigned URL either way.
+    let transcribeUrl = mediaUrl;
+    const bytes = await (deps.fetchAudio ?? defaultFetchAudio)(mediaUrl).catch(
+      () => null,
+    );
+    if (bytes) {
+      const path = `${row.workspaceId}/meetings/${row.id}.mp3`;
+      try {
+        await (deps.storeObject ?? putObject)(path, bytes, "audio/mpeg");
+        await db
+          .update(meetings)
+          .set({ audioPath: path, mime: "audio/mpeg", sizeBytes: bytes.byteLength })
+          .where(eq(meetings.id, row.id));
+        transcribeUrl = await (deps.signDownload ?? signedDownloadUrl)(path);
+      } catch (err) {
+        console.warn("[meetings] bot audio store failed, transcript-only", err);
+      }
+    }
+
+    await runPipeline(ctx, claimed, transcribeUrl, deps);
+    return "ok";
+  } catch (err) {
+    console.error("[meetings] bot processing failed", err);
+    await markFailed(db, row.id, "Fetching the bot's recording failed. Try again.");
+    return "ok";
   }
 }
 
@@ -437,6 +672,7 @@ export async function updateMeeting(
     title?: string;
     visibility?: "private" | "workspace";
     projectId?: string | null;
+    speakerNames?: Record<string, string>;
   },
 ): Promise<MeetingDTO> {
   const [row] = await ctx.db
@@ -447,6 +683,10 @@ export async function updateMeeting(
 
   const next: Partial<typeof meetings.$inferInsert> = {};
   if (patch.title !== undefined) next.title = patch.title.slice(0, 200);
+  if (patch.speakerNames !== undefined) {
+    // Merge over what's there so renaming one speaker keeps the others.
+    next.speakerNames = { ...(row.speakerNames ?? {}), ...patch.speakerNames };
+  }
 
   if (patch.projectId !== undefined) {
     if (patch.projectId) {

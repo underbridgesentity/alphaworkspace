@@ -70,6 +70,29 @@ export async function deleteObject(path: string): Promise<void> {
 }
 
 /**
+ * Server-side upload (bot recordings arrive via webhook, no browser to hand
+ * a signed URL to). Upsert so webhook retries can't collide.
+ */
+export async function putObject(
+  path: string,
+  body: Uint8Array,
+  mime: string,
+): Promise<void> {
+  // Copy into a plain ArrayBuffer; fetch's BodyInit won't take a view that
+  // could be backed by a SharedArrayBuffer.
+  const buf = new ArrayBuffer(body.byteLength);
+  new Uint8Array(buf).set(body);
+  const res = await sb(`/object/${BUCKET}/${path}`, {
+    method: "POST",
+    headers: { "content-type": mime, "x-upsert": "true" },
+    body: buf,
+  });
+  if (!res.ok) {
+    throw new Error(`storage put failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+/**
  * The ACTUAL stored byte size of an object (server-side truth), or null if it
  * can't be read. Used to reconcile the client-declared size on confirm so a
  * caller can't under-report to slip past the storage quota.

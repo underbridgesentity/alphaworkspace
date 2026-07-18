@@ -90,6 +90,7 @@ export async function listWorkspacesAdmin() {
       name: workspaces.name,
       slug: workspaces.slug,
       plan: workspaces.plan,
+      entitlements: workspaces.entitlements,
       createdAt: workspaces.createdAt,
       ownerEmail: users.email,
       members: sql<number>`(select count(*) from ${memberships} m where m.workspace_id = ${workspaces.id})`,
@@ -101,11 +102,12 @@ export async function listWorkspacesAdmin() {
     .orderBy(desc(workspaces.createdAt))
     .limit(200);
 
-  return rows.map((r) => ({
+  return rows.map(({ entitlements, ...r }) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),
     members: Number(r.members),
     captures: Number(r.captures),
+    botsEnabled: Boolean(entitlements?.features?.includes("meeting_bots")),
   }));
 }
 
@@ -134,6 +136,42 @@ export async function setWorkspacePlanAdmin(
     type: "plan_changed",
     actorId,
     data: { from: ws.plan, to: plan, reason: "operator_comp" },
+  });
+}
+
+/**
+ * Toggle the meeting-bots add-on for one workspace. It lives ONLY in the
+ * entitlements snapshot (no band includes it, it has per-minute vendor
+ * cost); the snapshot is seeded from the plan config when absent. NOTE:
+ * a later plan change through comp or PayFast rewrites the snapshot, so
+ * re-enable after changing a band.
+ */
+export async function setMeetingBotsAdmin(
+  workspaceId: string,
+  enabled: boolean,
+  actorId: string,
+): Promise<void> {
+  const [ws] = await db
+    .select({ plan: workspaces.plan, entitlements: workspaces.entitlements })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId));
+  if (!ws) throw new ForbiddenError("Workspace not found");
+
+  const base = ws.entitlements ?? entitlementsSnapshot(ws.plan);
+  const features = new Set(base.features ?? []);
+  if (enabled) features.add("meeting_bots");
+  else features.delete("meeting_bots");
+
+  await db
+    .update(workspaces)
+    .set({ entitlements: { ...base, features: [...features] } })
+    .where(eq(workspaces.id, workspaceId));
+
+  await db.insert(activityEvents).values({
+    workspaceId,
+    type: "plan_changed",
+    actorId,
+    data: { addon: "meeting_bots", enabled, reason: "operator_toggle" },
   });
 }
 

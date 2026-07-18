@@ -479,6 +479,14 @@ export const meetings = pgTable(
     title: text("title").default("Meeting").notNull(),
     visibility: meetingVisibility("visibility").default("private").notNull(),
     status: meetingStatus("status").default("uploading").notNull(),
+    /** "device" = recorded/uploaded here; "bot" = a Recall.ai bot joined the call. */
+    source: text("source").default("device").notNull(),
+    /** Recall.ai bot id (source "bot" only); webhook lookups key on this. */
+    botId: text("bot_id"),
+    /** Last Recall status code (joining_call, in_call_recording, done, fatal...). */
+    botStatus: text("bot_status"),
+    /** Creator-assigned names for diarized speakers, keyed by speaker index. */
+    speakerNames: jsonb("speaker_names").$type<Record<string, string> | null>(),
     audioPath: text("audio_path"),
     mime: text("mime"),
     sizeBytes: integer("size_bytes").default(0).notNull(),
@@ -512,7 +520,10 @@ export const meetings = pgTable(
     createdAt: createdAt(),
     processedAt: timestamp("processed_at", { withTimezone: true, mode: "date" }),
   },
-  (t) => [index("meetings_ws_idx").on(t.workspaceId, t.createdAt)],
+  (t) => [
+    index("meetings_ws_idx").on(t.workspaceId, t.createdAt),
+    index("meetings_bot_idx").on(t.botId),
+  ],
 );
 
 /* ------------------------- notifications -------------------------------- */

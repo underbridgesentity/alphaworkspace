@@ -6,6 +6,7 @@ import {
   platformOverview,
   recentSignups,
   requireOperator,
+  setMeetingBotsAdmin,
   setWorkspacePlanAdmin,
 } from "@/server/admin/operator";
 
@@ -22,16 +23,26 @@ export const GET = api(async () => {
   return json({ overview: { ...overview, signups30d }, workspaces });
 });
 
-const planSchema = z.object({
-  workspaceId: z.uuid(),
-  plan: z.enum(["free", "team", "studio"]),
-});
+const adminActionSchema = z.union([
+  z.object({
+    workspaceId: z.uuid(),
+    plan: z.enum(["free", "team", "studio"]),
+  }),
+  z.object({
+    workspaceId: z.uuid(),
+    meetingBots: z.boolean(),
+  }),
+]);
 
-/** Operator comp/downgrade, changes a plan without PayFast. */
+/** Operator controls: comp/downgrade a plan, or toggle the bots add-on. */
 export const POST = api(async (req) => {
   const user = await requireUser();
   await requireOperator(user);
-  const { workspaceId, plan } = await readJson(req, planSchema);
-  await setWorkspacePlanAdmin(workspaceId, plan, user.id);
+  const input = await readJson(req, adminActionSchema);
+  if ("plan" in input) {
+    await setWorkspacePlanAdmin(input.workspaceId, input.plan, user.id);
+  } else {
+    await setMeetingBotsAdmin(input.workspaceId, input.meetingBots, user.id);
+  }
   return json({ ok: true });
 });

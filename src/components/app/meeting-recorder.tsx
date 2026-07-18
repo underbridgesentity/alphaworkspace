@@ -27,7 +27,14 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
-type Mode = "idle" | "recording" | "uploading";
+type Mode = "idle" | "recording" | "uploading" | "failed";
+
+/** A finished recording we haven't managed to upload yet. NEVER dropped. */
+interface PendingUpload {
+  blob: Blob;
+  mime: string;
+  durationSec: number;
+}
 
 function pickMime(): string {
   if (typeof MediaRecorder === "undefined") return "audio/webm";
@@ -59,6 +66,8 @@ export function MeetingRecorderDialog({
   const [source, setSource] = useState<"mic" | "call" | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(0);
+  const [failMessage, setFailMessage] = useState("");
+  const pendingRef = useRef<PendingUpload | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -83,6 +92,41 @@ export function MeetingRecorderDialog({
   };
   // Unmount safety net: never leave the mic running.
   useEffect(() => cleanup, []);
+
+  // Leaving mid-recording or mid-upload loses the audio; make it deliberate.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  useEffect(() => {
+    const warn = (e: BeforeUnloadEvent) => {
+      if (modeRef.current === "recording" || modeRef.current === "uploading") {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
+
+  // Browsers release the wake lock when the tab hides; take it back on return.
+  useEffect(() => {
+    const revive = () => {
+      if (document.visibilityState !== "visible") return;
+      if (modeRef.current !== "recording" || wakeLockRef.current) return;
+      (
+        navigator as Navigator & {
+          wakeLock?: {
+            request: (t: "screen") => Promise<{ release: () => Promise<void> }>;
+          };
+        }
+      ).wakeLock
+        ?.request("screen")
+        .then((l) => {
+          wakeLockRef.current = l;
+        })
+        .catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", revive);
+    return () => document.removeEventListener("visibilitychange", revive);
+  }, []);
 
   const meter = (stream: MediaStream) => {
     const ac = new AudioContext();
@@ -112,6 +156,8 @@ export function MeetingRecorderDialog({
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
+    // A dying recorder (device yanked, phone call) still yields what it got.
+    rec.onerror = () => stopAndUpload();
     rec.start(1000);
     recorderRef.current = rec;
     startedAtRef.current = Date.now();
@@ -161,9 +207,10 @@ export function MeetingRecorderDialog({
       });
       if (display.getAudioTracks().length === 0) {
         display.getTracks().forEach((t) => t.stop());
-        toast("Pick the call's tab and tick 'Also share tab audio'", {
-          variant: "error",
-        });
+        toast(
+          "No call audio came through. Share the call's tab and tick 'Also share tab audio'. For the Teams or Zoom desktop app, share your entire screen and tick 'Also share system audio' (Windows)",
+          { variant: "error" },
+        );
         return;
       }
       const mic = await navigator.mediaDevices.getUserMedia({
@@ -190,6 +237,7 @@ export function MeetingRecorderDialog({
   };
 
   const upload = async (blob: Blob, mime: string, durationSec: number) => {
+    pendingRef.current = { blob, mime, durationSec };
     setMode("uploading");
     try {
       if (blob.size > MEETING_MAX_BYTES) {
@@ -231,15 +279,22 @@ export function MeetingRecorderDialog({
         method: "POST",
       }).catch(() => undefined);
 
+      pendingRef.current = null;
       router.push(`/w/${workspace.slug}/meetings/${meetingId}`);
       onClose();
     } catch (err) {
-      setMode("idle");
+      // The recording is safe in memory; offer retry instead of losing it.
       setSource(null);
-      toast(err instanceof ApiError ? err.message : "Upload failed. Try again", {
-        variant: "error",
-      });
+      setFailMessage(
+        err instanceof ApiError ? err.message : "The upload didn't make it",
+      );
+      setMode("failed");
     }
+  };
+
+  const retryUpload = () => {
+    const p = pendingRef.current;
+    if (p) void upload(p.blob, p.mime, p.durationSec);
   };
 
   const stopAndUpload = () => {
@@ -274,27 +329,31 @@ export function MeetingRecorderDialog({
 
   const noMinutes = remainingMinutes <= 0;
 
+  const tryClose = () => {
+    if (mode === "recording") {
+      toast("Stop the recording first");
+      return;
+    }
+    if (
+      mode === "failed" &&
+      !window.confirm("Close without uploading? This recording will be lost.")
+    ) {
+      return;
+    }
+    cleanup();
+    onClose();
+  };
+
   return (
     <Dialog
       open
-      onClose={() => {
-        if (mode === "recording") return; // stop first, deliberately
-        cleanup();
-        onClose();
-      }}
+      onClose={tryClose}
       ariaLabel="Record a meeting"
       variant="center"
     >
       <DialogHeader
         title={mode === "recording" ? "Recording…" : "Record a meeting"}
-        onClose={() => {
-          if (mode === "recording") {
-            toast("Stop the recording first");
-            return;
-          }
-          cleanup();
-          onClose();
-        }}
+        onClose={tryClose}
       />
       <div className="px-5 pb-5">
         {mode === "idle" && (
@@ -325,15 +384,22 @@ export function MeetingRecorderDialog({
                 <Mic className="size-4" />
                 Record the room
               </Button>
-              <Button
-                variant="outline"
-                onClick={startCall}
-                disabled={noMinutes}
-                className="hidden md:inline-flex"
-              >
-                <MonitorSpeaker className="size-4" />
-                Record an online call (this computer)
-              </Button>
+              <div className="hidden md:block">
+                <Button
+                  variant="outline"
+                  onClick={startCall}
+                  disabled={noMinutes}
+                  className="w-full"
+                >
+                  <MonitorSpeaker className="size-4" />
+                  Record an online call (this computer)
+                </Button>
+                <p className="mt-1 px-1 text-[11px] leading-snug text-faint">
+                  Call in a browser tab: share that tab with its audio. Teams
+                  or Zoom app: share your entire screen with system audio
+                  (Windows).
+                </p>
+              </div>
               <label
                 className={cn(
                   "press inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-control text-muted hover:bg-raised hover:text-ink",
@@ -394,6 +460,21 @@ export function MeetingRecorderDialog({
             <p className="mt-1 text-sm text-muted">
               Keep this open until it finishes.
             </p>
+          </div>
+        )}
+
+        {mode === "failed" && (
+          <div className="flex flex-col items-center py-6 text-center">
+            <p className="font-medium text-danger">{failMessage}</p>
+            <p className="mt-1 max-w-xs text-sm text-muted">
+              Your recording is still here. Retry when the connection settles.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <Button onClick={retryUpload}>Try the upload again</Button>
+              <Button variant="ghost" onClick={tryClose}>
+                Discard it
+              </Button>
+            </div>
           </div>
         )}
       </div>

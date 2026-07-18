@@ -31,6 +31,7 @@ interface AdminData {
     captures: number;
     createdAt: string;
     lastActivity: string | null;
+    botsEnabled: boolean;
   }[];
 }
 
@@ -48,6 +49,18 @@ export default function AdminPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["admin"] });
       toast("Plan updated", { variant: "success" });
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : "Failed", { variant: "error" }),
+  });
+
+  const setBots = useMutation({
+    mutationFn: (vars: { workspaceId: string; meetingBots: boolean }) =>
+      apiMutate("/api/admin", { method: "POST", body: vars }),
+    onSuccess: async (_r, vars) => {
+      await qc.invalidateQueries({ queryKey: ["admin"] });
+      toast(vars.meetingBots ? "Meeting bots enabled" : "Meeting bots disabled", {
+        variant: "success",
+      });
     },
     onError: (e) => toast(e instanceof Error ? e.message : "Failed", { variant: "error" }),
   });
@@ -102,6 +115,7 @@ export default function AdminPage() {
                 <th className="px-3 py-2 font-medium">Captures (mo)</th>
                 <th className="px-3 py-2 font-medium">Last active</th>
                 <th className="px-3 py-2 font-medium">Plan</th>
+                <th className="px-3 py-2 font-medium">Bots</th>
               </tr>
             </thead>
             <tbody>
@@ -132,6 +146,22 @@ export default function AdminPage() {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {/* The add-on: real vendor cost per minute, so opt-in per workspace. */}
+                    <button
+                      onClick={() =>
+                        setBots.mutate({ workspaceId: w.id, meetingBots: !w.botsEnabled })
+                      }
+                      aria-label={`Meeting bots for ${w.name}`}
+                      className={
+                        w.botsEnabled
+                          ? "press rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent"
+                          : "press rounded-full bg-raised px-2.5 py-1 text-xs font-medium text-faint hover:text-ink"
+                      }
+                    >
+                      {w.botsEnabled ? "On" : "Off"}
+                    </button>
                   </td>
                 </tr>
               ))}

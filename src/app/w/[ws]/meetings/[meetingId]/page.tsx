@@ -12,9 +12,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  Bot,
   Check,
   ChevronDown,
   Lock,
+  Mail,
+  Pencil,
   Play,
   RefreshCw,
   Sparkles,
@@ -26,9 +29,11 @@ import { cn } from "@/lib/cn";
 import { apiGet, apiMutate, ApiError } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import { timeAgo } from "@/lib/dates";
-import type { MeetingActionItem, MeetingDTO } from "@/lib/types";
+import { botStatusCopy, speakerLabel, speakersIn } from "@/lib/meetings";
+import type { MeetingActionItem, MeetingDTO, MemberDTO } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
@@ -60,6 +65,7 @@ export default function MeetingPage() {
   });
   const meeting = data?.meeting;
   const mine = meeting?.createdBy?.id === me.id;
+  const [emailing, setEmailing] = useState(false);
 
   const refresh = () => {
     void queryClient.invalidateQueries({
@@ -75,6 +81,7 @@ export default function MeetingPage() {
       title?: string;
       visibility?: "private" | "workspace";
       projectId?: string | null;
+      speakerNames?: Record<string, string>;
     }) => apiMutate(base, { method: "PATCH", body }),
     onSuccess: refresh,
     onError: (e) =>
@@ -164,6 +171,15 @@ export default function MeetingPage() {
           >
             {(close) => (
               <>
+                <MenuItem
+                  onClick={() => {
+                    close();
+                    setEmailing(true);
+                  }}
+                >
+                  <Mail className="size-4" />
+                  Email the notes to teammates
+                </MenuItem>
                 {meeting.hasAudio && (
                   <MenuItem
                     onClick={async () => {
@@ -265,18 +281,26 @@ export default function MeetingPage() {
       {/* ----------------------------- status ----------------------------- */}
       {(meeting.status === "processing" || meeting.status === "uploading") && (
         <div className="mt-6 flex items-center gap-3 rounded-card bg-surface p-4">
-          <Spinner className="size-4" />
+          {meeting.source === "bot" && meeting.status === "uploading" ? (
+            <Bot className="size-4 shrink-0 text-accent" />
+          ) : (
+            <Spinner className="size-4" />
+          )}
           <div className="flex-1">
             <p className="text-sm font-medium">
               {meeting.status === "processing"
                 ? "Transcribing and summarizing…"
-                : "Waiting for the audio upload…"}
+                : meeting.source === "bot"
+                  ? botStatusCopy(meeting.botStatus)
+                  : "Waiting for the audio upload…"}
             </p>
             <p className="text-xs text-muted">
-              This usually takes about a minute. The page updates itself.
+              {meeting.source === "bot" && meeting.status === "uploading"
+                ? "The notes arrive on their own after the call ends. The page updates itself."
+                : "This usually takes about a minute. The page updates itself."}
             </p>
           </div>
-          {meeting.status === "uploading" && mine && (
+          {meeting.status === "uploading" && meeting.source === "device" && mine && (
             <Button size="sm" variant="outline" onClick={reprocess}>
               <RefreshCw className="size-4" />
               Transcribe now
@@ -289,7 +313,7 @@ export default function MeetingPage() {
           <p className="text-sm font-medium text-danger">
             {meeting.error ?? "Processing failed"}
           </p>
-          {mine && (
+          {mine && (meeting.source === "device" || meeting.hasAudio) && (
             <Button className="mt-3" size="sm" variant="outline" onClick={reprocess}>
               <RefreshCw className="size-4" />
               Try again
@@ -380,12 +404,27 @@ export default function MeetingPage() {
 
       {/* --------------------------- transcript ---------------------------- */}
       {meeting.transcript && meeting.transcript.text && (
-        <Transcript transcript={meeting.transcript} />
+        <Transcript
+          transcript={meeting.transcript}
+          speakerNames={meeting.speakerNames}
+          canRename={mine}
+          onRename={(speaker, name) =>
+            patch.mutate({ speakerNames: { [String(speaker)]: name } })
+          }
+        />
       )}
 
       {/* ----------------------------- audio ------------------------------- */}
       {meeting.hasAudio && meeting.status === "ready" && (
         <AudioPlayer url={`${base}/audio`} />
+      )}
+
+      {emailing && (
+        <EmailNotesDialog
+          base={base}
+          meIdToSkip={me.id}
+          onClose={() => setEmailing(false)}
+        />
       )}
     </div>
   );
@@ -593,10 +632,25 @@ function ActionItemCard({
 
 function Transcript({
   transcript,
+  speakerNames,
+  canRename,
+  onRename,
 }: {
   transcript: { text: string; utterances: { speaker: number; start: number; end: number; text: string }[] };
+  speakerNames: Record<string, string> | null | undefined;
+  canRename: boolean;
+  onRename: (speaker: number, name: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState("");
+  const speakers = speakersIn(transcript.utterances);
+
+  const commit = () => {
+    if (editing !== null && draft.trim()) onRename(editing, draft.trim());
+    setEditing(null);
+  };
+
   return (
     <div className="mt-6">
       <button
@@ -609,29 +663,164 @@ function Transcript({
         Transcript
       </button>
       {open && (
-        <div className="mt-2 max-h-[28rem] space-y-3 overflow-y-auto rounded-card bg-surface p-4">
-          {transcript.utterances.length > 0 ? (
-            transcript.utterances.map((u, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="w-14 shrink-0 pt-0.5 text-xs tabular text-faint">
-                  {fmtStamp(u.start)}
-                </span>
-                <div className="min-w-0">
-                  <span className="text-xs font-semibold text-accent">
-                    Speaker {u.speaker + 1}
-                  </span>
-                  <p className="text-sm leading-relaxed">{u.text}</p>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">
-              {transcript.text}
-            </p>
+        <div className="mt-2 rounded-card bg-surface p-4">
+          {/* Put names to the voices; the whole page reads better after. */}
+          {canRename && speakers.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-line pb-3">
+              {speakers.map((s) =>
+                editing === s ? (
+                  <input
+                    key={s}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={commit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commit();
+                      if (e.key === "Escape") setEditing(null);
+                    }}
+                    maxLength={60}
+                    autoFocus
+                    placeholder={`Speaker ${s + 1}`}
+                    className="h-7 w-32 rounded-full border border-accent bg-surface px-2.5 text-xs outline-none"
+                  />
+                ) : (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setEditing(s);
+                      setDraft(speakerNames?.[String(s)] ?? "");
+                    }}
+                    className="press flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs font-medium text-muted hover:text-ink"
+                    title="Rename this speaker"
+                  >
+                    {speakerLabel(s, speakerNames)}
+                    <Pencil className="size-3" />
+                  </button>
+                ),
+              )}
+            </div>
           )}
+          <div className="max-h-[28rem] space-y-3 overflow-y-auto">
+            {transcript.utterances.length > 0 ? (
+              transcript.utterances.map((u, i) => (
+                <div key={i} className="flex gap-3">
+                  <span className="w-14 shrink-0 pt-0.5 text-xs tabular text-faint">
+                    {fmtStamp(u.start)}
+                  </span>
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-accent">
+                      {speakerLabel(u.speaker, speakerNames)}
+                    </span>
+                    <p className="text-sm leading-relaxed">{u.text}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {transcript.text}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function EmailNotesDialog({
+  base,
+  meIdToSkip,
+  onClose,
+}: {
+  base: string;
+  meIdToSkip: string;
+  onClose: () => void;
+}) {
+  const { members } = useWorkspace();
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const candidates: MemberDTO[] = members.filter((m) => m.id !== meIdToSkip);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const send = async () => {
+    setBusy(true);
+    try {
+      const res = await apiMutate<{ sent: number }>(`${base}/email`, {
+        method: "POST",
+        body: { memberIds: [...selected] },
+      });
+      if ("sent" in res) {
+        toast(
+          res.sent === 1 ? "Notes sent to 1 person" : `Notes sent to ${res.sent} people`,
+          { variant: "success" },
+        );
+      }
+      onClose();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Sending failed", {
+        variant: "error",
+      });
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onClose={onClose} ariaLabel="Email the notes" variant="center">
+      <DialogHeader title="Email the notes" onClose={onClose} />
+      <div className="px-5 pb-5">
+        {candidates.length === 0 ? (
+          <p className="text-sm text-muted">
+            You're the only person in this workspace so far. Invite your team
+            first, then send them notes.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted">
+              The summary, decisions and action items go out by email. The
+              recording and transcript stay here.
+            </p>
+            <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+              {candidates.map((m) => (
+                <label
+                  key={m.id}
+                  className="press flex cursor-pointer items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-raised"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(m.id)}
+                    onChange={() => toggle(m.id)}
+                    className="size-4 accent-[var(--color-accent)]"
+                  />
+                  <Avatar name={m.name} email={m.email} image={m.image} size={22} />
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {m.name ?? m.email}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          {candidates.length > 0 && (
+            <Button onClick={send} loading={busy} disabled={selected.size === 0}>
+              <Mail className="size-4" />
+              Send
+            </Button>
+          )}
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

@@ -337,12 +337,18 @@ export interface MeetingDTO {
   projectId: string | null;
   visibility: MeetingVisibility;
   status: MeetingStatus;
+  /** "device" = recorded here; "bot" = a notetaker bot joined the call. */
+  source: "device" | "bot";
+  /** Recall status code while a bot meeting is underway (joining_call...). */
+  botStatus?: string | null;
   durationSec: number;
   hasAudio: boolean;
   createdBy: UserLite | null;
   createdAt: string;
   summary: MeetingSummary | null;
   actionItems: MeetingActionItem[];
+  /** Creator-assigned names for diarized speakers ("0" -> "Naledi"). */
+  speakerNames?: Record<string, string> | null;
   /** Detail only; omitted in lists. */
   transcript?: { text: string; utterances: MeetingUtterance[] } | null;
   error?: string | null;

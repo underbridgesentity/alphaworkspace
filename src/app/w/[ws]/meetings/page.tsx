@@ -7,16 +7,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines, Lock, Mic, Users } from "lucide-react";
+import { AudioLines, Bot, Lock, Mic, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiGet } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import { timeAgo } from "@/lib/dates";
+import { botStatusCopy } from "@/lib/meetings";
 import type { MeetingDTO } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { MeetingRecorderDialog } from "@/components/app/meeting-recorder";
+import { MeetingBotDialog } from "@/components/app/meeting-bot-dialog";
 
 interface MeetingsData {
   meetings: MeetingDTO[];
@@ -40,6 +42,7 @@ const STATUS_COPY: Record<MeetingDTO["status"], string> = {
 export default function MeetingsPage() {
   const { workspace } = useWorkspace();
   const [recording, setRecording] = useState(false);
+  const [sendingBot, setSendingBot] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["ws", workspace.slug, "meetings"],
@@ -67,10 +70,20 @@ export default function MeetingsPage() {
             themselves.
           </p>
         </div>
-        <Button onClick={() => setRecording(true)}>
-          <Mic className="size-4" />
-          Record
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setSendingBot(true)}
+            aria-label="Send a notetaker bot"
+          >
+            <Bot className="size-4" />
+            <span className="hidden sm:inline">Send a bot</span>
+          </Button>
+          <Button onClick={() => setRecording(true)}>
+            <Mic className="size-4" />
+            Record
+          </Button>
+        </div>
       </div>
 
       {usage && (
@@ -134,8 +147,13 @@ export default function MeetingsPage() {
                         : "bg-raised text-muted",
                     )}
                   >
-                    {STATUS_COPY[m.status]}
+                    {m.source === "bot" && m.status === "uploading"
+                      ? botStatusCopy(m.botStatus)
+                      : STATUS_COPY[m.status]}
                   </span>
+                )}
+                {m.source === "bot" && (
+                  <Bot className="size-3.5 shrink-0 text-faint" aria-label="Bot recording" />
                 )}
                 <span
                   className="flex shrink-0 items-center gap-1 rounded-full bg-raised px-2 py-0.5 text-[11px] font-medium text-muted"
@@ -184,6 +202,7 @@ export default function MeetingsPage() {
           onClose={() => setRecording(false)}
         />
       )}
+      {sendingBot && <MeetingBotDialog onClose={() => setSendingBot(false)} />}
     </div>
   );
 }

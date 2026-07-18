@@ -50,6 +50,13 @@
       "when": 1784359018053,
       "tag": "0006_pale_random",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784361305861,
+      "tag": "0007_keen_hardball",
+      "breakpoints": true
     }
   ]
 }

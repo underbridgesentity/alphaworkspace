@@ -230,8 +230,32 @@ export const meetingPatchSchema = z
     title: z.string().trim().min(1).max(200),
     visibility: z.enum(["private", "workspace"]),
     projectId: uuid.nullable(),
+    /** Speaker index -> display name; max 32 speakers is plenty. */
+    speakerNames: z
+      .record(z.string().regex(/^\d{1,2}$/), z.string().trim().min(1).max(60))
+      .refine((r) => Object.keys(r).length <= 32, "Too many speakers"),
   })
   .partial();
+
+/** Platforms a notetaker bot can join in M3. */
+export const MEETING_URL_PATTERN =
+  /^https:\/\/([\w-]+\.)*(zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com)\//i;
+
+export const meetingBotSchema = z.object({
+  meetingUrl: z
+    .url()
+    .max(2_000)
+    .refine(
+      (u) => MEETING_URL_PATTERN.test(u),
+      "Paste a Zoom, Google Meet or Microsoft Teams link",
+    ),
+  title: z.string().trim().min(1).max(200).default("Meeting"),
+  projectId: uuid.nullable().optional(),
+});
+
+export const meetingEmailSchema = z.object({
+  memberIds: z.array(uuid).min(1).max(25),
+});
 
 export const meetingItemSchema = z.object({
   index: z.number().int().min(0).max(99),

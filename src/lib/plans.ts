@@ -14,7 +14,10 @@ export type Feature =
   // Phase 2 features gate on these flags when they ship:
   | "scorecards"
   | "time_tracking"
-  | "client_reports";
+  | "client_reports"
+  // Add-on, NOT part of any band: enabled per workspace via the operator
+  // portal (it carries real per-minute vendor cost). Lives in the snapshot.
+  | "meeting_bots";
 
 export interface PlanConfig {
   id: PlanId;
