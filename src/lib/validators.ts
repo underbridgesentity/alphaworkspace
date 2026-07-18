@@ -205,3 +205,60 @@ export const checkoutSchema = z.object({
   plan: z.enum(["team", "studio"]),
   billing: z.enum(["monthly", "annual"]).default("monthly"),
 });
+
+/* ------------------------------ meetings ---------------------------------- */
+
+/** Hard caps regardless of plan: 2 hours, 150 MB. */
+export const MEETING_MAX_SECONDS = 7_200;
+export const MEETING_MAX_BYTES = 157_286_400;
+
+export const meetingBeginSchema = z.object({
+  id: uuid.optional(),
+  title: z.string().trim().min(1).max(200).default("Meeting"),
+  mime: z.string().trim().min(3).max(100),
+  sizeBytes: z.number().int().min(1).max(MEETING_MAX_BYTES),
+  durationSec: z.number().int().min(1).max(MEETING_MAX_SECONDS),
+  projectId: uuid.nullable().optional(),
+});
+
+export const meetingPatchSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    visibility: z.enum(["private", "workspace"]),
+    projectId: uuid.nullable(),
+  })
+  .partial();
+
+export const meetingItemSchema = z.object({
+  index: z.number().int().min(0).max(99),
+  action: z.enum(["accept", "dismiss"]),
+  edits: z
+    .object({
+      title: z.string().trim().min(1).max(500),
+      assigneeId: uuid.nullable(),
+      dueDate: dayString.nullable(),
+      projectId: uuid,
+    })
+    .partial()
+    .optional(),
+});
+
+/** Strict shape the meeting summarizer must return (forced tool call). */
+export const meetingSummarySchema = z.object({
+  tldr: z.string().trim().min(1).max(2_000),
+  decisions: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  risks: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  actionItems: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(500),
+        note: z.string().max(2_000).nullable().default(null),
+        assigneeId: uuid.nullable().default(null),
+        assigneeName: z.string().max(200).nullable().default(null),
+        dueDate: dayString.nullable().default(null),
+        projectId: uuid.nullable().default(null),
+      }),
+    )
+    .max(30)
+    .default([]),
+});

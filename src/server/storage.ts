@@ -104,6 +104,13 @@ export async function objectSize(path: string): Promise<number | null> {
   return null;
 }
 
+/**
+ * Bucket-level per-file ceiling. Sized for meeting audio (~150 MB, two hours
+ * of opus with headroom); attachments keep their own 25 MB cap in code
+ * (dal/attachments.ts), the bucket limit is just the outer wall.
+ */
+const BUCKET_FILE_LIMIT = 157_286_400;
+
 /** Idempotently ensure the private bucket exists (called on first upload). */
 export async function ensureBucket(): Promise<void> {
   const res = await sb(`/bucket`, {
@@ -113,11 +120,22 @@ export async function ensureBucket(): Promise<void> {
       id: BUCKET,
       name: BUCKET,
       public: false,
-      file_size_limit: 26_214_400, // 25 MB per file
+      file_size_limit: BUCKET_FILE_LIMIT,
     }),
   });
-  // 400 = already exists; anything else worth surfacing.
-  if (!res.ok && res.status !== 400 && res.status !== 409) {
-    console.warn("[storage] ensureBucket:", res.status, await res.text());
+  if (res.ok) return;
+  // 400/409 = already exists; update it in place so an old 25 MB-limit
+  // bucket learns the new ceiling. Anything else worth surfacing.
+  if (res.status === 400 || res.status === 409) {
+    const upd = await sb(`/bucket/${BUCKET}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ public: false, file_size_limit: BUCKET_FILE_LIMIT }),
+    });
+    if (!upd.ok) {
+      console.warn("[storage] bucket update:", upd.status, await upd.text());
+    }
+    return;
   }
+  console.warn("[storage] ensureBucket:", res.status, await res.text());
 }

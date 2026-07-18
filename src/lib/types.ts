@@ -26,6 +26,7 @@ export const ACTIVITY_TYPES = [
   "member_joined",
   "member_left",
   "capture_confirmed",
+  "meeting_recorded",
   "plan_changed",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -297,4 +298,53 @@ export interface WeekTimeDTO {
   totalMinutes: number;
   byMember: { user: UserLite; minutes: number }[];
   byProject: { id: string; name: string; color: string; minutes: number }[];
+}
+
+/* ------------------------------ meetings (M1) ----------------------------- */
+
+export type MeetingVisibility = "private" | "workspace";
+export type MeetingStatus = "uploading" | "processing" | "ready" | "failed";
+
+/** One extracted commitment; only confirmation turns it into a task. */
+export interface MeetingActionItem {
+  title: string;
+  note?: string | null;
+  assigneeId?: string | null;
+  /** The name heard in the room, kept even when no member matched. */
+  assigneeName?: string | null;
+  dueDate?: string | null;
+  projectId?: string | null;
+  status: "pending" | "accepted" | "dismissed";
+  taskId?: string | null;
+}
+
+export interface MeetingUtterance {
+  speaker: number;
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface MeetingSummary {
+  tldr: string;
+  decisions: string[];
+  risks: string[];
+}
+
+export interface MeetingDTO {
+  id: string;
+  title: string;
+  projectId: string | null;
+  visibility: MeetingVisibility;
+  status: MeetingStatus;
+  durationSec: number;
+  hasAudio: boolean;
+  createdBy: UserLite | null;
+  createdAt: string;
+  summary: MeetingSummary | null;
+  actionItems: MeetingActionItem[];
+  /** Detail only; omitted in lists. */
+  transcript?: { text: string; utterances: MeetingUtterance[] } | null;
+  error?: string | null;
+  engine?: string | null;
 }

@@ -30,6 +30,7 @@ export function entitlementsSnapshot(plan: PlanId) {
     maxMembers: p.maxMembers,
     maxActiveProjects: p.maxActiveProjects,
     voiceCapturesPerMonth: p.voiceCapturesPerMonth,
+    meetingMinutesPerMonth: p.meetingMinutesPerMonth,
     features: [...p.features],
   };
 }

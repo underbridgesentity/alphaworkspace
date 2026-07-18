@@ -8,7 +8,7 @@ import { enqueue } from "./outbox";
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
-  readonly limit?: "members" | "projects" | "captures" | "feature";
+  readonly limit?: "members" | "projects" | "captures" | "meetings" | "feature";
   /** Which feature, when limit === "feature". */
   readonly feature?: string;
 

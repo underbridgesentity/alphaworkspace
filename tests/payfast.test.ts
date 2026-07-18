@@ -230,6 +230,7 @@ describe("processItn", () => {
       maxMembers: PLANS.team.maxMembers,
       maxActiveProjects: PLANS.team.maxActiveProjects,
       voiceCapturesPerMonth: PLANS.team.voiceCapturesPerMonth,
+      meetingMinutesPerMonth: PLANS.team.meetingMinutesPerMonth,
       features: [...PLANS.team.features],
     });
 

@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import Link from "next/link";
-import { FolderKanban, Plus } from "lucide-react";
+import { AudioLines, ChevronRight, FolderKanban, Plus } from "lucide-react";
 import { useWorkspace } from "@/lib/client/workspace";
 import { NewProjectDialog } from "@/components/app/new-project-dialog";
 import { Avatar } from "@/components/ui/avatar";
@@ -85,6 +85,16 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+
+      {/* Mobile has no sidebar; this is the way to Meetings on a phone. */}
+      <Link
+        href={`/w/${workspace.slug}/meetings`}
+        className="press mt-4 flex items-center gap-2.5 rounded-card bg-surface p-4 hover:bg-raised md:hidden"
+      >
+        <AudioLines className="size-4.5 shrink-0 text-accent" />
+        <span className="flex-1 font-medium">Meetings</span>
+        <ChevronRight className="size-4 text-faint" />
+      </Link>
 
       {creating && <NewProjectDialog onClose={() => setCreating(false)} />}
     </div>

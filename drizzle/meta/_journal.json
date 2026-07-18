@@ -43,6 +43,13 @@
       "when": 1784311531164,
       "tag": "0005_cultured_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784359018053,
+      "tag": "0006_pale_random",
+      "breakpoints": true
     }
   ]
 }

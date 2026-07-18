@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AudioLines,
   ChartNoAxesColumn,
   Check,
   ChevronsUpDown,
@@ -65,6 +66,13 @@ export function Sidebar({ className }: { className?: string }) {
             icon={ChartNoAxesColumn}
           >
             Dashboard
+          </NavLink>
+          <NavLink
+            href={`${base}/meetings`}
+            active={pathname.startsWith(`${base}/meetings`)}
+            icon={AudioLines}
+          >
+            Meetings
           </NavLink>
         </div>
 

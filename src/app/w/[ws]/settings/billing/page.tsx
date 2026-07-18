@@ -203,6 +203,7 @@ export default function BillingSettingsPage() {
                       : `${plan.maxActiveProjects} active projects`}
                   </li>
                   <li>{plan.voiceCapturesPerMonth} voice captures/month</li>
+                  <li>{plan.meetingMinutesPerMonth} meeting minutes/month</li>
                   <li>Weekly narrative</li>
                   {plan.features.includes("morning_brief") && <li>Morning brief</li>}
                   {plan.features.includes("scorecards") && (

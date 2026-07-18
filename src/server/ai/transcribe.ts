@@ -63,6 +63,78 @@ export async function transcribeAudio(
   return { transcript, engine: MODEL() };
 }
 
+export interface DiarizedResult {
+  transcript: string;
+  utterances: { speaker: number; start: number; end: number; text: string }[];
+  /** Whole-file duration in seconds, from Deepgram's metadata (billing truth). */
+  durationSec: number;
+  engine: string;
+}
+
+/**
+ * Meeting-length transcription with speaker labels. Takes a URL (a signed
+ * Supabase download link) instead of bytes: Deepgram fetches the audio
+ * itself, so a 100 MB recording never has to squeeze through our function's
+ * request-body limit.
+ */
+export async function transcribeUrlDiarized(
+  url: string,
+  context: TranscribeContext,
+): Promise<DiarizedResult> {
+  const key = process.env.DEEPGRAM_API_KEY;
+  if (!key) throw new Error("Transcription not configured");
+
+  const params = new URLSearchParams({
+    model: MODEL(),
+    smart_format: "true",
+    punctuate: "true",
+    language: "en",
+    filler_words: "false",
+    diarize: "true",
+    utterances: "true",
+  });
+  for (const term of dedupeTerms(context.keyterms).slice(0, 90)) {
+    params.append("keyterm", term);
+  }
+
+  const res = await fetch(`https://api.deepgram.com/v1/listen?${params}`, {
+    method: "POST",
+    headers: { authorization: `Token ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    throw new Error(`deepgram ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  const body = (await res.json()) as {
+    metadata?: { duration?: number };
+    results?: {
+      channels?: { alternatives?: { transcript?: string }[] }[];
+      utterances?: {
+        speaker?: number;
+        start?: number;
+        end?: number;
+        transcript?: string;
+      }[];
+    };
+  };
+  const transcript =
+    body.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
+  const utterances = (body.results?.utterances ?? [])
+    .filter((u) => (u.transcript ?? "").trim().length > 0)
+    .map((u) => ({
+      speaker: u.speaker ?? 0,
+      start: Math.round((u.start ?? 0) * 10) / 10,
+      end: Math.round((u.end ?? 0) * 10) / 10,
+      text: (u.transcript ?? "").trim(),
+    }));
+  return {
+    transcript,
+    utterances,
+    durationSec: Math.max(0, Math.round(body.metadata?.duration ?? 0)),
+    engine: MODEL(),
+  };
+}
+
 /** Build the keyterm list from workspace context (names, first names, clients). */
 export function keytermsFrom(input: {
   members: { name: string | null; email: string }[];

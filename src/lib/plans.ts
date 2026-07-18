@@ -27,6 +27,8 @@ export interface PlanConfig {
   /** null = unlimited. */
   maxActiveProjects: number | null;
   voiceCapturesPerMonth: number;
+  /** Recorded-meeting transcription minutes per workspace per month. */
+  meetingMinutesPerMonth: number;
   /** Total attachment storage per workspace. */
   attachmentQuotaMb: number;
   features: Feature[];
@@ -42,6 +44,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxMembers: 3,
     maxActiveProjects: 2,
     voiceCapturesPerMonth: 20,
+    meetingMinutesPerMonth: 60,
     attachmentQuotaMb: 200,
     features: ["weekly_narrative"],
   },
@@ -54,6 +57,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxMembers: 10,
     maxActiveProjects: null,
     voiceCapturesPerMonth: 200,
+    meetingMinutesPerMonth: 600,
     attachmentQuotaMb: 2_048,
     // Joseph's rule (2026-07-17): paid bands share EVERY feature; the bands
     // differ only in quantities (people, captures, storage). Features listed
@@ -75,6 +79,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxMembers: 25,
     maxActiveProjects: null,
     voiceCapturesPerMonth: 1000,
+    meetingMinutesPerMonth: 1500,
     attachmentQuotaMb: 10_240,
     features: [
       "weekly_narrative",
@@ -90,6 +95,7 @@ export interface Entitlements {
   maxMembers: number;
   maxActiveProjects: number | null;
   voiceCapturesPerMonth: number;
+  meetingMinutesPerMonth: number;
   attachmentQuotaMb: number;
   features: Feature[];
 }
@@ -99,6 +105,7 @@ export interface EntitlementsSnapshotInput {
   maxMembers?: number;
   maxActiveProjects?: number | null;
   voiceCapturesPerMonth?: number;
+  meetingMinutesPerMonth?: number;
   attachmentQuotaMb?: number;
   features?: string[];
 }
@@ -117,6 +124,8 @@ export function entitlementsFor(
         : base.maxActiveProjects,
     voiceCapturesPerMonth:
       snapshot?.voiceCapturesPerMonth ?? base.voiceCapturesPerMonth,
+    meetingMinutesPerMonth:
+      snapshot?.meetingMinutesPerMonth ?? base.meetingMinutesPerMonth,
     attachmentQuotaMb: snapshot?.attachmentQuotaMb ?? base.attachmentQuotaMb,
     features: (snapshot?.features as Feature[] | undefined) ?? base.features,
   };

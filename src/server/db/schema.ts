@@ -442,6 +442,79 @@ export const voiceCaptures = pgTable(
   (t) => [index("captures_ws_idx").on(t.workspaceId, t.createdAt)],
 );
 
+/* ------------------------------ meetings -------------------------------- */
+
+export const meetingStatus = pgEnum("meeting_status", [
+  "uploading",
+  "processing",
+  "ready",
+  "failed",
+]);
+export const meetingVisibility = pgEnum("meeting_visibility", [
+  "private",
+  "workspace",
+]);
+
+/**
+ * Recorded meetings (M1). Audio lives in storage; the transcript, summary
+ * and action-item proposals live here. PRIVATE BY DEFAULT: transcripts are
+ * a different sensitivity class from tasks, so only the recorder sees a
+ * meeting until they share it or link it to a project. Confirmed action
+ * items become ordinary (workspace-visible) tasks; the recording itself
+ * stays behind the visibility wall.
+ */
+export const meetings = pgTable(
+  "meetings",
+  {
+    id: id(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: text("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").default("Meeting").notNull(),
+    visibility: meetingVisibility("visibility").default("private").notNull(),
+    status: meetingStatus("status").default("uploading").notNull(),
+    audioPath: text("audio_path"),
+    mime: text("mime"),
+    sizeBytes: integer("size_bytes").default(0).notNull(),
+    durationSec: integer("duration_sec").default(0).notNull(),
+    transcript: jsonb("transcript").$type<{
+      text: string;
+      utterances: { speaker: number; start: number; end: number; text: string }[];
+    } | null>(),
+    summary: jsonb("summary").$type<{
+      tldr: string;
+      decisions: string[];
+      risks: string[];
+    } | null>(),
+    actionItems: jsonb("action_items")
+      .$type<
+        {
+          title: string;
+          note?: string | null;
+          assigneeId?: string | null;
+          assigneeName?: string | null;
+          dueDate?: string | null;
+          projectId?: string | null;
+          status: "pending" | "accepted" | "dismissed";
+          taskId?: string | null;
+        }[]
+      >()
+      .default([])
+      .notNull(),
+    engine: text("engine"),
+    error: text("error"),
+    createdAt: createdAt(),
+    processedAt: timestamp("processed_at", { withTimezone: true, mode: "date" }),
+  },
+  (t) => [index("meetings_ws_idx").on(t.workspaceId, t.createdAt)],
+);
+
 /* ------------------------- notifications -------------------------------- */
 
 export const notifications = pgTable(

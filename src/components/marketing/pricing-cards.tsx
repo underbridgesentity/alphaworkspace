@@ -16,6 +16,9 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
             ? "Unlimited projects"
             : `${plan.maxActiveProjects} active projects`,
           `${plan.voiceCapturesPerMonth} voice captures a month`,
+          plan.meetingMinutesPerMonth >= 120
+            ? `${Math.round(plan.meetingMinutesPerMonth / 60)} hours of meeting transcription a month`
+            : `${plan.meetingMinutesPerMonth} meeting minutes a month`,
           plan.attachmentQuotaMb >= 1024
             ? `${Math.round(plan.attachmentQuotaMb / 1024)} GB attachment storage`
             : `${plan.attachmentQuotaMb} MB attachment storage`,
