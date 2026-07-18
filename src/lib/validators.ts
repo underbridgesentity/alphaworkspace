@@ -208,9 +208,13 @@ export const checkoutSchema = z.object({
 
 /* ------------------------------ meetings ---------------------------------- */
 
-/** Hard caps regardless of plan: 2 hours, 150 MB. */
+/**
+ * Hard caps regardless of plan: 2 hours, 50 MB. The byte cap mirrors the
+ * storage bucket's Supabase Free-tier ceiling (see server/storage.ts); an
+ * in-app recording (32 kbps opus) reaches ~29 MB at the 2 hour mark.
+ */
 export const MEETING_MAX_SECONDS = 7_200;
-export const MEETING_MAX_BYTES = 157_286_400;
+export const MEETING_MAX_BYTES = 52_428_800;
 
 export const meetingBeginSchema = z.object({
   id: uuid.optional(),

@@ -174,7 +174,7 @@ export async function beginMeeting(
     throw new ValidationError("That doesn't look like an audio recording");
   }
   if (input.sizeBytes > MEETING_MAX_BYTES) {
-    throw new ValidationError("Meeting recordings are capped at 150 MB");
+    throw new ValidationError("Meeting recordings are capped at 50 MB");
   }
   if (input.durationSec > MEETING_MAX_SECONDS) {
     throw new ValidationError("Meeting recordings are capped at 2 hours");
@@ -280,7 +280,7 @@ export async function processMeeting(
         .update(meetings)
         .set({ audioPath: null, sizeBytes: 0 })
         .where(eq(meetings.id, row.id));
-      return fail("The recording was over the 150 MB cap and was removed");
+      return fail("The recording was over the 50 MB cap and was removed");
     }
     if (realSize !== null && realSize !== row.sizeBytes) {
       await ctx.db

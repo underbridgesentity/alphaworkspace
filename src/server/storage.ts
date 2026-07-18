@@ -105,11 +105,14 @@ export async function objectSize(path: string): Promise<number | null> {
 }
 
 /**
- * Bucket-level per-file ceiling. Sized for meeting audio (~150 MB, two hours
- * of opus with headroom); attachments keep their own 25 MB cap in code
- * (dal/attachments.ts), the bucket limit is just the outer wall.
+ * Bucket-level per-file ceiling: 50 MB, the Supabase Free-tier global cap
+ * (a higher value is rejected with 413 at bucket create/update). Two hours
+ * of 32 kbps opus is ~29 MB, so in-app recordings fit with headroom; only
+ * external high-bitrate uploads feel this. Raise once the project is on Pro
+ * (dashboard global limit must go up first). Attachments keep their own
+ * 25 MB cap in code (dal/attachments.ts).
  */
-const BUCKET_FILE_LIMIT = 157_286_400;
+const BUCKET_FILE_LIMIT = 52_428_800;
 
 /** Idempotently ensure the private bucket exists (called on first upload). */
 export async function ensureBucket(): Promise<void> {

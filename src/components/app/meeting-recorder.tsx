@@ -193,7 +193,7 @@ export function MeetingRecorderDialog({
     setMode("uploading");
     try {
       if (blob.size > MEETING_MAX_BYTES) {
-        throw new ApiError("too_big", "That recording is over the 150 MB cap", 400);
+        throw new ApiError("too_big", "That recording is over the 50 MB cap", 400);
       }
       const begin = await fetch(`/api/w/${workspace.slug}/meetings`, {
         method: "POST",
@@ -260,7 +260,7 @@ export function MeetingRecorderDialog({
 
   const onFile = (file: File) => {
     if (file.size > MEETING_MAX_BYTES) {
-      toast("That file is over the 150 MB cap", { variant: "error" });
+      toast("That file is over the 50 MB cap", { variant: "error" });
       return;
     }
     // Duration is unknown until Deepgram measures it; estimate from size at
