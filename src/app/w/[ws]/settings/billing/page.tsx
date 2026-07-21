@@ -2,18 +2,19 @@
 
 /**
  * Billing: flat rand bands via PayFast. The checkout is a plain form POST
- * to PayFast, card details never touch Alpha. Cancelling drops to Free;
- * nothing is deleted, nothing locks.
+ * to PayFast, card details never touch Alpha. Cancelling keeps the plan until
+ * the paid period ends, then drops to Free; nothing is deleted, nothing locks.
  */
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, BadgeCheck, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Clock, ShieldCheck } from "lucide-react";
 import { apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import { PLANS, formatZar, type PlanId } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 
 interface BillingData {
@@ -24,6 +25,7 @@ interface BillingData {
     status: "pending" | "active" | "past_due" | "cancelled";
     amountCents: number;
     currentPeriodEnd: string | null;
+    cancelledAt: string | null;
   } | null;
   usage: {
     members: number;
@@ -40,12 +42,32 @@ const STATUS_COPY: Record<string, { label: string; tone: string }> = {
   cancelled: { label: "Cancelled", tone: "text-faint" },
 };
 
+const CANCEL_REASONS = [
+  "Too expensive",
+  "Missing a feature I need",
+  "Not using it right now",
+  "Just trying it out",
+  "Something else",
+];
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-ZA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Africa/Johannesburg",
+  });
+}
+
 export default function BillingSettingsPage() {
   const { workspace } = useWorkspace();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [annual, setAnnual] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reason, setReason] = useState<string | null>(null);
 
   // A plan carried from the pricing page: "Start with Team" lands here so the
   // final checkout step is one obvious click, not a hunt through the bands.
@@ -61,6 +83,10 @@ export default function BillingSettingsPage() {
 
   const isOwner = workspace.role === "owner";
   const currentPlan = data?.plan ?? workspace.plan;
+  const sub = data?.subscription ?? null;
+  // Grace: cancelled but still inside the period they've already paid for.
+  const grace = sub?.status === "active" && !!sub.cancelledAt;
+  const graceEnds = grace ? fmtDate(sub?.currentPeriodEnd ?? null) : "";
 
   const checkout = async (plan: "team" | "studio") => {
     setBusy(plan);
@@ -95,23 +121,34 @@ export default function BillingSettingsPage() {
   const cancel = async () => {
     setBusy("cancel");
     try {
-      const res = await apiMutate<{ remote: boolean }>(
-        `/api/w/${workspace.slug}/billing`,
-        { method: "DELETE" },
-      );
+      const res = await apiMutate<{
+        remote: boolean;
+        endsAt: string | null;
+        immediate: boolean;
+      }>(`/api/w/${workspace.slug}/billing`, {
+        method: "DELETE",
+        body: { reason },
+      });
       await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
+      setCancelOpen(false);
+      setReason(null);
       // If PayFast couldn't confirm the stop, say so plainly, otherwise the
       // customer thinks they're done and a charge still lands.
       if ("remote" in res && res.remote === false) {
         toast(
-          "You're on Free here, but we couldn't confirm the stop with PayFast. Check your PayFast account or contact us so no further charge lands.",
+          "We couldn't confirm the stop with PayFast. Check your PayFast account or contact us so no further charge lands.",
           { variant: "error" },
         );
         return;
       }
-      toast("Subscription cancelled, you're on Free, nothing was deleted", {
-        variant: "success",
-      });
+      toast(
+        "immediate" in res && res.immediate
+          ? "Cancelled, you're on Free. Nothing was deleted."
+          : `Cancelled. You keep ${PLANS[currentPlan].name} until ${fmtDate(
+              ("endsAt" in res && res.endsAt) || null,
+            )}, then Free.`,
+        { variant: "success" },
+      );
     } catch (err) {
       toast(err instanceof Error ? err.message : "Cancel failed", { variant: "error" });
     } finally {
@@ -163,16 +200,21 @@ export default function BillingSettingsPage() {
           <h2 className="flex-1 text-sm font-semibold">
             {PLANS[currentPlan].name} plan
           </h2>
-          {data?.subscription && (
-            <span
-              className={cn(
-                "text-xs font-medium",
-                STATUS_COPY[data.subscription.status]?.tone,
-              )}
-            >
-              {STATUS_COPY[data.subscription.status]?.label}
-            </span>
-          )}
+          {sub &&
+            (grace ? (
+              <span className="text-xs font-medium text-warn">
+                Ends {graceEnds}
+              </span>
+            ) : (
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  STATUS_COPY[sub.status]?.tone,
+                )}
+              >
+                {STATUS_COPY[sub.status]?.label}
+              </span>
+            ))}
         </div>
         <p className="mt-1 text-sm text-muted">{PLANS[currentPlan].tagline}</p>
         {data && (
@@ -186,8 +228,31 @@ export default function BillingSettingsPage() {
             {PLANS[currentPlan].voiceCapturesPerMonth} voice captures this month
           </p>
         )}
+
+        {/* Scheduled cancel: reassure + let them undo by resuming. */}
+        {grace && isOwner && (
+          <div className="mt-3 rounded-control bg-raised p-3">
+            <p className="flex items-start gap-2 text-xs text-muted">
+              <Clock className="mt-px size-3.5 shrink-0 text-warn" />
+              <span>
+                Your {PLANS[currentPlan].name} plan stays active until{" "}
+                <strong className="text-ink">{graceEnds}</strong>, then moves to
+                Free. Your work is never deleted. Changed your mind?
+              </span>
+            </p>
+            <Button
+              size="sm"
+              className="mt-2"
+              loading={busy === currentPlan}
+              onClick={() => void checkout(currentPlan as "team" | "studio")}
+            >
+              Resume {PLANS[currentPlan].name}
+            </Button>
+          </div>
+        )}
+
         {/* Past due: tell the owner what to do and let them retry or stop. */}
-        {data?.subscription?.status === "past_due" && isOwner && (
+        {sub?.status === "past_due" && isOwner && (
           <div className="mt-3 rounded-control bg-warn/10 p-3">
             <p className="text-xs text-warn">
               PayFast couldn&apos;t take the last payment. Retry to keep{" "}
@@ -208,21 +273,20 @@ export default function BillingSettingsPage() {
                 variant="ghost"
                 size="sm"
                 className="text-danger"
-                loading={busy === "cancel"}
-                onClick={() => void cancel()}
+                onClick={() => setCancelOpen(true)}
               >
                 Cancel
               </Button>
             </div>
           </div>
         )}
-        {data?.subscription?.status === "active" && isOwner && (
+
+        {sub?.status === "active" && !grace && isOwner && (
           <Button
             variant="ghost"
             size="sm"
             className="mt-3 text-danger"
-            loading={busy === "cancel"}
-            onClick={() => void cancel()}
+            onClick={() => setCancelOpen(true)}
           >
             Cancel subscription
           </Button>
@@ -256,9 +320,13 @@ export default function BillingSettingsPage() {
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {(Object.values(PLANS)).map((plan) => {
+          {Object.values(PLANS).map((plan) => {
             const price = annual ? plan.priceAnnualZar : plan.priceMonthlyZar;
+            const currentPrice = annual
+              ? PLANS[currentPlan].priceAnnualZar
+              : PLANS[currentPlan].priceMonthlyZar;
             const isCurrent = currentPlan === plan.id;
+            const isDowngrade = price < currentPrice;
             return (
               <div
                 key={plan.id}
@@ -290,36 +358,144 @@ export default function BillingSettingsPage() {
                     <li>Scorecards, time & client reports (as they ship)</li>
                   )}
                 </ul>
-                {plan.id !== "free" &&
-                  (isCurrent ? (
+                {plan.id === "free" ? (
+                  isCurrent ? (
                     <p className="mt-3 text-center text-xs font-medium text-faint">
                       Your current band
                     </p>
                   ) : isOwner ? (
                     <Button
                       size="sm"
+                      variant="quiet"
                       className="mt-3"
-                      variant={plan.id === "team" ? "primary" : "quiet"}
-                      loading={busy === plan.id}
-                      onClick={() => void checkout(plan.id as "team" | "studio")}
+                      onClick={() => setCancelOpen(true)}
                     >
-                      Upgrade to {plan.name}
+                      Move to Free
                     </Button>
-                  ) : (
-                    <p className="mt-3 text-center text-xs text-faint">
-                      Only the owner can change billing
-                    </p>
-                  ))}
+                  ) : null
+                ) : isCurrent ? (
+                  <p className="mt-3 text-center text-xs font-medium text-faint">
+                    Your current band
+                  </p>
+                ) : isOwner ? (
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    variant={isDowngrade ? "quiet" : "primary"}
+                    loading={busy === plan.id}
+                    onClick={() => void checkout(plan.id as "team" | "studio")}
+                  >
+                    {isDowngrade ? "Switch to" : "Upgrade to"} {plan.name}
+                  </Button>
+                ) : (
+                  <p className="mt-3 text-center text-xs text-faint">
+                    Only the owner can change billing
+                  </p>
+                )}
               </div>
             );
           })}
         </div>
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-faint">
+        <p className="mt-3 text-xs text-faint">
+          Switching bands starts the new plan immediately and is billed in full,
+          the current period isn&apos;t prorated. Cancelling keeps your plan
+          until the period you&apos;ve paid for ends.
+        </p>
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-faint">
           <ShieldCheck className="size-3.5" />
           VAT inclusive · billed in rand via PayFast · card details never touch
-          Alpha · cancel anytime, your work stays.
+          Alpha · your work stays either way.
         </p>
       </section>
+
+      {/* Cancellation experience: calm, honest, one soft off-ramp. */}
+      <Dialog
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        ariaLabel="Cancel subscription"
+        variant="center"
+      >
+        <DialogHeader
+          title={`Cancel ${PLANS[currentPlan].name}?`}
+          onClose={() => setCancelOpen(false)}
+        />
+        <div className="space-y-4 p-4">
+          <p className="text-sm text-muted">
+            {sub?.currentPeriodEnd ? (
+              <>
+                You&apos;ll keep {PLANS[currentPlan].name} until{" "}
+                <strong className="text-ink">
+                  {fmtDate(sub.currentPeriodEnd)}
+                </strong>
+                , the time you&apos;ve already paid for. After that you move to
+                Free. Nothing is deleted, your projects, tasks and history all
+                stay.
+              </>
+            ) : (
+              <>
+                You&apos;ll move to Free. Nothing is deleted, your projects,
+                tasks and history all stay.
+              </>
+            )}
+          </p>
+
+          {/* Retention: a softer step for the biggest reason to leave. */}
+          {currentPlan === "studio" && (
+            <div className="rounded-control bg-accent-soft p-3">
+              <p className="text-xs text-muted">
+                Only need less? Team keeps every feature at a smaller size for{" "}
+                {formatZar(PLANS.team.priceMonthlyZar)}/month.
+              </p>
+              <Button
+                size="sm"
+                variant="quiet"
+                className="mt-2"
+                loading={busy === "team"}
+                onClick={() => void checkout("team")}
+              >
+                Switch to Team instead
+              </Button>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-medium text-faint">
+              Mind sharing why? (optional)
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {CANCEL_REASONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setReason((cur) => (cur === r ? null : r))}
+                  className={cn(
+                    "press rounded-full border px-3 py-1.5 text-xs",
+                    reason === r
+                      ? "border-accent bg-accent-soft text-accent"
+                      : "border-line text-muted hover:border-accent/40",
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setCancelOpen(false)}>
+              Keep {PLANS[currentPlan].name}
+            </Button>
+            <Button
+              variant="quiet"
+              className="text-danger"
+              loading={busy === "cancel"}
+              onClick={() => void cancel()}
+            >
+              Cancel plan
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

@@ -23,10 +23,12 @@ import { briefItemsForUser } from "@/server/kpi";
 import { composeMorningBrief } from "@/server/ai/brief";
 import { notify } from "@/server/notifications/service";
 import { pushChannel } from "@/server/notifications/channels/push";
+import { sweepExpiredGraceCancellations } from "@/server/payfast/subscriptions";
 
 export interface MorningRunResult {
   briefs: number;
   nudged: number;
+  downgraded: number;
 }
 
 export async function runMorningJobs(
@@ -157,5 +159,14 @@ export async function runMorningJobs(
     }
   }
 
-  return { briefs, nudged };
+  // End-of-grace downgrades: cancelled plans that have now run out their
+  // paid-through period drop to Free. Once per run, workspace-level.
+  let downgraded = 0;
+  try {
+    ({ downgraded } = await sweepExpiredGraceCancellations(db, { now }));
+  } catch (err) {
+    console.error("[morning] grace-cancellation sweep failed", err);
+  }
+
+  return { briefs, nudged, downgraded };
 }

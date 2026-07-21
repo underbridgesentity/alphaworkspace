@@ -213,6 +213,11 @@ export const checkoutSchema = z.object({
   billing: z.enum(["monthly", "annual"]).default("monthly"),
 });
 
+export const cancelSubscriptionSchema = z.object({
+  /** Optional retention reason; bounded, purely for our own insight. */
+  reason: z.string().max(200).nullish(),
+});
+
 /* ---------------------------- private tasks ------------------------------- */
 
 export const privateTaskCreateSchema = z.object({

@@ -111,6 +111,15 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         {isFetching && (
           <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent" />
         )}
+        {/* Touch has no Escape key: a visible tap target to leave, always. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close search"
+          className="press -mr-1 shrink-0 rounded-control px-2.5 py-1.5 text-sm text-muted hover:text-ink"
+        >
+          Cancel
+        </button>
       </div>
 
       <div className="max-h-[55dvh] overflow-y-auto p-2">

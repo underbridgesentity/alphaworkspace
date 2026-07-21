@@ -1,8 +1,9 @@
-import { api, json } from "@/server/api-utils";
+import { api, json, readJson } from "@/server/api-utils";
 import { withWorkspace } from "@/server/session";
 import { assertRole } from "@/server/dal/context";
 import { currentSubscription, cancelSubscription } from "@/server/payfast/subscriptions";
 import { workspaceUsage } from "@/server/dal/workspaces";
+import { cancelSubscriptionSchema } from "@/lib/validators";
 
 export const GET = api(async (_req, params) => {
   const ctx = await withWorkspace(params.ws);
@@ -18,10 +19,22 @@ export const GET = api(async (_req, params) => {
   });
 });
 
-/** Owner-only cancel: drops to Free, nothing deleted, nothing locked. */
-export const DELETE = api(async (_req, params) => {
+/**
+ * Owner-only cancel. Keeps the paid plan until the current period ends, THEN
+ * drops to Free (unless there's nothing paid-through, which ends now). Nothing
+ * deleted, nothing locked. An optional reason is captured for retention.
+ */
+export const DELETE = api(async (req, params) => {
   const ctx = await withWorkspace(params.ws);
   assertRole(ctx, "owner");
-  const result = await cancelSubscription(ctx.db, ctx.workspace.id);
-  return json({ ok: true, remote: result.remote });
+  const { reason } = await readJson(req, cancelSubscriptionSchema);
+  const result = await cancelSubscription(ctx.db, ctx.workspace.id, {
+    reason: reason ?? undefined,
+  });
+  return json({
+    ok: true,
+    remote: result.remote,
+    endsAt: result.endsAt,
+    immediate: result.immediate,
+  });
 });

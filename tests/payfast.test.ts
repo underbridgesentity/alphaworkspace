@@ -20,6 +20,8 @@ import {
   cancelSubscription,
   createPendingSubscription,
   currentSubscription,
+  supersedeForComp,
+  sweepExpiredGraceCancellations,
 } from "@/server/payfast/subscriptions";
 import { PLANS } from "@/lib/plans";
 import { createTestDb, createTestUser } from "./helpers/db";
@@ -284,9 +286,9 @@ describe("processItn", () => {
   });
 });
 
-describe("cancelSubscription", () => {
-  it("cancels locally even when the PayFast API is unreachable", async () => {
-    // Re-activate first.
+describe("cancelSubscription (keep access until period end)", () => {
+  it("schedules the drop for period end, keeping the paid plan meanwhile", async () => {
+    // Activate Studio annual: currentPeriodEnd lands ~a year out.
     const pending = await createPendingSubscription(db, {
       workspaceId: wsId,
       plan: "studio",
@@ -297,25 +299,84 @@ describe("cancelSubscription", () => {
       skipPostback: true,
     });
 
+    // PayFast API unreachable must NOT block the local cancel.
     const result = await cancelSubscription(db, wsId, {
       fetchImpl: async () => {
         throw new Error("network down");
       },
     });
     expect(result.remote).toBe(false);
+    expect(result.immediate).toBe(false);
+    expect(result.endsAt).toBeTruthy();
 
-    // Cancelled rows drop out of "current"; the raw table keeps the record.
-    expect(await currentSubscription(db, wsId)).toBeNull();
-    const rows = await db
+    // Grace: plan + entitlements HELD, the sub is still "current" (active with
+    // a cancelledAt marker), and the billing surface can show "ends on".
+    const [ws] = await db
       .select()
-      .from(schema.subscriptions)
-      .where(eq(schema.subscriptions.workspaceId, wsId));
-    expect(rows.every((r) => r.status === "cancelled")).toBe(true);
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("studio");
+    const cur = await currentSubscription(db, wsId);
+    expect(cur?.status).toBe("active");
+    expect(cur?.cancelledAt).toBeTruthy();
+  });
+
+  it("sweep before period end leaves the plan alone", async () => {
+    const { downgraded } = await sweepExpiredGraceCancellations(db, {
+      now: new Date(),
+    });
+    expect(downgraded).toBe(0);
+    const [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("studio");
+  });
+
+  it("sweep after period end drops the workspace to Free", async () => {
+    const later = new Date(Date.now() + 400 * 86_400_000); // past the annual end
+    const { downgraded } = await sweepExpiredGraceCancellations(db, {
+      now: later,
+    });
+    expect(downgraded).toBe(1);
     const [ws] = await db
       .select()
       .from(schema.workspaces)
       .where(eq(schema.workspaces.id, wsId));
     expect(ws.plan).toBe("free");
+    expect(ws.entitlements).toBeNull();
+    // Now fully cancelled and out of "current".
+    expect(await currentSubscription(db, wsId)).toBeNull();
+    // Idempotent: a second sweep changes nothing.
+    const again = await sweepExpiredGraceCancellations(db, { now: later });
+    expect(again.downgraded).toBe(0);
+  });
+
+  it("cancels immediately when there is nothing paid-through to honour", async () => {
+    // Activate, then force the period end into the past → immediate cancel.
+    const pending = await createPendingSubscription(db, {
+      workspaceId: wsId,
+      plan: "team",
+      billing: "monthly",
+    });
+    mPaymentId = pending.mPaymentId;
+    await processItn(db, itnBody({ amount_gross: "499.00", token: "tok-3" }), {
+      skipPostback: true,
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({ currentPeriodEnd: new Date(Date.now() - 86_400_000) })
+      .where(eq(schema.subscriptions.mPaymentId, mPaymentId));
+
+    const result = await cancelSubscription(db, wsId);
+    expect(result.immediate).toBe(true);
+    expect(result.endsAt).toBeNull();
+    const [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("free");
+    expect(await currentSubscription(db, wsId)).toBeNull();
   });
 });
 
@@ -439,5 +500,237 @@ describe("no double billing on a band change", () => {
       .from(schema.workspaces)
       .where(eq(schema.workspaces.id, wsId));
     expect(ws.plan).toBe("free"); // not re-upgraded
+  });
+});
+
+describe("supersedeForComp (operator comp clears grace, keeps live money)", () => {
+  it("cancels pending + grace subs but leaves a genuinely-live one alone", async () => {
+    const owner = await createTestUser(db, "comp@billing.co.za", "Comp Owner");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "Comp Co",
+      seedStarter: false,
+    });
+    const future = new Date(Date.now() + 30 * 86_400_000);
+
+    // Genuinely-live sub (active, no cancelledAt): real money, must survive.
+    const live = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "team",
+      billing: "monthly",
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({ status: "active", currentPeriodEnd: future })
+      .where(eq(schema.subscriptions.mPaymentId, live.mPaymentId));
+
+    // Grace sub (active + cancelledAt): token already stopped, must clear.
+    const grace = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "studio",
+      billing: "monthly",
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({ status: "active", cancelledAt: new Date(), currentPeriodEnd: future })
+      .where(eq(schema.subscriptions.mPaymentId, grace.mPaymentId));
+
+    // Pending sub (never completed): must clear.
+    const pend = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "team",
+      billing: "monthly",
+    });
+
+    await supersedeForComp(db, ws.id);
+
+    const rows = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.workspaceId, ws.id));
+    const find = (m: string) => rows.find((r) => r.mPaymentId === m)!;
+    expect(find(live.mPaymentId).status).toBe("active"); // real money untouched
+    expect(find(live.mPaymentId).cancelledAt).toBeNull();
+    expect(find(grace.mPaymentId).status).toBe("cancelled"); // grace cleared
+    expect(find(pend.mPaymentId).status).toBe("cancelled"); // pending cleared
+
+    // With the grace marker gone, the period-end sweep can never later drop
+    // this comped workspace to Free through it.
+    const graceRow = find(grace.mPaymentId);
+    expect(graceRow.status).not.toBe("active");
+  });
+});
+
+describe("cancel hardening (guardian findings)", () => {
+  it("a past_due cancel drops immediately (its last charge failed) — no grace", async () => {
+    const owner = await createTestUser(db, "pastdue@billing.co.za", "PD");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "PD Co",
+      seedStarter: false,
+    });
+    const p = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "team",
+      billing: "monthly",
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({
+        status: "past_due",
+        payfastToken: "tok-pd",
+        currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000), // future!
+      })
+      .where(eq(schema.subscriptions.mPaymentId, p.mPaymentId));
+    await db
+      .update(schema.workspaces)
+      .set({ plan: "team" })
+      .where(eq(schema.workspaces.id, ws.id));
+
+    const res = await cancelSubscription(db, ws.id, {
+      fetchImpl: async () => new Response("", { status: 200 }),
+    });
+    expect(res.immediate).toBe(true); // NOT grace, despite a future period end
+    expect(res.endsAt).toBeNull();
+    const [w] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, ws.id));
+    expect(w.plan).toBe("free");
+  });
+
+  it("the sweep downgrades a stray non-active grace row after period end", async () => {
+    const owner = await createTestUser(db, "stray@billing.co.za", "Stray");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "Stray Co",
+      seedStarter: false,
+    });
+    const p = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "studio",
+      billing: "monthly",
+    });
+    // A hypothetical past_due grace row (defence in depth): cancelledAt set,
+    // period end already elapsed. The sweep must still catch it.
+    await db
+      .update(schema.subscriptions)
+      .set({
+        status: "past_due",
+        cancelledAt: new Date(),
+        currentPeriodEnd: new Date(Date.now() - 86_400_000),
+      })
+      .where(eq(schema.subscriptions.mPaymentId, p.mPaymentId));
+    await db
+      .update(schema.workspaces)
+      .set({ plan: "studio" })
+      .where(eq(schema.workspaces.id, ws.id));
+
+    const { downgraded } = await sweepExpiredGraceCancellations(db, {
+      now: new Date(),
+    });
+    expect(downgraded).toBeGreaterThanOrEqual(1);
+    const [w] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, ws.id));
+    expect(w.plan).toBe("free");
+  });
+
+  it("cancelling preserves a paid meeting_bots add-on on the Free downgrade", async () => {
+    const owner = await createTestUser(db, "addon@billing.co.za", "Addon");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "Addon Co",
+      seedStarter: false,
+    });
+    const p = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "team",
+      billing: "monthly",
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({
+        status: "active",
+        payfastToken: "tok-ad",
+        currentPeriodEnd: new Date(Date.now() - 86_400_000), // past → immediate
+      })
+      .where(eq(schema.subscriptions.mPaymentId, p.mPaymentId));
+    await db
+      .update(schema.workspaces)
+      .set({
+        plan: "team",
+        entitlements: {
+          maxMembers: PLANS.team.maxMembers,
+          maxActiveProjects: PLANS.team.maxActiveProjects,
+          voiceCapturesPerMonth: PLANS.team.voiceCapturesPerMonth,
+          meetingMinutesPerMonth: PLANS.team.meetingMinutesPerMonth,
+          features: [...PLANS.team.features, "meeting_bots"],
+        },
+      })
+      .where(eq(schema.workspaces.id, ws.id));
+
+    await cancelSubscription(db, ws.id, {
+      fetchImpl: async () => new Response("", { status: 200 }),
+    });
+    const [w] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, ws.id));
+    expect(w.plan).toBe("free");
+    expect(w.entitlements?.features).toContain("meeting_bots"); // add-on kept
+  });
+
+  it("cancel stops the live token even when a newer abandoned checkout exists", async () => {
+    const owner = await createTestUser(db, "shadow@billing.co.za", "Shadow");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "Shadow Co",
+      seedStarter: false,
+    });
+    const livePending = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "team",
+      billing: "monthly",
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({
+        status: "active",
+        payfastToken: "tok-live",
+        currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+      })
+      .where(eq(schema.subscriptions.mPaymentId, livePending.mPaymentId));
+    await db
+      .update(schema.workspaces)
+      .set({ plan: "team" })
+      .where(eq(schema.workspaces.id, ws.id));
+    // A NEWER abandoned upgrade checkout (pending, no token) must not shadow it.
+    const abandoned = await createPendingSubscription(db, {
+      workspaceId: ws.id,
+      plan: "studio",
+      billing: "monthly",
+    });
+
+    const hit: string[] = [];
+    const res = await cancelSubscription(db, ws.id, {
+      fetchImpl: async (url) => {
+        hit.push(String(url));
+        return new Response("", { status: 200 });
+      },
+    });
+    // The LIVE token was stopped at PayFast (not the pending/no-token row)…
+    expect(hit.some((u) => u.includes("tok-live"))).toBe(true);
+    // …and grace is based on the real active sub, so the plan is kept.
+    expect(res.immediate).toBe(false);
+    const [w] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, ws.id));
+    expect(w.plan).toBe("team");
+    // The abandoned checkout is cleared so it can't linger and re-charge.
+    const rows = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.workspaceId, ws.id));
+    expect(rows.find((r) => r.mPaymentId === abandoned.mPaymentId)!.status).toBe(
+      "cancelled",
+    );
   });
 });

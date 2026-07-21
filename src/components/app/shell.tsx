@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useWorkspace } from "@/lib/client/workspace";
 import { Avatar } from "@/components/ui/avatar";
+import { Dialog } from "@/components/ui/dialog";
 import { Logo } from "@/components/ui/logo";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { ThemeToggleItem, ThemeToggleButton } from "@/components/ui/theme-toggle";
@@ -79,6 +80,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ projectId?: string } | null>(null);
   const [mic, setMic] = useState<{ projectId?: string } | null>(null);
+  const [plusOpen, setPlusOpen] = useState(false);
 
   const openTask = useCallback(
     (id: string) => {
@@ -270,7 +272,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           <main className="min-w-0 flex-1">{children}</main>
         </div>
 
-        {/* Mobile bottom bar with centre mic FAB */}
+        {/* Mobile bottom bar with centre "+" FAB that opens a create menu. */}
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur-sm md:hidden">
           <div className="grid h-16 grid-cols-5 items-center px-1 pb-[env(safe-area-inset-bottom)]">
             <TabLink href={base} active={pathname === base} icon={Home} label="My Work" />
@@ -282,11 +284,16 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             />
             <div className="flex justify-center">
               <button
-                onClick={() => setMic({})}
-                aria-label="Voice capture"
-                className="press -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] hover:bg-accent-hover"
+                onClick={() => setPlusOpen(true)}
+                aria-label="Create"
+                aria-haspopup="menu"
+                aria-expanded={plusOpen}
+                className={cn(
+                  "press -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] transition-transform hover:bg-accent-hover",
+                  plusOpen && "rotate-45",
+                )}
               >
-                <Mic className="size-6" />
+                <Plus className="size-6" />
               </button>
             </div>
             <TabLink
@@ -324,6 +331,54 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             onClose={() => setMic(null)}
           />
         )}
+
+        {/* The "+" create menu: a calm bottom sheet, thumb-reachable, two ways
+            to add. Built to still feel right once this is a native app. */}
+        <Dialog
+          open={plusOpen}
+          onClose={() => setPlusOpen(false)}
+          ariaLabel="Create"
+          variant="center"
+        >
+          <div className="p-2">
+            <p className="px-3 pb-1 pt-2 text-xs font-medium text-faint">Create</p>
+            <button
+              onClick={() => {
+                setPlusOpen(false);
+                setQuickAdd({});
+              }}
+              className="press flex w-full items-center gap-3 rounded-control px-3 py-3 text-left hover:bg-raised"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                <Plus className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-medium">Quick add</span>
+                <span className="block text-sm text-faint">
+                  A new task or project, typed
+                </span>
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setPlusOpen(false);
+                setMic({});
+              }}
+              className="press flex w-full items-center gap-3 rounded-control px-3 py-3 text-left hover:bg-raised"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                <Mic className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-medium">Voice capture</span>
+                <span className="block text-sm text-faint">
+                  Speak, we sort it into tasks
+                </span>
+              </span>
+            </button>
+          </div>
+        </Dialog>
+
         <Celebration />
         <UpgradePrompt />
       </div>

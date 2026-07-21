@@ -8,11 +8,14 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import { subscriptions, workspaces } from "@/server/db/schema";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { type PlanId } from "@/lib/plans";
 import { logActivity } from "@/server/dal/activity";
 import { verifyItnSignature } from "./signature";
 import { payfastSandbox } from "./checkout";
+import { snapshotForPlan } from "./entitlements";
 import { supersedeOtherSubscriptions } from "./subscriptions";
+
+export { entitlementsSnapshot } from "./entitlements";
 
 export interface ItnResult {
   ok: boolean;
@@ -25,20 +28,6 @@ function validateUrl(): string {
     : "https://www.payfast.co.za/eng/query/validate";
 }
 
-export function entitlementsSnapshot(plan: PlanId) {
-  const p = PLANS[plan];
-  return {
-    maxMembers: p.maxMembers,
-    maxActiveProjects: p.maxActiveProjects,
-    voiceCapturesPerMonth: p.voiceCapturesPerMonth,
-    meetingMinutesPerMonth: p.meetingMinutesPerMonth,
-    features: [...p.features],
-  };
-}
-
-/** Add-on features that live outside any band and must survive a plan change. */
-const ADDON_FEATURES = ["meeting_bots"] as const;
-
 async function setWorkspacePlan(
   db: Db,
   workspaceId: string,
@@ -47,32 +36,12 @@ async function setWorkspacePlan(
   extra: Record<string, unknown>,
 ) {
   // Carry any workspace-specific add-on forward; a band snapshot alone would
-  // silently strip a feature the customer is paying for.
+  // silently strip a feature the customer is paying for. (snapshotForPlan.)
   const [existing] = await db
     .select({ entitlements: workspaces.entitlements })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId));
-  const keptAddons = (existing?.entitlements?.features ?? []).filter((f) =>
-    (ADDON_FEATURES as readonly string[]).includes(f),
-  );
-  const withAddons = (plan: PlanId) => {
-    const base = entitlementsSnapshot(plan);
-    return {
-      ...base,
-      features: [
-        ...base.features.filter(
-          (f) => !(ADDON_FEATURES as readonly string[]).includes(f),
-        ),
-        ...keptAddons,
-      ],
-    };
-  };
-  const snapshot =
-    to === "free"
-      ? keptAddons.length
-        ? withAddons(to) // keep base free features AND the add-on
-        : null
-      : withAddons(to);
+  const snapshot = snapshotForPlan(to, existing?.entitlements);
 
   await db
     .update(workspaces)
@@ -143,9 +112,11 @@ export async function processItn(
   const now = new Date();
 
   if (status === "COMPLETE") {
-    // A COMPLETE for a subscription the user already cancelled is a stale or
-    // duplicated notification, NEVER a resurrection. Record it, change nothing.
-    if (sub.status === "cancelled") {
+    // A COMPLETE for a subscription the user already cancelled — fully, or
+    // scheduled-to-end (grace: still "active" but cancelledAt is set) — is a
+    // stale or duplicated notification, NEVER a resurrection or extension.
+    // Record it, change nothing (billing was already stopped at PayFast).
+    if (sub.status === "cancelled" || sub.cancelledAt != null) {
       await db
         .update(subscriptions)
         .set({ lastItn, updatedAt: now })

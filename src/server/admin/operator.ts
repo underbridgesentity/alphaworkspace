@@ -6,7 +6,7 @@ import "server-only";
  * workspace content. Access = users.is_operator OR an email in
  * OPERATOR_EMAILS (bootstrap for the very first operator).
  */
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { count, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   activityEvents,
@@ -17,7 +17,11 @@ import {
   workspaces,
 } from "@/server/db/schema";
 import { PLANS, type PlanId } from "@/lib/plans";
-import { entitlementsSnapshot } from "@/server/payfast/itn";
+import {
+  entitlementsSnapshot,
+  snapshotForPlan,
+} from "@/server/payfast/entitlements";
+import { supersedeForComp } from "@/server/payfast/subscriptions";
 import { ForbiddenError } from "@/server/dal/errors";
 
 function bootstrapEmails(): string[] {
@@ -123,38 +127,19 @@ export async function setWorkspacePlanAdmin(
     .where(eq(workspaces.id, workspaceId));
   if (!ws) throw new ForbiddenError("Workspace not found");
 
-  // Preserve the meeting-bots add-on across a comp/downgrade (a band snapshot
-  // would strip it; re-enabling silently is a surprise).
-  const keptAddons = (ws.entitlements?.features ?? []).filter(
-    (f) => f === "meeting_bots",
-  );
-  const withAddons = () => {
-    const base = entitlementsSnapshot(plan);
-    return {
-      ...base,
-      features: [...base.features.filter((f) => f !== "meeting_bots"), ...keptAddons],
-    };
-  };
-  const snapshot =
-    plan === "free" ? (keptAddons.length ? withAddons() : null) : withAddons();
+  // Preserve any add-on (e.g. meeting_bots) across a comp/downgrade; a band
+  // snapshot alone would strip a feature the customer is paying for.
+  const snapshot = snapshotForPlan(plan, ws.entitlements);
 
   await db
     .update(workspaces)
     .set({ plan, entitlements: snapshot })
     .where(eq(workspaces.id, workspaceId));
 
-  // A comp supersedes any checkout that never completed; otherwise the
-  // billing page shows "waiting for PayFast" forever next to a live plan.
-  // Active PayFast subscriptions are deliberately left alone (real money).
-  await db
-    .update(subscriptions)
-    .set({ status: "cancelled", cancelledAt: new Date() })
-    .where(
-      and(
-        eq(subscriptions.workspaceId, workspaceId),
-        eq(subscriptions.status, "pending"),
-      ),
-    );
+  // A comp overrides any checkout that never completed and any grace cancel
+  // already in flight; genuinely-live subscriptions are left alone (real
+  // money). See supersedeForComp for the full reasoning.
+  await supersedeForComp(db, workspaceId);
 
   await db.insert(activityEvents).values({
     workspaceId,

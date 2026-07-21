@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { checklistProgress } from "@/lib/checklist";
 import { ApiError, apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import type { PrivateTaskDTO, TaskDTO } from "@/lib/types";
@@ -33,6 +34,21 @@ export function PrivateList() {
   });
   const open = (data ?? []).filter((t) => !t.completedAt);
   const done = (data ?? []).filter((t) => t.completedAt);
+  const total = open.length + done.length;
+  const pct = total ? Math.round((done.length / total) * 100) : 0;
+  // Roll every task's checklist up into one steps figure, so the header
+  // answers "where is this at" without opening each item.
+  const steps = (data ?? []).reduce(
+    (acc, t) => {
+      const p = checklistProgress(t.note);
+      if (p) {
+        acc.done += p.done;
+        acc.total += p.total;
+      }
+      return acc;
+    },
+    { done: 0, total: 0 },
+  );
 
   const [title, setTitle] = useState("");
   const [showDone, setShowDone] = useState(false);
@@ -95,6 +111,32 @@ export function PrivateList() {
         </h2>
         <span className="text-[11px] text-faint">· only you see these</span>
       </div>
+
+      {/* At-a-glance progress: where the whole list stands without opening it. */}
+      {total > 0 && (
+        <div className="mt-2 px-3">
+          <div className="flex items-center justify-between text-[11px] text-faint">
+            <span>
+              {done.length} of {total} done
+              {steps.total > 0 && ` · ${steps.done}/${steps.total} steps`}
+            </span>
+            <span className="tabular">{pct}%</span>
+          </div>
+          <div
+            className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Private tasks done"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mt-2 rounded-card bg-surface p-2">
         <form
