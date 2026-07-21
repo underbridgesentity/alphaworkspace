@@ -30,8 +30,20 @@
 -- that adds a table must enable it too, or this advisory comes straight back.
 
 DO $$
-DECLARE t record;
+DECLARE
+  t record;
+  api_roles text;
 BEGIN
+  -- `anon` / `authenticated` are Supabase's Data API roles. They do NOT exist
+  -- in a plain Postgres, and the test suite runs these same migrations against
+  -- PGlite, so revoking from them unconditionally makes every test that builds
+  -- a fresh database fail on `role "anon" does not exist`. Only revoke from
+  -- the roles actually present; RLS itself is enabled everywhere regardless.
+  SELECT string_agg(quote_ident(rolname), ', ')
+    INTO api_roles
+    FROM pg_roles
+   WHERE rolname IN ('anon', 'authenticated');
+
   FOR t IN
     SELECT c.relname
     FROM pg_class c
@@ -40,6 +52,8 @@ BEGIN
       AND c.relkind = 'r'
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.relname);
-    EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t.relname);
+    IF api_roles IS NOT NULL THEN
+      EXECUTE format('REVOKE ALL ON public.%I FROM %s', t.relname, api_roles);
+    END IF;
   END LOOP;
 END $$;
