@@ -21,6 +21,7 @@ import { cn } from "@/lib/cn";
 import type { ProjectDTO } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { useWorkspace } from "@/lib/client/workspace";
+import { useBoard } from "@/lib/client/tasks";
 import { apiMutate } from "@/lib/client/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Board } from "@/components/app/board";
@@ -48,6 +49,10 @@ function ProjectInner({ projectId }: { projectId: string }) {
   const project = projects.find((p) => p.id === projectId);
   const [renaming, setRenaming] = useState(false);
   const isAdmin = workspace.role !== "member";
+  // Board and list already hold every task for this project under the same
+  // query key, so progress comes free and moves the moment a task is ticked.
+  // Bootstrap counts cover the first paint (and the calendar view).
+  const { data: boardTasks } = useBoard(projectId);
 
   const setView = (v: string) => {
     const params = new URLSearchParams(searchParams);
@@ -70,6 +75,14 @@ function ProjectInner({ projectId }: { projectId: string }) {
       </div>
     );
   }
+
+  const done = boardTasks
+    ? boardTasks.filter((t) => t.status === "done").length
+    : (project.doneCount ?? 0);
+  const total = boardTasks
+    ? boardTasks.length
+    : (project.doneCount ?? 0) + (project.openCount ?? 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col pb-16 md:pb-0">
@@ -144,6 +157,32 @@ function ProjectInner({ projectId }: { projectId: string }) {
             {v.label}
           </button>
         ))}
+
+        {/* Where this project stands, on the row with room for it. */}
+        {total > 0 && (
+          <div
+            className="ml-auto flex shrink-0 items-center gap-2"
+            title={`${done} of ${total} done (${pct}%)`}
+          >
+            <span className="hidden tabular text-xs text-faint sm:inline">
+              {done}/{total} done
+            </span>
+            <div
+              className="h-1.5 w-16 overflow-hidden rounded-full bg-raised sm:w-24"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${done} of ${total} tasks done`}
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="tabular text-xs text-muted">{pct}%</span>
+          </div>
+        )}
       </div>
 
       {view === "board" && <Board projectId={projectId} />}
