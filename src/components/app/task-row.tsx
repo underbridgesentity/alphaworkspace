@@ -6,7 +6,7 @@ import type { TaskDTO } from "@/lib/types";
 import { celebrateAt, useTaskMutations } from "@/lib/client/tasks";
 import { useUI } from "./shell";
 import { Avatar } from "@/components/ui/avatar";
-import { DueChip, PriorityFlag } from "./status-bits";
+import { ChecklistChip, DueChip, PriorityFlag } from "./status-bits";
 
 /** One task as a list row. My Work, list view, calendar overflow. */
 export function TaskRow({
@@ -78,6 +78,7 @@ export function TaskRow({
           style={{ background: l.color }}
         />
       ))}
+      <ChecklistChip description={task.description} className="hidden sm:inline-flex" />
       <PriorityFlag priority={task.priority} />
       <DueChip dueDate={task.dueDate} done={done} className="w-20 justify-end text-right sm:w-24" />
       {task.assignee ? (

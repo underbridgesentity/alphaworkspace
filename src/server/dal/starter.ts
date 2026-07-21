@@ -68,7 +68,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
 
   await t("Kickoff call with Karoo Coffee", {
     description:
-      "Notes live in the task, try the **description**, and leave a comment below.\n\nAlpha tip: hold the mic button after a client call and speak everything that needs doing. You'll get a reviewable task list, not a mess.",
+      "Notes live in the task, try the **description**, and leave a comment below.\n\nSteps can live right here as a checklist, tick them as you go and the card shows your progress:\n- [x] Open this task\n- [ ] Tick a box\n- [ ] Drag the card to Done\n\nAlpha tip: hold the mic button after a client call and speak everything that needs doing. You'll get a reviewable task list, not a mess.",
     status: "in_progress",
     dueDate: today,
     priority: "high",

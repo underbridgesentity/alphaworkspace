@@ -28,12 +28,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { checklistProgress } from "@/lib/checklist";
 import type { TaskDTO, TaskStatus } from "@/lib/types";
 import { celebrateAt, useBoard, useTaskMutations } from "@/lib/client/tasks";
 import { useWorkspace } from "@/lib/client/workspace";
 import { useUI } from "./shell";
 import { Avatar } from "@/components/ui/avatar";
-import { DueChip, PriorityFlag, statusLabel } from "./status-bits";
+import { ChecklistChip, DueChip, PriorityFlag, statusLabel } from "./status-bits";
 
 const GAP = 1024;
 
@@ -384,10 +385,15 @@ function CardBody({ task }: { task: TaskDTO }) {
         </p>
       </div>
 
-      {(task.dueDate || task.priority !== "none" || task.labels.length > 0 || task.assignee) && (
+      {(task.dueDate ||
+        task.priority !== "none" ||
+        task.labels.length > 0 ||
+        task.assignee ||
+        checklistProgress(task.description)) && (
         <div className="mt-2 flex items-center gap-2 pl-6.5">
           <DueChip dueDate={task.dueDate} done={done} />
           <PriorityFlag priority={task.priority} />
+          <ChecklistChip description={task.description} />
           {task.labels.slice(0, 2).map((l) => (
             <span
               key={l.id}

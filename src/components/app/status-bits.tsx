@@ -4,8 +4,9 @@
  * Small shared task glyphs: status dot, due chip, priority flag, label pill.
  * One vocabulary everywhere, board, lists, panel, search.
  */
-import { Check, Flag } from "lucide-react";
+import { Check, Flag, ListChecks } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { checklistProgress } from "@/lib/checklist";
 import { dueLabel, isDueToday, isOverdue } from "@/lib/dates";
 import type { Priority, TaskStatus } from "@/lib/types";
 
@@ -73,6 +74,35 @@ export function DueChip({
       )}
     >
       {dueLabel(dueDate)}
+    </span>
+  );
+}
+
+/**
+ * "3/5" when the description carries a checklist, quiet until it's done,
+ * then a gentle nod in ok-green. Renders nothing when there's no checklist.
+ */
+export function ChecklistChip({
+  description,
+  className,
+}: {
+  description: string | null | undefined;
+  className?: string;
+}) {
+  const progress = checklistProgress(description);
+  if (!progress) return null;
+  const complete = progress.done === progress.total;
+  return (
+    <span
+      title={`Checklist: ${progress.done} of ${progress.total} done`}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 text-xs tabular",
+        complete ? "text-ok" : "text-faint",
+        className,
+      )}
+    >
+      <ListChecks className="size-3.5" />
+      {progress.done}/{progress.total}
     </span>
   );
 }
