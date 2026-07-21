@@ -64,6 +64,13 @@
       "when": 1784616945346,
       "tag": "0008_gigantic_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784703600000,
+      "tag": "0009_enable_rls",
+      "breakpoints": true
     }
   ]
 }
