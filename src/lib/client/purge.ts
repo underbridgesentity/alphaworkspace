@@ -6,6 +6,7 @@
  * must never block signing out.
  */
 import { idb } from "./idb";
+import { unsubscribePush } from "./push";
 
 export async function purgeLocalData(): Promise<void> {
   try {
@@ -22,5 +23,12 @@ export async function purgeLocalData(): Promise<void> {
     await idb.clear();
   } catch {
     // outbox store missing; fine
+  }
+  try {
+    // Otherwise the previous user keeps receiving private pushes (title/body
+    // on the lock screen) on this shared device after signing out.
+    await unsubscribePush();
+  } catch {
+    // no push subscription / unsupported; fine
   }
 }

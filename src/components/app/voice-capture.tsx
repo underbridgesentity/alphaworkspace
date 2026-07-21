@@ -61,7 +61,17 @@ export function VoiceCaptureSheet({
     void provider.start({
       onResult: (final, live) => {
         // Server provider appends its transcript; keep prior text on re-record.
-        setFinalText((prev) => (provider.kind === "server-deepgram" && final ? (prev ? `${prev} ${final}` : final) : final));
+        // Empty `final` is a status placeholder ("Listening…") — never let it
+        // wipe what's already committed.
+        setFinalText((prev) =>
+          provider.kind === "server-deepgram"
+            ? final
+              ? prev
+                ? `${prev} ${final}`
+                : final
+              : prev
+            : final,
+        );
         setInterim(live);
       },
       onEnd: () => {
@@ -106,8 +116,10 @@ export function VoiceCaptureSheet({
       setPhase("proposals");
     } catch (err) {
       if (err instanceof ApiError && err.code === "plan_limit") {
+        // Surface the upgrade prompt but KEEP the sheet open so the transcript
+        // the user just spoke isn't thrown away; they can copy it or upgrade.
         raiseLimit(err);
-        onClose();
+        setPhase("review");
         return;
       }
       toast(err instanceof Error ? err.message : "Extraction hit a snag", {
@@ -146,17 +158,32 @@ export function VoiceCaptureSheet({
             Just finished a call? Talk through everything that needs doing, people, projects, days. You’ll review before anything is created.
           </p>
           <button
-            onClick={() => start()}
-            className="press mx-auto mt-6 flex size-20 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] hover:bg-accent-hover"
+            onClick={() => {
+              // Don't let someone record into a full quota and lose it after;
+              // send them to the upgrade prompt instead.
+              if (capturesLeft <= 0) {
+                raiseLimit(
+                  new ApiError(
+                    "plan_limit",
+                    "You've used your voice captures this month",
+                    403,
+                    "captures",
+                  ),
+                );
+                onClose();
+                return;
+              }
+              start();
+            }}
+            className="press mx-auto mt-6 flex size-20 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] hover:bg-accent-hover disabled:opacity-50"
             aria-label="Start recording"
           >
             <Mic className="size-8" />
           </button>
           <p className="mt-3 text-xs text-faint">
-            Tap to start ·{" "}
             {capturesLeft > 0
-              ? `${capturesLeft} capture${capturesLeft === 1 ? "" : "s"} left this month`
-              : "monthly captures used up"}
+              ? `Tap to start · ${capturesLeft} capture${capturesLeft === 1 ? "" : "s"} left this month`
+              : "You've used this month's captures. Upgrade for more."}
           </p>
           <p className="mx-auto mt-4 max-w-xs text-[11px] leading-relaxed text-faint">
             Transcribed on your device. Audio is never recorded or stored, only the text you approve.

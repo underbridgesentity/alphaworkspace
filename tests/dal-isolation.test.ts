@@ -252,6 +252,39 @@ describe("roles", () => {
     const updated = await updateTask(ctxCara, task.id, { status: "in_progress" });
     expect(updated.status).toBe("in_progress");
   });
+
+  it("unassigns a removed member's open tasks so work isn't stranded", async () => {
+    const ownerCtx = await ctxFor(db, anna.id, ws1.slug);
+    const [project] = await listProjects(ownerCtx);
+    const dan = await createTestUser(db, "dan@studio-one.co.za", "Dan");
+    await addMember(db, ws1.id, dan.id, "member");
+    const task = await createTask(ownerCtx, {
+      projectId: project.id,
+      title: "Dan's in-flight work",
+      description: "",
+      status: "in_progress",
+      priority: "none",
+      assigneeId: dan.id,
+      labelIds: [],
+    });
+
+    const [membership] = await db
+      .select({ id: schema.memberships.id })
+      .from(schema.memberships)
+      .where(
+        and(
+          eq(schema.memberships.workspaceId, ws1.id),
+          eq(schema.memberships.userId, dan.id),
+        ),
+      );
+    await removeMember(ownerCtx, membership.id);
+
+    const [row] = await db
+      .select({ assigneeId: schema.tasks.assigneeId })
+      .from(schema.tasks)
+      .where(eq(schema.tasks.id, task.id));
+    expect(row.assigneeId).toBeNull();
+  });
 });
 
 describe("activity log", () => {

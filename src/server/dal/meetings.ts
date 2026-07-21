@@ -148,7 +148,11 @@ export async function usedMeetingMinutes(ctx: Ctx): Promise<number> {
     .where(
       and(
         eq(meetings.workspaceId, ctx.workspace.id),
+        // Meter only recordings that actually reached transcription. "failed"
+        // never billed; "uploading" hasn't delivered audio yet (a tab closed
+        // before the PUT would otherwise burn phantom minutes forever).
         ne(meetings.status, "failed"),
+        ne(meetings.status, "uploading"),
         gte(meetings.createdAt, monthStart),
       ),
     );
@@ -376,9 +380,10 @@ export async function processMeeting(
   if (row.status === "ready") {
     throw new ValidationError("This meeting was already processed");
   }
-  if (row.status === "processing") {
-    throw new ValidationError("This meeting is already being processed");
-  }
+  // NOTE: a "processing" row is deliberately allowed to re-enter. If the
+  // previous run was killed (deploy, timeout, OOM) the row would otherwise be
+  // stuck forever; the pipeline is idempotent (it overwrites), so a manual
+  // retry recovers it. Rate limiting on the route bounds abuse.
   // A bot meeting normally processes itself off the webhook; manual retry is
   // only possible once its audio has been copied into our storage.
   if (row.source === "bot" && !row.audioPath) {

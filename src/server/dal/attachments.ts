@@ -54,7 +54,7 @@ export async function beginUpload(
   const used = await usedAttachmentBytes(ctx);
   if (used + file.sizeBytes > quotaBytes) {
     throw new LimitError(
-      "captures",
+      "storage",
       `Your plan's file storage is full (${ctxEntitlements(ctx).attachmentQuotaMb} MB)`,
     );
   }

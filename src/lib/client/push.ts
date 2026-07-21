@@ -66,11 +66,19 @@ export async function unsubscribePush(): Promise<PushStatus> {
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
   if (sub) {
-    await fetch("/api/push/subscribe", {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ endpoint: sub.endpoint }),
-    });
+    // Kill the LOCAL subscription first and unconditionally, so an offline
+    // sign-out still stops pushes landing on this (possibly shared) device
+    // even when the server DELETE can't go through. The server row is pruned
+    // on the next failed delivery anyway.
+    try {
+      await fetch("/api/push/subscribe", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+      });
+    } catch {
+      // offline / network down; the local unsubscribe below still runs
+    }
     await sub.unsubscribe();
   }
   return "unsubscribed";

@@ -139,7 +139,17 @@ describe("metering", () => {
     );
     expect(ok.meetingId).toBeTruthy();
 
-    // ...which takes usage to 69/60, so now the gate is closed.
+    // The spillover still counts nothing while it's UPLOADING (never-delivered
+    // audio must not burn phantom minutes)...
+    expect(await usedMeetingMinutes(ctx)).toBe(59);
+    // ...but once it reaches transcription it meters, taking usage to 69/60.
+    await db
+      .update(schema.meetings)
+      .set({ status: "processing" })
+      .where(eq(schema.meetings.id, ok.meetingId));
+    expect(await usedMeetingMinutes(ctx)).toBe(69);
+
+    // So now the gate is closed.
     await expect(
       beginMeeting(
         ctx,

@@ -51,15 +51,32 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="Voice, specifically">
+      <Section title="Voice capture">
         <p>
-          When you use voice capture, audio is transcribed live on your device
-          where supported.{" "}
+          When you use voice capture, the audio is transcribed to text so you
+          can review and confirm the tasks we extract from it. Where your
+          browser supports it, that happens on your device; otherwise the audio
+          is sent to our transcription provider (Deepgram) to turn into text and
+          is not retained by them afterwards. We keep the transcript, not a
+          stored voice-capture recording. Discard a capture and it’s marked
+          discarded; delete your workspace and it’s gone entirely.
+        </p>
+      </Section>
+
+      <Section title="Meeting recording">
+        <p>
+          Meetings are an opt-in feature. When you record one, the audio is
+          captured (on your device, or by a clearly-named notetaker that joins
+          the online call as a visible participant so everyone can see it),
+          uploaded to our storage, and transcribed.{" "}
           <span className="font-medium text-ink">
-            We never record or store the audio itself
-          </span>{" "}, only the transcript, and only so you can review and confirm the
-          tasks extracted from it. Discard a capture and it’s marked discarded;
-          delete your workspace and it’s gone entirely.
+            Please tell everyone in the room they’re being recorded before you
+            start
+          </span>{" "}
+          , it’s the law and it’s good manners. Recordings are private to
+          whoever made them until shared, you can delete the audio and keep just
+          the notes, and meeting audio for the notetaker-bot option is held
+          briefly by our meeting-bot provider (Recall.ai) before we fetch it.
         </p>
       </Section>
 
@@ -75,11 +92,14 @@ export default function PrivacyPage() {
       <Section title="Who else touches data">
         <p>
           We use a short list of operators, each doing one job: Supabase
-          (database hosting, we prefer the Cape Town af-south-1 region where
-          available), Vercel (application hosting), Resend (email delivery),
-          Anthropic (AI processing as above), and PayFast (payments, card
-          details go directly to PayFast and never touch Alpha’s servers). We
-          don’t sell personal information. Ever.
+          (database and file hosting), Vercel (application hosting), Resend
+          (email delivery), Anthropic (AI processing as above), Deepgram
+          (speech-to-text for voice captures and meetings), Recall.ai (the
+          optional meeting notetaker bot), and PayFast (payments, card details
+          go directly to PayFast and never touch Alpha’s servers). Some of
+          these process data on servers outside South Africa (for example the
+          United States); we only share what each needs to do its job. We don’t
+          sell personal information. Ever.
         </p>
       </Section>
 

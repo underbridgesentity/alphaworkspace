@@ -118,17 +118,29 @@ export async function setWorkspacePlanAdmin(
   actorId: string,
 ): Promise<void> {
   const [ws] = await db
-    .select({ plan: workspaces.plan })
+    .select({ plan: workspaces.plan, entitlements: workspaces.entitlements })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId));
   if (!ws) throw new ForbiddenError("Workspace not found");
 
+  // Preserve the meeting-bots add-on across a comp/downgrade (a band snapshot
+  // would strip it; re-enabling silently is a surprise).
+  const keptAddons = (ws.entitlements?.features ?? []).filter(
+    (f) => f === "meeting_bots",
+  );
+  const withAddons = () => {
+    const base = entitlementsSnapshot(plan);
+    return {
+      ...base,
+      features: [...base.features.filter((f) => f !== "meeting_bots"), ...keptAddons],
+    };
+  };
+  const snapshot =
+    plan === "free" ? (keptAddons.length ? withAddons() : null) : withAddons();
+
   await db
     .update(workspaces)
-    .set({
-      plan,
-      entitlements: plan === "free" ? null : entitlementsSnapshot(plan),
-    })
+    .set({ plan, entitlements: snapshot })
     .where(eq(workspaces.id, workspaceId));
 
   // A comp supersedes any checkout that never completed; otherwise the

@@ -12,6 +12,7 @@ import { PLANS, type PlanId } from "@/lib/plans";
 import { logActivity } from "@/server/dal/activity";
 import { verifyItnSignature } from "./signature";
 import { payfastSandbox } from "./checkout";
+import { supersedeOtherSubscriptions } from "./subscriptions";
 
 export interface ItnResult {
   ok: boolean;
@@ -35,6 +36,9 @@ export function entitlementsSnapshot(plan: PlanId) {
   };
 }
 
+/** Add-on features that live outside any band and must survive a plan change. */
+const ADDON_FEATURES = ["meeting_bots"] as const;
+
 async function setWorkspacePlan(
   db: Db,
   workspaceId: string,
@@ -42,12 +46,37 @@ async function setWorkspacePlan(
   to: PlanId,
   extra: Record<string, unknown>,
 ) {
+  // Carry any workspace-specific add-on forward; a band snapshot alone would
+  // silently strip a feature the customer is paying for.
+  const [existing] = await db
+    .select({ entitlements: workspaces.entitlements })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId));
+  const keptAddons = (existing?.entitlements?.features ?? []).filter((f) =>
+    (ADDON_FEATURES as readonly string[]).includes(f),
+  );
+  const withAddons = (plan: PlanId) => {
+    const base = entitlementsSnapshot(plan);
+    return {
+      ...base,
+      features: [
+        ...base.features.filter(
+          (f) => !(ADDON_FEATURES as readonly string[]).includes(f),
+        ),
+        ...keptAddons,
+      ],
+    };
+  };
+  const snapshot =
+    to === "free"
+      ? keptAddons.length
+        ? withAddons(to) // keep base free features AND the add-on
+        : null
+      : withAddons(to);
+
   await db
     .update(workspaces)
-    .set({
-      plan: to,
-      entitlements: to === "free" ? null : entitlementsSnapshot(to),
-    })
+    .set({ plan: to, entitlements: snapshot })
     .where(eq(workspaces.id, workspaceId));
   await logActivity(db, {
     workspaceId,
@@ -114,6 +143,16 @@ export async function processItn(
   const now = new Date();
 
   if (status === "COMPLETE") {
+    // A COMPLETE for a subscription the user already cancelled is a stale or
+    // duplicated notification, NEVER a resurrection. Record it, change nothing.
+    if (sub.status === "cancelled") {
+      await db
+        .update(subscriptions)
+        .set({ lastItn, updatedAt: now })
+        .where(eq(subscriptions.id, sub.id));
+      return { ok: true };
+    }
+
     // 4. Amount, only for money-moving notifications.
     const gross = Number.parseFloat(get("amount_gross"));
     const expected = sub.amountCents / 100;
@@ -139,6 +178,11 @@ export async function processItn(
 
     // Activation (not renewal) flips the workspace plan + snapshot.
     if (!alreadyActive || ws.plan !== sub.plan) {
+      // A brand-new subscription supersedes any prior live one, so a band
+      // change (Team → Studio) never leaves two recurring charges running.
+      if (!alreadyActive) {
+        await supersedeOtherSubscriptions(db, ws.id, sub.id);
+      }
       await setWorkspacePlan(db, ws.id, ws.plan, sub.plan, {
         billing: sub.billing,
         mPaymentId,

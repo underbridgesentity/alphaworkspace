@@ -105,6 +105,23 @@ export async function updateWorkspace(
     next.settings = { ...ctx.workspace.settings, ...input.settings };
   }
   if (Object.keys(next).length === 0) return;
+
+  // Removing the custom column would strand its tasks in a status no view
+  // renders; march them back to To do first so nothing vanishes.
+  const removingCustom =
+    input.settings &&
+    "customColumn" in input.settings &&
+    !input.settings.customColumn &&
+    ctx.workspace.settings.customColumn;
+  if (removingCustom) {
+    await ctx.db
+      .update(tasks)
+      .set({ status: "todo", updatedAt: new Date() })
+      .where(
+        and(eq(tasks.workspaceId, ctx.workspace.id), eq(tasks.status, "custom")),
+      );
+  }
+
   await ctx.db
     .update(workspaces)
     .set(next)
@@ -208,6 +225,21 @@ export async function removeMember(ctx: Ctx, membershipId: string): Promise<void
   if (target.userId !== ctx.userId) assertRole(ctx, "admin");
 
   await ctx.db.delete(memberships).where(eq(memberships.id, membershipId));
+
+  // Their in-flight work would otherwise stay assigned to someone no longer in
+  // the workspace, invisible in everyone's My Work. Hand it back to the pool so
+  // an admin can reassign it.
+  await ctx.db
+    .update(tasks)
+    .set({ assigneeId: null, updatedAt: new Date() })
+    .where(
+      and(
+        eq(tasks.workspaceId, ctx.workspace.id),
+        eq(tasks.assigneeId, target.userId),
+        ne(tasks.status, "done"),
+      ),
+    );
+
   await logActivity(ctx.db, {
     workspaceId: ctx.workspace.id,
     type: "member_left",

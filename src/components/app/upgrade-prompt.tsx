@@ -13,7 +13,7 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface LimitDetail {
-  limit?: "members" | "projects" | "captures" | "meetings" | "feature";
+  limit?: "members" | "projects" | "captures" | "meetings" | "storage" | "feature";
   feature?: string;
   message: string;
 }
@@ -23,6 +23,7 @@ const HEADLINES: Record<string, string> = {
   projects: "More projects, same calm",
   captures: "Keep talking, we'll keep writing",
   meetings: "More meeting minutes on tap",
+  storage: "More room for your files",
   feature: "That one's a Studio thing",
 };
 

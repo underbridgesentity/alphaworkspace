@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AtSign,
   BellOff,
   Clock,
   Inbox,
@@ -24,6 +25,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   task_due_soon: Clock,
   task_overdue: TriangleAlert,
   comment_added: MessageSquare,
+  mentioned: AtSign,
   narrative_ready: Sparkles,
   morning_brief: Sun,
 };

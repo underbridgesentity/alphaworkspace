@@ -5,7 +5,7 @@
  */
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { createWorkspace } from "@/server/dal/workspaces";
@@ -316,5 +316,128 @@ describe("cancelSubscription", () => {
       .from(schema.workspaces)
       .where(eq(schema.workspaces.id, wsId));
     expect(ws.plan).toBe("free");
+  });
+});
+
+describe("no double billing on a band change", () => {
+  it("supersedes the old active subscription when a new one activates", async () => {
+    // Start clean: activate Team.
+    const team = await createPendingSubscription(db, {
+      workspaceId: wsId,
+      plan: "team",
+      billing: "monthly",
+    });
+    mPaymentId = team.mPaymentId;
+    await processItn(db, itnBody({ amount_gross: "499.00", token: "tok-team" }), {
+      skipPostback: true,
+    });
+    let [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("team");
+
+    // Owner clicks "Upgrade to Studio" while Team is live → new sub activates.
+    const studio = await createPendingSubscription(db, {
+      workspaceId: wsId,
+      plan: "studio",
+      billing: "monthly",
+    });
+    mPaymentId = studio.mPaymentId;
+    await processItn(db, itnBody({ amount_gross: "999.00", token: "tok-studio" }), {
+      skipPostback: true,
+    });
+
+    // Exactly ONE live subscription remains, the Studio one; Team is cancelled.
+    const live = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(
+        and(
+          eq(schema.subscriptions.workspaceId, wsId),
+          ne(schema.subscriptions.status, "cancelled"),
+        ),
+      );
+    expect(live).toHaveLength(1);
+    expect(live[0].plan).toBe("studio");
+    [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("studio");
+  });
+
+  it("keeps the meeting_bots add-on (and base features) across a plan change", async () => {
+    // Grant the add-on on top of an active Team snapshot.
+    await db
+      .update(schema.workspaces)
+      .set({
+        plan: "team",
+        entitlements: {
+          maxMembers: 10,
+          maxActiveProjects: null,
+          voiceCapturesPerMonth: 200,
+          meetingMinutesPerMonth: 600,
+          features: [...PLANS.team.features, "meeting_bots"],
+        },
+      })
+      .where(eq(schema.workspaces.id, wsId));
+
+    // Upgrade to Studio via a fresh COMPLETE.
+    const studio = await createPendingSubscription(db, {
+      workspaceId: wsId,
+      plan: "studio",
+      billing: "monthly",
+    });
+    mPaymentId = studio.mPaymentId;
+    await processItn(db, itnBody({ amount_gross: "999.00", token: "tok-bots" }), {
+      skipPostback: true,
+    });
+
+    const [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    const feats = ws.entitlements?.features ?? [];
+    expect(feats).toContain("meeting_bots"); // add-on survived
+    expect(feats).toContain("scorecards"); // Studio base features present
+    expect(feats).toContain("weekly_narrative");
+  });
+
+  it("a COMPLETE for an already-cancelled subscription never resurrects it", async () => {
+    const sub = await createPendingSubscription(db, {
+      workspaceId: wsId,
+      plan: "team",
+      billing: "monthly",
+    });
+    mPaymentId = sub.mPaymentId;
+    // Mark it cancelled, workspace on free.
+    await db
+      .update(schema.subscriptions)
+      .set({ status: "cancelled" })
+      .where(eq(schema.subscriptions.mPaymentId, sub.mPaymentId));
+    await db
+      .update(schema.workspaces)
+      .set({ plan: "free", entitlements: null })
+      .where(eq(schema.workspaces.id, wsId));
+
+    // A late/duplicate COMPLETE arrives for that cancelled sub.
+    const result = await processItn(
+      db,
+      itnBody({ amount_gross: "499.00", token: "tok-late" }),
+      { skipPostback: true },
+    );
+    expect(result.ok).toBe(true);
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.mPaymentId, sub.mPaymentId));
+    expect(row.status).toBe("cancelled"); // still cancelled
+    const [ws] = await db
+      .select()
+      .from(schema.workspaces)
+      .where(eq(schema.workspaces.id, wsId));
+    expect(ws.plan).toBe("free"); // not re-upgraded
   });
 });

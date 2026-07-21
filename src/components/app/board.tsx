@@ -10,7 +10,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -65,7 +66,13 @@ export function Board({ projectId }: { projectId: string }) {
   }, [items, customName]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Mouse drags after a small move; touch needs a short press-and-hold so a
+    // finger swipe still SCROLLS the stacked mobile board instead of grabbing
+    // a card. A quick tap still opens the task.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

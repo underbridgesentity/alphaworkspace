@@ -5,11 +5,21 @@
  */
 import { useState } from "react";
 import Link from "next/link";
-import { AudioLines, ChevronRight, FolderKanban, Plus } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArchiveRestore,
+  AudioLines,
+  ChevronRight,
+  FolderKanban,
+  Plus,
+} from "lucide-react";
+import { apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
+import type { ProjectDTO } from "@/lib/types";
 import { NewProjectDialog } from "@/components/app/new-project-dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 export default function ProjectsPage() {
   const { workspace, projects } = useWorkspace();
@@ -96,7 +106,101 @@ export default function ProjectsPage() {
         <ChevronRight className="size-4 text-faint" />
       </Link>
 
+      {isAdmin && <ArchivedProjects />}
+
       {creating && <NewProjectDialog onClose={() => setCreating(false)} />}
     </div>
   );
+}
+
+/** Admins can see and restore archived projects (archive is reversible). */
+function ArchivedProjects() {
+  const { workspace } = useWorkspace();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ["ws", workspace.slug, "projects", "archived"],
+    queryFn: () =>
+      apiGet<{ projects: ProjectDTO[] }>(
+        `/api/w/${workspace.slug}/projects?archived=1`,
+      ),
+    enabled: open,
+    select: (d) => d.projects.filter((p) => p.status === "archived"),
+  });
+
+  const restore = useMutation({
+    mutationFn: (id: string) =>
+      apiMutate(`/api/w/${workspace.slug}/projects/${id}`, {
+        method: "PATCH",
+        body: { status: "active" },
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["ws", workspace.slug, "bootstrap"] }),
+        qc.invalidateQueries({
+          queryKey: ["ws", workspace.slug, "projects", "archived"],
+        }),
+      ]);
+      toast("Project restored", { variant: "success" });
+    },
+    onError: (e) =>
+      toast(e instanceof Error ? e.message : "Couldn't restore", {
+        variant: "error",
+      }),
+  });
+
+  const archived = data ?? [];
+
+  return (
+    <div className="mt-8">
+      <button
+        onClick={() => setOpen(!open)}
+        className="press flex items-center gap-1.5 rounded-control px-1 py-1 text-xs font-semibold uppercase tracking-wider text-faint hover:text-muted"
+      >
+        <ChevronRight
+          className={cnRotate(open)}
+        />
+        Archived projects
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {archived.length === 0 ? (
+            <p className="px-1 text-sm text-faint">Nothing archived.</p>
+          ) : (
+            archived.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-card bg-surface/60 p-3"
+              >
+                <span
+                  className="size-3 shrink-0 rounded-full opacity-60"
+                  style={{ background: p.color }}
+                />
+                <span className="min-w-0 flex-1 truncate text-sm text-muted">
+                  {p.name}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={restore.isPending && restore.variables === p.id}
+                  onClick={() => restore.mutate(p.id)}
+                >
+                  <ArchiveRestore className="size-4" />
+                  Restore
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function cnRotate(open: boolean): string {
+  return open
+    ? "size-3.5 transition-transform"
+    : "size-3.5 -rotate-90 transition-transform";
 }

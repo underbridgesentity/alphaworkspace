@@ -95,8 +95,20 @@ export default function BillingSettingsPage() {
   const cancel = async () => {
     setBusy("cancel");
     try {
-      await apiMutate(`/api/w/${workspace.slug}/billing`, { method: "DELETE" });
+      const res = await apiMutate<{ remote: boolean }>(
+        `/api/w/${workspace.slug}/billing`,
+        { method: "DELETE" },
+      );
       await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
+      // If PayFast couldn't confirm the stop, say so plainly, otherwise the
+      // customer thinks they're done and a charge still lands.
+      if ("remote" in res && res.remote === false) {
+        toast(
+          "You're on Free here, but we couldn't confirm the stop with PayFast. Check your PayFast account or contact us so no further charge lands.",
+          { variant: "error" },
+        );
+        return;
+      }
       toast("Subscription cancelled, you're on Free, nothing was deleted", {
         variant: "success",
       });
@@ -173,6 +185,36 @@ export default function BillingSettingsPage() {
             active projects · {data.usage.voiceCapturesThisMonth}/
             {PLANS[currentPlan].voiceCapturesPerMonth} voice captures this month
           </p>
+        )}
+        {/* Past due: tell the owner what to do and let them retry or stop. */}
+        {data?.subscription?.status === "past_due" && isOwner && (
+          <div className="mt-3 rounded-control bg-warn/10 p-3">
+            <p className="text-xs text-warn">
+              PayFast couldn&apos;t take the last payment. Retry to keep{" "}
+              {PLANS[currentPlan].name}, or cancel to drop to Free. Nothing is
+              locked in the meantime.
+            </p>
+            <div className="mt-2 flex gap-2">
+              {currentPlan !== "free" && (
+                <Button
+                  size="sm"
+                  loading={busy === currentPlan}
+                  onClick={() => void checkout(currentPlan as "team" | "studio")}
+                >
+                  Retry payment
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger"
+                loading={busy === "cancel"}
+                onClick={() => void cancel()}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
         {data?.subscription?.status === "active" && isOwner && (
           <Button

@@ -53,6 +53,68 @@ function apiSignature(params: Record<string, string>, passphrase?: string): stri
  * recurring token exists; regardless of remote success, local state drops to
  * Free (never a lockout, existing work stays).
  */
+/** Best-effort PayFast-side cancel of ONE subscription by its token. */
+async function cancelRemote(
+  payfastToken: string | null,
+  fetchImpl?: typeof fetch,
+): Promise<boolean> {
+  if (
+    !payfastToken ||
+    !process.env.PAYFAST_MERCHANT_ID ||
+    !process.env.PAYFAST_PASSPHRASE
+  ) {
+    return false;
+  }
+  try {
+    const timestamp = new Date().toISOString().slice(0, 19);
+    const headers = {
+      "merchant-id": process.env.PAYFAST_MERCHANT_ID,
+      version: "v1",
+      timestamp,
+    };
+    const signature = apiSignature(headers, process.env.PAYFAST_PASSPHRASE);
+    const doFetch = fetchImpl ?? fetch;
+    const url = `https://api.payfast.co.za/subscriptions/${payfastToken}/cancel${payfastSandbox() ? "?testing=true" : ""}`;
+    const res = await doFetch(url, { method: "PUT", headers: { ...headers, signature } });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Stop every live subscription for a workspace EXCEPT `keepId`. Used when a
+ * new subscription activates so a band change never leaves two recurring
+ * charges running in parallel (the double-billing trap). Best-effort remote
+ * cancel + always local; returns how many were superseded.
+ */
+export async function supersedeOtherSubscriptions(
+  db: Db,
+  workspaceId: string,
+  keepId: string,
+  fetchImpl?: typeof fetch,
+): Promise<number> {
+  const others = await db
+    .select()
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.workspaceId, workspaceId),
+        ne(subscriptions.id, keepId),
+        ne(subscriptions.status, "cancelled"),
+      ),
+    );
+  const now = new Date();
+  for (const s of others) {
+    await cancelRemote(s.payfastToken, fetchImpl);
+    await db
+      .update(subscriptions)
+      .set({ status: "cancelled", cancelledAt: now, updatedAt: now })
+      .where(eq(subscriptions.id, s.id));
+  }
+  return others.length;
+}
+
 export async function cancelSubscription(
   db: Db,
   workspaceId: string,
@@ -65,31 +127,7 @@ export async function cancelSubscription(
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
 
-  let remote = false;
-  if (
-    sub?.payfastToken &&
-    process.env.PAYFAST_MERCHANT_ID &&
-    process.env.PAYFAST_PASSPHRASE
-  ) {
-    try {
-      const timestamp = new Date().toISOString().slice(0, 19);
-      const headers = {
-        "merchant-id": process.env.PAYFAST_MERCHANT_ID,
-        version: "v1",
-        timestamp,
-      };
-      const signature = apiSignature(headers, process.env.PAYFAST_PASSPHRASE);
-      const doFetch = opts.fetchImpl ?? fetch;
-      const url = `https://api.payfast.co.za/subscriptions/${sub.payfastToken}/cancel${payfastSandbox() ? "?testing=true" : ""}`;
-      const res = await doFetch(url, {
-        method: "PUT",
-        headers: { ...headers, signature },
-      });
-      remote = res.ok;
-    } catch {
-      remote = false;
-    }
-  }
+  const remote = await cancelRemote(sub?.payfastToken ?? null, opts.fetchImpl);
 
   const now = new Date();
   if (sub && sub.status !== "cancelled") {

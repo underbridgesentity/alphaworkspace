@@ -67,6 +67,17 @@ export default function MeetingPage() {
   const mine = meeting?.createdBy?.id === me.id;
   const [emailing, setEmailing] = useState(false);
 
+  // A processing run should finish in ~a minute. If it's been much longer the
+  // worker was probably killed; offer a retry (processMeeting is re-entrant).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+  const stuckTooLong =
+    meeting?.status === "processing" &&
+    now - new Date(meeting.createdAt).getTime() > 3 * 60_000;
+
   const refresh = () => {
     void queryClient.invalidateQueries({
       queryKey: ["ws", workspace.slug, "meeting", meetingId],
@@ -300,12 +311,17 @@ export default function MeetingPage() {
                 : "This usually takes about a minute. The page updates itself."}
             </p>
           </div>
-          {meeting.status === "uploading" && meeting.source === "device" && mine && (
-            <Button size="sm" variant="outline" onClick={reprocess}>
-              <RefreshCw className="size-4" />
-              Transcribe now
-            </Button>
-          )}
+          {/* Device recording awaiting its first transcribe, OR a run that got
+              stuck (deploy/timeout) more than ~3 min ago: always give the
+              creator a way to kick it. */}
+          {mine &&
+            meeting.source === "device" &&
+            (meeting.status === "uploading" || stuckTooLong) && (
+              <Button size="sm" variant="outline" onClick={reprocess}>
+                <RefreshCw className="size-4" />
+                {meeting.status === "uploading" ? "Transcribe now" : "Try again"}
+              </Button>
+            )}
         </div>
       )}
       {meeting.status === "failed" && (

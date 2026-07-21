@@ -172,6 +172,21 @@ export function useTaskMutations() {
         patchTaskEverywhere(qc, slug, vars.taskId, res.task);
       }
       void qc.invalidateQueries({ queryKey: ["ws", slug, "task", vars.taskId] });
+      // A change of column/project/assignee/date means the task now belongs to
+      // a DIFFERENT board, My Work group, or calendar day. Patch-in-place can't
+      // relocate it, so refetch the lists that could be showing it in the wrong
+      // place (or not at all).
+      const p = vars.patch;
+      if (
+        p.status !== undefined ||
+        p.projectId !== undefined ||
+        p.assigneeId !== undefined ||
+        p.dueDate !== undefined
+      ) {
+        void qc.invalidateQueries({ queryKey: ["ws", slug, "board"] });
+        void qc.invalidateQueries({ queryKey: ["ws", slug, "my-work"] });
+        void qc.invalidateQueries({ queryKey: ["ws", slug, "calendar"] });
+      }
     },
   });
 
