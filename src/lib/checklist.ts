@@ -12,6 +12,30 @@ export interface ChecklistProgress {
   total: number;
 }
 
+/** A plain "- item" bullet, i.e. one that ISN'T already a checkbox. */
+const PLAIN_BULLET = /^(\s*)- (?!\[( |x|X)\]\s)(.*\S.*)$/;
+
+/**
+ * True when the text has plain bullets and so could become tickable steps.
+ * Someone who types "- Step 1" reasonably expects to tick it; this is what
+ * lets the UI offer that instead of silently leaving a dead bullet.
+ */
+export function hasPlainBullets(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return text.split("\n").some((line) => PLAIN_BULLET.test(line));
+}
+
+/** Turn plain "- item" bullets into "- [ ] item". Real checkboxes are left alone. */
+export function bulletsToSteps(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const m = line.match(PLAIN_BULLET);
+      return m ? `${m[1]}- [ ] ${m[3]}` : line;
+    })
+    .join("\n");
+}
+
 /** null when the text contains no checklist lines at all. */
 export function checklistProgress(
   text: string | null | undefined,

@@ -52,6 +52,7 @@ import {
 import { Attachments } from "./attachments";
 import { MentionInput } from "./mention-input";
 import { RichText } from "./rich-text";
+import { bulletsToSteps, hasPlainBullets } from "@/lib/checklist";
 import { TaskTime } from "./timer";
 import type { LabelDTO } from "@/lib/types";
 
@@ -690,28 +691,86 @@ function DescriptionEditor({
     onSave(next);
   };
 
+  const applyText = (next: string, caretToEnd = false) => {
+    setValue(next);
+    onSave(next);
+    setEditing(true);
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.value = next; // uncontrolled: defaultValue won't update in place
+      resize();
+      if (caretToEnd) {
+        el.focus();
+        el.setSelectionRange(next.length, next.length);
+      }
+    });
+  };
+
+  // Typing "- [ ]" by hand is a convention nobody discovers. This writes it.
+  const addStep = () => {
+    const trimmed = value.replace(/\s*$/, "");
+    applyText(trimmed ? `${trimmed}\n- [ ] ` : "- [ ] ", true);
+  };
+
+  const stepControls = (
+    /* mousedown is prevented so the textarea doesn't blur (and commit) out
+       from under the tap before the click lands. */
+    <div className="mt-1.5 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={addStep}
+        className="press text-xs font-medium text-accent"
+      >
+        + Add step
+      </button>
+      {hasPlainBullets(value) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => applyText(bulletsToSteps(value))}
+          className="press text-xs text-muted underline decoration-line underline-offset-2 hover:text-ink"
+        >
+          Make these tickable
+        </button>
+      )}
+    </div>
+  );
+
   if (!editing) {
     return (
-      <div
-        onClick={() => setEditing(true)}
-        className="mt-4 cursor-text rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed"
-      >
-        <RichText text={value} onToggleCheck={toggleCheck} />
-      </div>
+      <>
+        <div
+          onClick={() => setEditing(true)}
+          className="mt-4 cursor-text rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed"
+        >
+          <RichText text={value} onToggleCheck={toggleCheck} />
+        </div>
+        {stepControls}
+      </>
     );
   }
 
   return (
-    <textarea
-      ref={ref}
-      autoFocus
-      defaultValue={value}
-      onInput={resize}
-      onBlur={(e) => commit(e.target.value)}
-      placeholder="Add context, links, decisions, a - [ ] checklist. Plain text keeps it light."
-      aria-label="Description"
-      className="mt-4 w-full resize-none rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
-    />
+    <>
+      <textarea
+        ref={ref}
+        autoFocus
+        defaultValue={value}
+        onInput={(e) => {
+          resize();
+          // Mirror into state (without controlling the field) so the step
+          // controls can react to what's being typed right now.
+          setValue(e.currentTarget.value);
+        }}
+        onBlur={(e) => commit(e.target.value)}
+        placeholder="Add context, links, decisions, or steps to tick off. Plain text keeps it light."
+        aria-label="Description"
+        className="mt-4 w-full resize-none rounded-card bg-surface p-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
+      />
+      {stepControls}
+    </>
   );
 }
 

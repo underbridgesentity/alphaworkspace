@@ -19,6 +19,11 @@ import { useToast } from "@/components/ui/toast";
 import { PRIORITY_LABELS } from "./status-bits";
 import type { TaskDTO } from "@/lib/types";
 
+/** Sentinel option value: "create one instead of picking one". */
+const NEW_PROJECT = "__new_project__";
+/** Inline creation skips the colour picker; the project page can change it. */
+const PROJECT_COLOR = "#5B7C99";
+
 interface EditableProposal {
   include: boolean;
   title: string;
@@ -67,6 +72,47 @@ export function ProposalReview({
     })),
   );
   const [pending, setPending] = useState(false);
+  // Naming a project without leaving: a brand-new workspace has none, and
+  // "pick a project" with nothing to pick is a dead end.
+  const [creatingFor, setCreatingFor] = useState<number | null>(null);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [creatingBusy, setCreatingBusy] = useState(false);
+
+  const createProject = async (i: number) => {
+    const name = newProjectName.trim();
+    if (!name || creatingBusy) return;
+    setCreatingBusy(true);
+    try {
+      const res = await apiMutate<{ project: { id: string } }>(
+        `/api/w/${workspace.slug}/projects`,
+        { method: "POST", body: { name, color: PROJECT_COLOR, clientName: null } },
+      );
+      if ("queued" in res && res.queued) {
+        toast("You're offline, a new project needs a connection", {
+          variant: "error",
+        });
+        return;
+      }
+      // Refresh so the new project is in the picker for the other rows too.
+      await qc.invalidateQueries({ queryKey: ["ws", workspace.slug, "bootstrap"] });
+      edit(i, {
+        projectId: res.project.id,
+        guessed: { ...rows[i].guessed, project: false },
+      });
+      setCreatingFor(null);
+      setNewProjectName("");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "plan_limit") {
+        raiseLimit(err);
+        return;
+      }
+      toast(err instanceof Error ? err.message : "Couldn't create that project", {
+        variant: "error",
+      });
+    } finally {
+      setCreatingBusy(false);
+    }
+  };
 
   const selected = useMemo(() => rows.filter((r) => r.include), [rows]);
   const valid = selected.length > 0 && selected.every((r) => r.title.trim() && r.projectId);
@@ -159,20 +205,63 @@ export function ProposalReview({
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {/* Project */}
-                  <GuessSelect
-                    guessed={row.guessed.project}
-                    ariaLabel="Project"
-                    value={row.projectId}
-                    onChange={(v) =>
-                      edit(i, {
-                        projectId: v,
-                        guessed: { ...row.guessed, project: false },
-                      })
-                    }
-                    options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                    placeholder="Pick a project"
-                  />
+                  {/* Project, with a way out when there isn't one yet. */}
+                  {creatingFor === i ? (
+                    <span className="flex items-center gap-1">
+                      <Input
+                        autoFocus
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void createProject(i);
+                          }
+                          if (e.key === "Escape") setCreatingFor(null);
+                        }}
+                        placeholder="New project name"
+                        aria-label="New project name"
+                        className="h-8 w-40 bg-overlay text-xs"
+                      />
+                      <Button
+                        size="sm"
+                        loading={creatingBusy}
+                        disabled={!newProjectName.trim()}
+                        onClick={() => void createProject(i)}
+                      >
+                        Create
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCreatingFor(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </span>
+                  ) : (
+                    <GuessSelect
+                      guessed={row.guessed.project}
+                      ariaLabel="Project"
+                      value={row.projectId}
+                      onChange={(v) => {
+                        if (v === NEW_PROJECT) {
+                          setNewProjectName("");
+                          setCreatingFor(i);
+                          return;
+                        }
+                        edit(i, {
+                          projectId: v,
+                          guessed: { ...row.guessed, project: false },
+                        });
+                      }}
+                      options={[
+                        ...projects.map((p) => ({ value: p.id, label: p.name })),
+                        { value: NEW_PROJECT, label: "+ New project…" },
+                      ]}
+                      placeholder="Pick a project"
+                    />
+                  )}
                   {/* Assignee */}
                   <GuessSelect
                     guessed={row.guessed.assignee}
@@ -195,13 +284,14 @@ export function ProposalReview({
                   {/* Due date */}
                   <label
                     className={cn(
-                      "flex h-8 items-center gap-1 rounded-control bg-overlay px-2 text-xs",
+                      "relative flex h-8 items-center gap-1 rounded-control bg-overlay px-2 text-xs",
                       row.guessed.dueDate && "outline-dashed outline-1 outline-accent/60",
                     )}
                   >
                     <span className="sr-only">Due date</span>
                     <input
                       type="date"
+                      data-empty={!row.dueDate}
                       value={row.dueDate ?? ""}
                       onChange={(e) =>
                         edit(i, {
@@ -209,8 +299,13 @@ export function ProposalReview({
                           guessed: { ...row.guessed, dueDate: false },
                         })
                       }
-                      className="bg-transparent outline-none [color-scheme:inherit]"
+                      className="min-w-[6.5rem] bg-transparent outline-none [color-scheme:inherit]"
                     />
+                    {!row.dueDate && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-xs text-faint">
+                        Add date
+                      </span>
+                    )}
                   </label>
                   {/* Priority */}
                   <GuessSelect

@@ -186,6 +186,14 @@
     min-height: 2.25rem;
   }
 
+  /* An empty date input paints blank on mobile (and a grey yyyy-mm-dd mask on
+     desktop), so the field reads as dead until you happen to tap it. Hide the
+     native empty text and let the field render its own hint instead; the input
+     stays fully tappable on top of it. */
+  input[type="date"][data-empty="true"]::-webkit-datetime-edit {
+    opacity: 0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;

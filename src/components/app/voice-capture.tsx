@@ -29,7 +29,13 @@ interface ExtractResponse {
   engine: string;
 }
 
-type Phase = "idle" | "recording" | "review" | "extracting" | "proposals";
+type Phase =
+  | "idle"
+  | "recording"
+  | "transcribing"
+  | "review"
+  | "extracting"
+  | "proposals";
 
 export function VoiceCaptureSheet({
   defaultProjectId,
@@ -76,7 +82,9 @@ export function VoiceCaptureSheet({
       },
       onEnd: () => {
         setInterim("");
-        setPhase((p) => (p === "recording" ? "review" : p));
+        setPhase((p) =>
+          p === "recording" || p === "transcribing" ? "review" : p,
+        );
       },
       onError: (message) => {
         // Server transcription unavailable at runtime, retry on-device.
@@ -93,8 +101,18 @@ export function VoiceCaptureSheet({
   const stop = () => {
     providerRef.current?.stop();
     setInterim("");
-    setPhase("review");
+    // Server transcription still has to upload + come back, so landing on an
+    // empty review box here reads as "nothing happened". Wait visibly until
+    // onEnd/onError moves us on.
+    setPhase("transcribing");
   };
+
+  // Never strand someone on the spinner if the provider goes quiet.
+  useEffect(() => {
+    if (phase !== "transcribing") return;
+    const t = setTimeout(() => setPhase("review"), 25_000);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   const extract = async () => {
     const transcript = finalText.trim();
@@ -214,8 +232,22 @@ export function VoiceCaptureSheet({
         </div>
       )}
 
+      {phase === "transcribing" && (
+        <div className="flex flex-col items-center gap-3 px-5 pb-10 pt-6">
+          <Spinner />
+          <p className="text-sm text-muted">Writing down what you said…</p>
+          <p className="text-xs text-faint">This takes a moment on a slow line.</p>
+        </div>
+      )}
+
       {phase === "review" && (
         <div className="px-5 pb-5 pt-1">
+          {supported && !finalText.trim() && (
+            <p className="mb-3 rounded-control bg-warn/10 px-3 py-2 text-xs text-warn">
+              I didn&apos;t catch anything that time. Tap the mic to try again,
+              or type it below.
+            </p>
+          )}
           {!supported && (
             <p className="mb-3 rounded-control bg-raised px-3 py-2 text-xs text-muted">
               Live transcription isn’t available in this browser, type or

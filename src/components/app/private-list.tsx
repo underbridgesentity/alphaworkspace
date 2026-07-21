@@ -5,11 +5,15 @@
  * (the server never returns anyone else's, admins included). Promoting an
  * item is the one door out, it becomes an ordinary team task in a project.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { checklistProgress } from "@/lib/checklist";
+import {
+  bulletsToSteps,
+  checklistProgress,
+  hasPlainBullets,
+} from "@/lib/checklist";
 import { ApiError, apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import type { PrivateTaskDTO, TaskDTO } from "@/lib/types";
@@ -256,6 +260,7 @@ function NoteField({
   onChange: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(note.trim().length === 0);
+  const ref = useRef<HTMLTextAreaElement>(null);
 
   const toggle = (lineIndex: number, checked: boolean) => {
     const lines = note.split("\n");
@@ -266,29 +271,66 @@ function NoteField({
     onChange(lines.join("\n"));
   };
 
-  if (!editing) {
-    return (
-      <div
-        onClick={() => setEditing(true)}
-        className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-[0.9375rem] leading-relaxed"
-      >
-        <RichText text={note} onToggleCheck={toggle} />
-      </div>
-    );
-  }
+  // Typing "- [ ]" by hand is a convention nobody discovers. This writes it.
+  const addStep = () => {
+    const trimmed = note.replace(/\s*$/, "");
+    onChange(trimmed ? `${trimmed}\n- [ ] ` : "- [ ] ");
+    setEditing(true);
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  };
 
   return (
-    <textarea
-      value={note}
-      autoFocus
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={() => setEditing(note.trim().length === 0)}
-      placeholder="A note, only for you. Try a - [ ] checklist for steps."
-      maxLength={5000}
-      rows={3}
-      aria-label="Note"
-      className="mt-2 w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-base leading-relaxed outline-none placeholder:text-faint focus:border-accent"
-    />
+    <>
+      {editing ? (
+        <textarea
+          ref={ref}
+          value={note}
+          autoFocus
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setEditing(note.trim().length === 0)}
+          placeholder="A note, only for you. Add steps to tick off below."
+          maxLength={5000}
+          rows={3}
+          aria-label="Note"
+          className="mt-2 w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-base leading-relaxed outline-none placeholder:text-faint focus:border-accent"
+        />
+      ) : (
+        <div
+          onClick={() => setEditing(true)}
+          className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-[0.9375rem] leading-relaxed"
+        >
+          <RichText text={note} onToggleCheck={toggle} />
+        </div>
+      )}
+
+      {/* mousedown is prevented so the textarea doesn't blur out from under
+          the tap and shift the layout before the click lands. */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={addStep}
+          className="press text-xs font-medium text-accent"
+        >
+          + Add step
+        </button>
+        {hasPlainBullets(note) && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onChange(bulletsToSteps(note))}
+            className="press text-xs text-muted underline decoration-line underline-offset-2 hover:text-ink"
+          >
+            Make these tickable
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -373,19 +415,27 @@ function PrivateTaskDialog({
           className="text-base"
         />
 
-        {/* Note doubles as a checklist: type "- [ ] step" and tick them off,
-            the card shows your progress. */}
+        {/* Note doubles as a checklist: "Add step" writes the checkbox syntax
+            so it can be ticked off, and the card shows your progress. */}
         <NoteField note={note} onChange={setNote} />
 
         <label className="mt-3 block">
           <span className="text-xs font-medium text-muted">Due date</span>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            aria-label="Due date"
-            className="mt-1 block h-10 w-full rounded-control border border-line bg-surface px-3 text-base outline-none focus:border-accent"
-          />
+          <span className="relative mt-1 block">
+            <input
+              type="date"
+              data-empty={!dueDate}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              aria-label="Due date"
+              className="block h-10 w-full rounded-control border border-line bg-surface px-3 text-base outline-none focus:border-accent"
+            />
+            {!dueDate && (
+              <span className="pointer-events-none absolute inset-0 flex items-center px-3 text-base text-faint">
+                Add a date
+              </span>
+            )}
+          </span>
         </label>
 
         <div className="mt-4 flex items-center gap-2">
