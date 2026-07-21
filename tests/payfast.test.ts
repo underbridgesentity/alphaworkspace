@@ -273,8 +273,14 @@ describe("processItn", () => {
       .where(eq(schema.workspaces.id, wsId));
     expect(ws.plan).toBe("free");
     expect(ws.entitlements).toBeNull();
-    const sub = await currentSubscription(db, wsId);
-    expect(sub?.status).toBe("cancelled");
+    // The row itself records the cancellation…
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.workspaceId, wsId));
+    expect(row.status).toBe("cancelled");
+    // …but "current subscription" is live billing state, so it's gone.
+    expect(await currentSubscription(db, wsId)).toBeNull();
   });
 });
 
@@ -298,8 +304,13 @@ describe("cancelSubscription", () => {
     });
     expect(result.remote).toBe(false);
 
-    const sub = await currentSubscription(db, wsId);
-    expect(sub?.status).toBe("cancelled");
+    // Cancelled rows drop out of "current"; the raw table keeps the record.
+    expect(await currentSubscription(db, wsId)).toBeNull();
+    const rows = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.workspaceId, wsId));
+    expect(rows.every((r) => r.status === "cancelled")).toBe(true);
     const [ws] = await db
       .select()
       .from(schema.workspaces)

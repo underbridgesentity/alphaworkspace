@@ -3,6 +3,7 @@ export {
   projectKpis,
   staleDaysFor,
   memberCompletions,
+  memberPerformance,
   lastActivityByProject,
   DEFAULT_STALE_DAYS,
 } from "./compute";

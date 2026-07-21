@@ -263,6 +263,15 @@ export interface WorkspaceKpis {
   completionsByDay: { day: string; completed: number }[];
 }
 
+/** One row of the manager-only People view (dashboard). */
+export interface MemberPerformanceRow {
+  user: UserLite;
+  completed7d: number;
+  completed28d: number;
+  openNow: number;
+  overdueNow: number;
+}
+
 /* ------------------------------ Phase 2 ---------------------------------- */
 
 export type ScorecardUnit = "count" | "currency" | "percent" | "hours";

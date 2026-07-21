@@ -258,6 +258,83 @@ export async function memberCompletions(
   return map;
 }
 
+/**
+ * The ops-manager view: one row per member with what they finished (7 and
+ * 28 days, actor-attributed from the activity log, same as the narrative,
+ * so the two never disagree) and what they're carrying now. Time logged is
+ * merged in by the caller from weekTime, feature-gated.
+ */
+export async function memberPerformance(
+  db: Db,
+  workspaceId: string,
+  opts: { now?: Date } = {},
+): Promise<
+  {
+    user: { id: string; name: string | null; email: string; image: string | null };
+    completed7d: number;
+    completed28d: number;
+    openNow: number;
+    overdueNow: number;
+  }[]
+> {
+  const now = opts.now ?? new Date();
+  const today = todaySAST(now);
+  const from7 = new Date(now.getTime() - 7 * 86_400_000);
+  const from28 = new Date(now.getTime() - 28 * 86_400_000);
+
+  const [memberRows, loadRows, done7, done28] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+      })
+      .from(memberships)
+      .innerJoin(users, eq(memberships.userId, users.id))
+      .where(eq(memberships.workspaceId, workspaceId)),
+    db
+      .select({
+        assigneeId: tasks.assigneeId,
+        open: count(),
+        overdue: count(sql`case when ${tasks.dueDate} < ${today} then 1 end`),
+      })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          eq(tasks.workspaceId, workspaceId),
+          ne(tasks.status, "done"),
+          eq(projects.status, "active"),
+        ),
+      )
+      .groupBy(tasks.assigneeId),
+    memberCompletions(db, workspaceId, from7, now),
+    memberCompletions(db, workspaceId, from28, now),
+  ]);
+
+  const load = new Map(
+    loadRows
+      .filter((r) => r.assigneeId)
+      .map((r) => [r.assigneeId as string, r]),
+  );
+
+  return memberRows
+    .map((m) => ({
+      user: { id: m.id, name: m.name, email: m.email, image: m.image },
+      completed7d: done7.get(m.id) ?? 0,
+      completed28d: done28.get(m.id) ?? 0,
+      openNow: load.get(m.id)?.open ?? 0,
+      overdueNow: load.get(m.id)?.overdue ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.completed7d - a.completed7d ||
+        b.completed28d - a.completed28d ||
+        (a.user.name ?? a.user.email).localeCompare(b.user.name ?? b.user.email),
+    );
+}
+
 /** Latest activity timestamp per project (for "gone quiet" detection). */
 export async function lastActivityByProject(
   db: Db,

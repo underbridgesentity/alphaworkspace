@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 import { ForceLight } from "@/components/marketing/force-light";
+import { NavCta } from "@/components/marketing/nav-cta";
 
 function Wordmark({ small = false }: { small?: boolean }) {
   return (
@@ -38,18 +39,7 @@ export default function MarketingLayout({
           >
             Privacy
           </Link>
-          <Link
-            href="/sign-in"
-            className="press hidden rounded-control px-3 py-2 text-sm text-muted hover:bg-raised hover:text-ink sm:block"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/sign-in"
-            className="press whitespace-nowrap rounded-control bg-accent px-3.5 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover sm:px-4"
-          >
-            Start free
-          </Link>
+          <NavCta />
         </nav>
         </div>
       </header>

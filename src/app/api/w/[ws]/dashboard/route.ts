@@ -3,7 +3,7 @@ import { api, json } from "@/server/api-utils";
 import { withWorkspace } from "@/server/session";
 import { db } from "@/server/db";
 import { narrativeReports } from "@/server/db/schema";
-import { projectKpis, workspaceKpis } from "@/server/kpi";
+import { memberPerformance, projectKpis, workspaceKpis } from "@/server/kpi";
 import { ctxEntitlements } from "@/server/dal/context";
 import { listScorecards } from "@/server/dal/scorecards";
 import { weekTime } from "@/server/dal/time";
@@ -20,10 +20,13 @@ export const GET = api(async (req, params) => {
   // team-level momentum and the weekly narrative.
   const isManager = ctx.role === "owner" || ctx.role === "admin";
 
-  const [kpis, scorecards, timeWeek, narratives] = await Promise.all([
+  const [kpis, people, scorecards, timeWeek, narratives] = await Promise.all([
     projectId
       ? projectKpis(ctx.db, ctx.workspace.id, projectId)
       : workspaceKpis(ctx.db, ctx.workspace.id),
+    !projectId && isManager
+      ? memberPerformance(ctx.db, ctx.workspace.id)
+      : Promise.resolve(undefined),
     !projectId && isManager && features.includes("scorecards")
       ? listScorecards(ctx)
       : Promise.resolve(undefined),
@@ -49,5 +52,5 @@ export const GET = api(async (req, params) => {
   // UI also hides it).
   if (!isManager && kpis) kpis.memberLoad = [];
 
-  return json({ kpis, scorecards, timeWeek, narratives });
+  return json({ kpis, people, scorecards, timeWeek, narratives });
 });

@@ -13,6 +13,7 @@ import { createTask, updateTask } from "@/server/dal/tasks";
 import {
   briefItemsForUser,
   compileWeeklySummary,
+  memberPerformance,
   projectKpis,
   workspaceKpis,
 } from "@/server/kpi";
@@ -157,6 +158,30 @@ describe("workspaceKpis", () => {
     expect(thaboLoad.overdue).toBe(1);
     const ownerLoad = kpis.memberLoad.find((m) => m.user.id === owner.id)!;
     expect(ownerLoad.open).toBe(0);
+  });
+
+  it("memberPerformance: actor-attributed completions + carried load", async () => {
+    const rows = await memberPerformance(db, ws.id, { now: NOW });
+    expect(rows).toHaveLength(3);
+
+    // Windows: the fixture completes 2 tasks inside the last 7 days and one
+    // more on 2026-07-06 (inside 28, outside 7). Same events the throughput
+    // test pins, so these sums are stable.
+    const sum7 = rows.reduce((n, r) => n + r.completed7d, 0);
+    const sum28 = rows.reduce((n, r) => n + r.completed28d, 0);
+    expect(sum7).toBe(2);
+    expect(sum28).toBe(3);
+    for (const r of rows) {
+      expect(r.completed28d).toBeGreaterThanOrEqual(r.completed7d);
+    }
+
+    // Sorted by recent output, and load matches the memberLoad numbers.
+    expect(rows[0].completed7d).toBeGreaterThanOrEqual(rows[1].completed7d);
+    const thaboRow = rows.find((r) => r.user.id === thabo.id)!;
+    expect(thaboRow.openNow).toBe(2);
+    expect(thaboRow.overdueNow).toBe(1);
+    const ownerRow = rows.find((r) => r.user.id === owner.id)!;
+    expect(ownerRow.openNow).toBe(0);
   });
 
   it("respects the workspace staleDays setting", async () => {

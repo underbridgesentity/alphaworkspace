@@ -6,7 +6,7 @@ import "server-only";
  * workspace content. Access = users.is_operator OR an email in
  * OPERATOR_EMAILS (bootstrap for the very first operator).
  */
-import { count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   activityEvents,
@@ -130,6 +130,19 @@ export async function setWorkspacePlanAdmin(
       entitlements: plan === "free" ? null : entitlementsSnapshot(plan),
     })
     .where(eq(workspaces.id, workspaceId));
+
+  // A comp supersedes any checkout that never completed; otherwise the
+  // billing page shows "waiting for PayFast" forever next to a live plan.
+  // Active PayFast subscriptions are deliberately left alone (real money).
+  await db
+    .update(subscriptions)
+    .set({ status: "cancelled", cancelledAt: new Date() })
+    .where(
+      and(
+        eq(subscriptions.workspaceId, workspaceId),
+        eq(subscriptions.status, "pending"),
+      ),
+    );
 
   await db.insert(activityEvents).values({
     workspaceId,

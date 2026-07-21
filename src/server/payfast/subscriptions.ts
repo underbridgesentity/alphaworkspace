@@ -5,7 +5,7 @@
  * which sign in field order.
  */
 import { createHash } from "node:crypto";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import { subscriptions, workspaces } from "@/server/db/schema";
 import { logActivity } from "@/server/dal/activity";
@@ -137,7 +137,14 @@ export async function currentSubscription(db: Db, workspaceId: string) {
       createdAt: subscriptions.createdAt,
     })
     .from(subscriptions)
-    .where(eq(subscriptions.workspaceId, workspaceId))
+    .where(
+      and(
+        eq(subscriptions.workspaceId, workspaceId),
+        // Cancelled rows are history, not state; showing one next to a live
+        // (or comped) plan reads as a scary "pending payment" forever.
+        ne(subscriptions.status, "cancelled"),
+      ),
+    )
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
   return sub ?? null;

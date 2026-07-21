@@ -16,6 +16,7 @@ import { useFeature, useWorkspace } from "@/lib/client/workspace";
 import { planWithFeature, type Feature } from "@/lib/plans";
 import { formatDay, formatMinutes, timeAgo } from "@/lib/dates";
 import type {
+  MemberPerformanceRow,
   ScorecardDTO,
   ScorecardUnit,
   WeekTimeDTO,
@@ -39,6 +40,7 @@ interface NarrativeRow {
 
 interface DashboardData {
   kpis: WorkspaceKpis;
+  people?: MemberPerformanceRow[];
   scorecards?: ScorecardDTO[];
   timeWeek?: WeekTimeDTO;
   narratives: NarrativeRow[];
@@ -103,6 +105,9 @@ export default function DashboardPage() {
             <ThroughputChart weeks={data.kpis.throughputByWeek} />
             {isManager && <MemberLoad kpis={data.kpis} />}
           </div>
+          {projectId === null && isManager && data.people && (
+            <People people={data.people} timeWeek={data.timeWeek} />
+          )}
           {projectId === null && isManager && (
             <PhaseTwo scorecards={data.scorecards} timeWeek={data.timeWeek} />
           )}
@@ -497,6 +502,100 @@ function ThroughputChart({
             {i % 2 === 1 ? formatDay(w.weekStart).replace(/^\w+ /, "") : ""}
           </span>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ people ----------------------------------- */
+
+/**
+ * The ops-manager table: what each person finished (7/28 days, the same
+ * actor-attributed numbers the weekly narrative uses) and what they carry.
+ * Manager-only; members never receive this payload.
+ */
+function People({
+  people,
+  timeWeek,
+}: {
+  people: MemberPerformanceRow[];
+  timeWeek?: WeekTimeDTO;
+}) {
+  const minutesByUser = new Map(
+    (timeWeek?.byMember ?? []).map((m) => [m.user.id, m.minutes]),
+  );
+  const showTime = Boolean(timeWeek);
+
+  return (
+    <section className="mt-6" aria-label="People">
+      <h2 className="text-sm font-semibold">People</h2>
+      <p className="mt-0.5 text-xs text-muted">
+        Only admins see this. Numbers come from the work itself, done means
+        marked done by that person.
+      </p>
+      <div className="mt-2 overflow-x-auto rounded-card bg-surface">
+        <table className="w-full min-w-[28rem] text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs text-faint">
+              <th className="px-3 py-2 font-medium">Person</th>
+              <th className="px-3 py-2 text-right font-medium">Done 7d</th>
+              <th className="px-3 py-2 text-right font-medium">Done 28d</th>
+              <th className="px-3 py-2 text-right font-medium">Open</th>
+              <th className="px-3 py-2 text-right font-medium">Overdue</th>
+              {showTime && (
+                <th className="px-3 py-2 text-right font-medium">Time (wk)</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {people.map((p) => (
+              <tr key={p.user.id} className="border-b border-line/60 last:border-0">
+                <td className="px-3 py-2.5">
+                  <span className="flex items-center gap-2">
+                    <Avatar
+                      name={p.user.name}
+                      email={p.user.email}
+                      image={p.user.image}
+                      size={22}
+                    />
+                    <span className="min-w-0 truncate font-medium">
+                      {p.user.name ?? p.user.email}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-right tabular font-semibold">
+                  {p.completed7d}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular text-muted">
+                  {p.completed28d}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular text-muted">
+                  {p.openNow}
+                </td>
+                <td
+                  className={cn(
+                    "px-3 py-2.5 text-right tabular",
+                    p.overdueNow > 0 ? "font-semibold text-danger" : "text-faint",
+                  )}
+                >
+                  {p.overdueNow}
+                </td>
+                {showTime && (
+                  <td className="px-3 py-2.5 text-right tabular text-muted">
+                    {formatMinutes(minutesByUser.get(p.user.id) ?? 0)}
+                  </td>
+                )}
+              </tr>
+            ))}
+            {people.length === 0 && (
+              <tr>
+                <td colSpan={showTime ? 6 : 5} className="px-3 py-4 text-sm text-faint">
+                  No members yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </section>
   );
