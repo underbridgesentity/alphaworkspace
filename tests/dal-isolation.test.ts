@@ -157,6 +157,32 @@ describe("cross-workspace isolation", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  /**
+   * The task panel's project switcher sends a projectId straight from the
+   * client, so a legitimate actor with a FOREIGN project id is the one path
+   * where a client-supplied id reaches an update. The server re-derives the
+   * project from the caller's workspace; this pins that.
+   */
+  it("refuses to move a task into another workspace's project", async () => {
+    const ctxA = await ctxFor(db, anna.id, ws1.slug);
+    const ctxB = await ctxFor(db, ben.id, ws2.slug);
+    const [projectA] = await listProjects(ctxA);
+    const foreign = await createProject(ctxB, { name: "Theirs", color: "#5B7C99" });
+    const task = await createTask(ctxA, {
+      projectId: projectA.id,
+      title: "stays put",
+      description: "",
+      status: "todo",
+      priority: "none",
+      labelIds: [],
+    });
+
+    await expect(
+      updateTask(ctxA, task.id, { projectId: foreign.id }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    expect((await taskDetail(ctxA, task.id)).task.projectId).toBe(projectA.id);
+  });
+
   it("scopes reactions to the workspace and leads to its members", async () => {
     const ctxA = await ctxFor(db, anna.id, ws1.slug);
     const ctxB = await ctxFor(db, ben.id, ws2.slug);

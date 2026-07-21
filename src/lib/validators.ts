@@ -24,6 +24,13 @@ export const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb colour");
 
+/**
+ * Board/list ordering key. Fractional midpoints are by design (drag-drop
+ * inserts between neighbours), so this stays a float; the bounds just keep a
+ * client from persisting absurd magnitudes. Real values live in the thousands.
+ */
+const positionValue = z.number().finite().min(-1e12).max(1e12);
+
 /* ------------------------------ tasks ----------------------------------- */
 
 export const taskCreateSchema = z.object({
@@ -36,7 +43,7 @@ export const taskCreateSchema = z.object({
   assigneeId: uuid.nullish(),
   dueDate: dayString.nullish(),
   priority: prioritySchema.default("none"),
-  position: z.number().finite().optional(),
+  position: positionValue.optional(),
   recurrence: recurrenceSchema.optional(),
   labelIds: z.array(uuid).max(20).default([]),
 });
@@ -50,7 +57,7 @@ export const taskUpdateSchema = z
     assigneeId: uuid.nullable(),
     dueDate: dayString.nullable(),
     priority: prioritySchema,
-    position: z.number().finite(),
+    position: positionValue,
     projectId: uuid,
     recurrence: recurrenceSchema,
     labelIds: z.array(uuid).max(20),
