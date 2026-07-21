@@ -9,12 +9,14 @@ import type { Db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import {
   acceptInvite,
+  changeMemberRole,
   createInvite,
   createWorkspace,
   deleteWorkspace,
   listMembers,
   listWorkspacesForUser,
   removeMember,
+  transferOwnership,
   updateWorkspace,
   workspaceUsage,
 } from "@/server/dal/workspaces";
@@ -251,6 +253,71 @@ describe("roles", () => {
     expect(mine.map((t) => t.id)).toContain(task.id);
     const updated = await updateTask(ctxCara, task.id, { status: "in_progress" });
     expect(updated.status).toBe("in_progress");
+  });
+
+  it("transfers ownership: target becomes owner, caller steps down to admin", async () => {
+    const ownerCtx = await ctxFor(db, anna.id, ws1.slug);
+    const [caraMembership] = await db
+      .select({ id: schema.memberships.id })
+      .from(schema.memberships)
+      .where(
+        and(
+          eq(schema.memberships.workspaceId, ws1.id),
+          eq(schema.memberships.userId, cara.id),
+        ),
+      );
+
+    // A non-owner can't transfer.
+    const caraCtx = await ctxFor(db, cara.id, ws1.slug);
+    await expect(
+      transferOwnership(caraCtx, caraMembership.id),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    await transferOwnership(ownerCtx, caraMembership.id);
+
+    const roles = await db
+      .select({ userId: schema.memberships.userId, role: schema.memberships.role })
+      .from(schema.memberships)
+      .where(eq(schema.memberships.workspaceId, ws1.id));
+    const byUser = new Map(roles.map((r) => [r.userId, r.role]));
+    expect(byUser.get(cara.id)).toBe("owner"); // exactly one owner, now Cara
+    expect(byUser.get(anna.id)).toBe("admin"); // Anna stepped down
+    expect(roles.filter((r) => r.role === "owner")).toHaveLength(1);
+
+    // Hand it back so the rest of the suite's owner assumptions hold.
+    await transferOwnership(await ctxFor(db, cara.id, ws1.slug), (
+      await db
+        .select({ id: schema.memberships.id })
+        .from(schema.memberships)
+        .where(
+          and(
+            eq(schema.memberships.workspaceId, ws1.id),
+            eq(schema.memberships.userId, anna.id),
+          ),
+        )
+    )[0].id);
+  });
+
+  it("an admin can't demote themselves out of admin", async () => {
+    // Make Cara an admin first (Anna is owner again after the transfer test).
+    const ownerCtx = await ctxFor(db, anna.id, ws1.slug);
+    const [caraMembership] = await db
+      .select({ id: schema.memberships.id })
+      .from(schema.memberships)
+      .where(
+        and(
+          eq(schema.memberships.workspaceId, ws1.id),
+          eq(schema.memberships.userId, cara.id),
+        ),
+      );
+    await changeMemberRole(ownerCtx, caraMembership.id, "admin");
+
+    const caraCtx = await ctxFor(db, cara.id, ws1.slug);
+    await expect(
+      changeMemberRole(caraCtx, caraMembership.id, "member"),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    // reset
+    await changeMemberRole(ownerCtx, caraMembership.id, "member");
   });
 
   it("unassigns a removed member's open tasks so work isn't stranded", async () => {

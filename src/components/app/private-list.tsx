@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { DueChip } from "./status-bits";
+import { ChecklistChip, DueChip } from "./status-bits";
+import { RichText } from "./rich-text";
 
 export function PrivateList() {
   const { workspace, projects } = useWorkspace();
@@ -198,8 +199,54 @@ function Row({
       >
         {task.title}
       </button>
+      <ChecklistChip description={task.note} />
       <DueChip dueDate={task.dueDate} done={isDone} />
     </div>
+  );
+}
+
+/** Note field that renders `- [ ]` checklists with tickable boxes when idle. */
+function NoteField({
+  note,
+  onChange,
+}: {
+  note: string;
+  onChange: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(note.trim().length === 0);
+
+  const toggle = (lineIndex: number, checked: boolean) => {
+    const lines = note.split("\n");
+    lines[lineIndex] = lines[lineIndex].replace(
+      /- \[( |x|X)\]/,
+      `- [${checked ? "x" : " "}]`,
+    );
+    onChange(lines.join("\n"));
+  };
+
+  if (!editing) {
+    return (
+      <div
+        onClick={() => setEditing(true)}
+        className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-[0.9375rem] leading-relaxed"
+      >
+        <RichText text={note} onToggleCheck={toggle} />
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      value={note}
+      autoFocus
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={() => setEditing(note.trim().length === 0)}
+      placeholder="A note, only for you. Try a - [ ] checklist for steps."
+      maxLength={5000}
+      rows={3}
+      aria-label="Note"
+      className="mt-2 w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-base leading-relaxed outline-none placeholder:text-faint focus:border-accent"
+    />
   );
 }
 
@@ -281,23 +328,23 @@ function PrivateTaskDialog({
           onChange={(e) => setTitle(e.target.value)}
           maxLength={500}
           aria-label="Title"
+          className="text-base"
         />
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="A note, only for you"
-          maxLength={5000}
-          rows={3}
-          aria-label="Note"
-          className="mt-2 w-full resize-none rounded-control border border-line bg-surface px-3 py-2 text-sm outline-none placeholder:text-faint focus:border-accent"
-        />
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          aria-label="Due date"
-          className="mt-2 h-9 rounded-control border border-line bg-surface px-2.5 text-sm"
-        />
+
+        {/* Note doubles as a checklist: type "- [ ] step" and tick them off,
+            the card shows your progress. */}
+        <NoteField note={note} onChange={setNote} />
+
+        <label className="mt-3 block">
+          <span className="text-xs font-medium text-muted">Due date</span>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            aria-label="Due date"
+            className="mt-1 block h-10 w-full rounded-control border border-line bg-surface px-3 text-base outline-none focus:border-accent"
+          />
+        </label>
 
         <div className="mt-4 flex items-center gap-2">
           <Button size="sm" loading={busy === "save"} onClick={save}>

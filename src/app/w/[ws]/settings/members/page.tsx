@@ -30,6 +30,8 @@ export default function MembersSettingsPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
+  const isOwner = workspace.role === "owner";
+  const isAdmin = workspace.role !== "member";
 
   const invites = useQuery({
     queryKey: ["ws", workspace.slug, "invites"],
@@ -166,9 +168,16 @@ export default function MembersSettingsPage() {
               <span className="hidden text-xs tabular text-faint sm:inline">
                 {m.openTasks ?? 0} open
               </span>
+              {/* Owner is fixed; the current user's own role isn't editable
+                  here (no self-demote lockout); only admins/owner see controls
+                  at all (a plain member would just get 403s). */}
               {m.role === "owner" ? (
                 <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                   Owner
+                </span>
+              ) : !isAdmin || m.id === me.id ? (
+                <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-medium capitalize text-muted">
+                  {m.role}
                 </span>
               ) : (
                 <select
@@ -190,7 +199,31 @@ export default function MembersSettingsPage() {
                   <option value="admin">Admin</option>
                 </select>
               )}
-              {m.role !== "owner" && m.id !== me.id && (
+              {/* Only the owner can hand the workspace over. */}
+              {isOwner && m.role !== "owner" && m.id !== me.id && (
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Make ${m.name ?? m.email} the owner? You'll become an admin and can't undo this yourself.`,
+                      )
+                    ) {
+                      void act(
+                        () =>
+                          apiMutate(
+                            `/api/w/${workspace.slug}/members/${m.membershipId}/transfer`,
+                            { method: "POST" },
+                          ),
+                        "Ownership transferred",
+                      );
+                    }
+                  }}
+                  className="press hidden rounded-control px-2 py-1 text-xs font-medium text-accent hover:bg-raised sm:inline"
+                >
+                  Make owner
+                </button>
+              )}
+              {isAdmin && m.role !== "owner" && m.id !== me.id && (
                 <button
                   aria-label={`Remove ${m.name ?? m.email}`}
                   onClick={() =>

@@ -317,8 +317,9 @@ export default function AccountPage() {
           <h3 className="text-sm font-semibold text-danger">Delete my account</h3>
           <p className="mt-1 text-sm text-muted">
             Permanent. Workspaces you solely own (with no other members) are
-            deleted too. If a workspace still has people in it, hand over
-            ownership first.
+            deleted too. If a workspace still has people in it, hand ownership
+            to someone else first, in that workspace&apos;s Settings → Members,
+            use “Make owner”.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Input
@@ -368,6 +369,33 @@ function PasswordSection() {
     }
   };
 
+  const remove = async () => {
+    if (
+      !window.confirm(
+        "Remove your password? You'll sign in with an email link or Google.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiMutate("/api/me/password", {
+        method: "DELETE",
+        body: { current: current || undefined },
+      });
+      setCurrent("");
+      setNext("");
+      toast("Password removed. Sign in with an email link or Google.");
+    } catch (err) {
+      toast(
+        err instanceof Error ? err.message : "Couldn't remove the password",
+        { variant: "error" },
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section>
       <h2 className="text-sm font-semibold">Password</h2>
@@ -401,6 +429,13 @@ function PasswordSection() {
           Save
         </Button>
       </div>
+      <button
+        onClick={() => void remove()}
+        disabled={busy}
+        className="press mt-2 text-xs font-medium text-muted hover:text-danger disabled:opacity-50"
+      >
+        Remove my password
+      </button>
     </section>
   );
 }

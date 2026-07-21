@@ -63,6 +63,20 @@ export default async function InvitePage({
           <p className="mt-2 text-sm text-muted">
             Sign in with the invited address to accept it.
           </p>
+          <form
+            action={async () => {
+              "use server";
+              const { signOut } = await import("@/server/auth");
+              await signOut({
+                redirectTo: `/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`,
+              });
+            }}
+            className="mt-3"
+          >
+            <button className="press rounded-control bg-accent px-3.5 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover">
+              Sign out &amp; switch account
+            </button>
+          </form>
         </div>
       ) : (
         <AcceptInviteCard token={token} workspaceName={invite.workspaceName} />

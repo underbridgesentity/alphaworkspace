@@ -201,10 +201,62 @@ export async function changeMemberRole(
   if (target.role === "owner") {
     throw new ForbiddenError("The owner's role can't be changed here");
   }
+  // An admin can't quietly demote themselves out of admin (a lockout footgun);
+  // that's a job for the owner via a deliberate role change on someone else.
+  if (target.userId === ctx.userId && role === "member") {
+    throw new ForbiddenError("You can't remove your own admin access");
+  }
   await ctx.db
     .update(memberships)
     .set({ role })
     .where(eq(memberships.id, membershipId));
+}
+
+/**
+ * Hand the workspace to another member. Owner-only: the target becomes owner
+ * and the current owner steps down to admin, in one go, so there is always
+ * exactly one owner. This is the door the account-deletion guard points at.
+ */
+export async function transferOwnership(
+  ctx: Ctx,
+  membershipId: string,
+): Promise<void> {
+  assertRole(ctx, "owner");
+  const [target] = await ctx.db
+    .select()
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.id, membershipId),
+        eq(memberships.workspaceId, ctx.workspace.id),
+      ),
+    );
+  if (!target) throw new NotFoundError("Member not found");
+  if (target.userId === ctx.userId) {
+    throw new ValidationError("You already own this workspace");
+  }
+
+  await ctx.db
+    .update(memberships)
+    .set({ role: "owner" })
+    .where(eq(memberships.id, membershipId));
+  // Step the outgoing owner down to admin (their membership, this workspace).
+  await ctx.db
+    .update(memberships)
+    .set({ role: "admin" })
+    .where(
+      and(
+        eq(memberships.workspaceId, ctx.workspace.id),
+        eq(memberships.userId, ctx.userId),
+      ),
+    );
+
+  await logActivity(ctx.db, {
+    workspaceId: ctx.workspace.id,
+    type: "member_joined", // reuse: role changes aren't their own event type
+    actorId: ctx.userId,
+    data: { ownershipTransferredTo: target.userId },
+  });
 }
 
 export async function removeMember(ctx: Ctx, membershipId: string): Promise<void> {

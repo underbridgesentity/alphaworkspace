@@ -3,12 +3,13 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn } from "@/server/auth";
+import { safeRelativePath } from "@/lib/safe-path";
 import { checkRateLimit } from "@/server/ai/ratelimit";
 
 function safeNext(raw: unknown): string {
-  const next = typeof raw === "string" ? raw : "";
-  // Only same-app relative paths, never an open redirect.
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+  // Only same-app relative paths, never an open redirect (backslash-authority
+  // tricks like /\evil.com are rejected by safeRelativePath).
+  return safeRelativePath(typeof raw === "string" ? raw : null) ?? "/app";
 }
 
 export async function signInWithEmail(formData: FormData): Promise<void> {

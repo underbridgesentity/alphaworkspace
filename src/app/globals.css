@@ -168,6 +168,24 @@
     color: inherit;
   }
 
+  /* iOS Safari auto-zooms into any focused field whose text is under 16px,
+     which yanks the whole layout around on every tap. Force ≥16px on touch
+     devices only (desktop keeps the designed smaller sizes). */
+  @media (pointer: coarse) {
+    input, textarea, select {
+      font-size: 16px;
+    }
+  }
+
+  /* Native date/time controls: keep the value visible and tappable, and align
+     the picker to the workspace theme rather than the OS default. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: light dark;
+    min-height: 2.25rem;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;

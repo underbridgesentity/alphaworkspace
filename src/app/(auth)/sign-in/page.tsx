@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { googleEnabled } from "@/server/auth";
 import { getUser } from "@/server/session";
+import { safeRelativePath } from "@/lib/safe-path";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -35,11 +37,33 @@ export default async function SignInPage({
 }) {
   const params = await searchParams;
   const user = await getUser();
-  // Relative paths only; "//host" is protocol-relative and leaves the site.
-  const next =
-    params.next?.startsWith("/") && !params.next.startsWith("//")
-      ? params.next
-      : "/app";
+
+  // Auth.js error round-trips (expired link, cancelled Google) send the user
+  // back to /sign-in with only ?error= and NO next, so a pending invite or
+  // ?plan= destination would be lost. Auth.js still holds it in its own
+  // callback-url cookie, fall back to that. Every candidate goes through
+  // safeRelativePath so a crafted value can't become an open redirect.
+  let next = safeRelativePath(params.next);
+  if (!next) {
+    const jar = await cookies();
+    const raw =
+      jar.get("authjs.callback-url")?.value ??
+      jar.get("__Secure-authjs.callback-url")?.value;
+    if (raw) {
+      try {
+        const decoded = decodeURIComponent(raw);
+        // Cookie may hold an absolute app URL; keep only a same-app path.
+        const candidate = decoded.startsWith("http")
+          ? new URL(decoded).pathname + new URL(decoded).search
+          : decoded;
+        const safe = safeRelativePath(candidate);
+        if (safe && safe !== "/") next = safe;
+      } catch {
+        // malformed cookie; ignore
+      }
+    }
+  }
+  next ??= "/app";
   if (user) redirect(next);
 
   const error = params.error
