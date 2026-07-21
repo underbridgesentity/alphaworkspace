@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import * as schema from "@/server/db/schema";
-import { nextOccurrence } from "@/lib/dates";
+import { addDays, nextOccurrence, todaySAST } from "@/lib/dates";
 import { matchMentions } from "@/lib/mentions";
 import { keytermsFrom } from "@/server/ai/transcribe";
 import { createWorkspace, acceptInvite, createInviteLink } from "@/server/dal/workspaces";
@@ -160,5 +160,57 @@ describe("@mention notifications + invite links (DAL)", () => {
       .from(schema.memberships)
       .where(eq(schema.memberships.workspaceId, ws.id));
     expect(rows).toHaveLength(3); // admin + 2 joiners
+  });
+});
+
+describe("project progress counts (listProjects)", () => {
+  it("splits done vs open, and a done task is never overdue", async () => {
+    const db = await createTestDb();
+    const owner = await createTestUser(db, "owner@prog.co.za", "Owner");
+    const ws = await createWorkspace(db, owner.id, {
+      name: "Progress Co",
+      seedStarter: false,
+    });
+    const ctx = await ctxFor(db, owner.id, ws.slug);
+    const project = await createProject(ctx, { name: "P", color: "#5B7C99" });
+    const empty = await createProject(ctx, { name: "Empty", color: "#5B7C99" });
+    const yesterday = addDays(todaySAST(), -1);
+
+    const base = {
+      projectId: project.id,
+      description: "",
+      priority: "none" as const,
+      assigneeId: owner.id,
+      labelIds: [],
+    };
+    await createTask(ctx, { ...base, title: "done, no due", status: "done" });
+    // A finished task with a date in the past must NOT read as overdue.
+    await createTask(ctx, {
+      ...base,
+      title: "done, past due",
+      status: "done",
+      dueDate: yesterday,
+    });
+    await createTask(ctx, {
+      ...base,
+      title: "open, past due",
+      status: "todo",
+      dueDate: yesterday,
+    });
+    await createTask(ctx, { ...base, title: "open, no due", status: "todo" });
+
+    const list = await listProjects(ctx);
+    const p = list.find((x) => x.id === project.id)!;
+    expect(p.doneCount).toBe(2);
+    expect(p.openCount).toBe(2);
+    expect(p.overdueCount).toBe(1); // only the OPEN past-due one
+    // What the card renders: 2 of 4 done → 50%.
+    const total = (p.doneCount ?? 0) + (p.openCount ?? 0);
+    expect(Math.round(((p.doneCount ?? 0) / total) * 100)).toBe(50);
+
+    // A project with no tasks has no denominator, so the bar stays hidden.
+    const e = list.find((x) => x.id === empty.id)!;
+    expect(e.doneCount).toBe(0);
+    expect(e.openCount).toBe(0);
   });
 });

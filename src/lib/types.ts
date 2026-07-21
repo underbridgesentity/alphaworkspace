@@ -105,6 +105,8 @@ export interface ProjectDTO {
   position: number;
   openCount?: number;
   overdueCount?: number;
+  /** Completed tasks; with openCount this gives the project's progress. */
+  doneCount?: number;
 }
 
 export interface CommentDTO {

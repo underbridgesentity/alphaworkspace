@@ -56,7 +56,11 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {projects.map((p) => (
+          {projects.map((p) => {
+            const done = p.doneCount ?? 0;
+            const total = done + (p.openCount ?? 0);
+            const pct = total ? Math.round((done / total) * 100) : 0;
+            return (
             <Link
               key={p.id}
               href={`/w/${workspace.slug}/p/${p.id}`}
@@ -91,8 +95,26 @@ export default function ProjectsPage() {
                   </span>
                 )}
               </p>
+              {/* At-a-glance progress: how far along, without opening it. */}
+              {total > 0 && (
+                <div
+                  className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-raised"
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${done} of ${total} tasks done`}
+                  title={`${done} of ${total} done (${pct}%)`}
+                >
+                  <div
+                    className="h-full rounded-full bg-accent transition-[width] duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              )}
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 

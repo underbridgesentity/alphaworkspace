@@ -43,17 +43,17 @@ export async function listProjects(
     .select({
       project: projects,
       lead: leadLite,
-      openCount: count(tasks.id),
-      overdueCount: count(sql`case when ${tasks.dueDate} < ${today} then 1 end`),
+      // The join brings in EVERY task so progress has a denominator; each
+      // count therefore re-states the open/done condition it needs (open and
+      // overdue keep exactly the meaning they had when the join filtered).
+      openCount: count(sql`case when ${tasks.status} != 'done' then 1 end`),
+      overdueCount: count(
+        sql`case when ${tasks.status} != 'done' and ${tasks.dueDate} < ${today} then 1 end`,
+      ),
+      doneCount: count(sql`case when ${tasks.status} = 'done' then 1 end`),
     })
     .from(projects)
-    .leftJoin(
-      tasks,
-      and(
-        eq(tasks.projectId, projects.id),
-        sql`${tasks.status} != 'done'`,
-      ),
-    )
+    .leftJoin(tasks, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(users.id, projects.leadId))
     .where(
       and(
@@ -68,6 +68,7 @@ export async function listProjects(
     ...toDTO(r.project, r.lead?.id ? r.lead : null),
     openCount: r.openCount,
     overdueCount: r.overdueCount,
+    doneCount: r.doneCount,
   }));
 }
 
