@@ -213,6 +213,33 @@ export const checkoutSchema = z.object({
   billing: z.enum(["monthly", "annual"]).default("monthly"),
 });
 
+/* ---------------------------- private tasks ------------------------------- */
+
+export const privateTaskCreateSchema = z.object({
+  /** Client-generated for offline-first creates; server generates if absent. */
+  id: uuid.optional(),
+  title: z.string().trim().min(1, "Give it a title").max(500),
+  note: z.string().max(5_000).default(""),
+  dueDate: dayString.nullish(),
+});
+
+export const privateTaskPatchSchema = z
+  .object({
+    title: z.string().trim().min(1).max(500),
+    note: z.string().max(5_000),
+    dueDate: dayString.nullable(),
+    done: z.boolean(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, "Nothing to update");
+
+/** Promotion turns a private item into an ordinary, team-visible task. */
+export const privateTaskPromoteSchema = z.object({
+  projectId: uuid,
+  assigneeId: uuid.nullish(),
+  dueDate: dayString.nullish(),
+});
+
 /* ------------------------------ meetings ---------------------------------- */
 
 /**

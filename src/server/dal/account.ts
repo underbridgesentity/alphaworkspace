@@ -9,6 +9,7 @@ import {
   comments,
   memberships,
   notifications,
+  privateTasks,
   tasks,
   users,
   voiceCaptures,
@@ -29,7 +30,7 @@ export async function exportUserData(db: Db, userId: string) {
     .from(users)
     .where(eq(users.id, userId));
 
-  const [memberOf, assigned, created, authored, captures, notifs] =
+  const [memberOf, assigned, created, authored, captures, notifs, privates] =
     await Promise.all([
       db
         .select({
@@ -54,6 +55,7 @@ export async function exportUserData(db: Db, userId: string) {
         .from(voiceCaptures)
         .where(eq(voiceCaptures.userId, userId)),
       db.select().from(notifications).where(eq(notifications.userId, userId)),
+      db.select().from(privateTasks).where(eq(privateTasks.userId, userId)),
     ]);
 
   return {
@@ -65,6 +67,7 @@ export async function exportUserData(db: Db, userId: string) {
     comments: authored,
     voiceCaptures: captures,
     notifications: notifs,
+    privateTasks: privates,
   };
 }
 

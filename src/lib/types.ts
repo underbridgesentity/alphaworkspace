@@ -300,6 +300,18 @@ export interface WeekTimeDTO {
   byProject: { id: string; name: string; color: string; minutes: number }[];
 }
 
+/* ---------------------------- private tasks ------------------------------ */
+
+/** One item on a member's private list. Only its owner ever receives these. */
+export interface PrivateTaskDTO {
+  id: string;
+  title: string;
+  note: string;
+  dueDate: string | null; // YYYY-MM-DD
+  completedAt: string | null;
+  createdAt: string;
+}
+
 /* ------------------------------ meetings (M1) ----------------------------- */
 
 export type MeetingVisibility = "private" | "workspace";

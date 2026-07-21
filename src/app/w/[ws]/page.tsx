@@ -10,6 +10,7 @@ import { addDays, todaySAST } from "@/lib/dates";
 import type { TaskDTO } from "@/lib/types";
 import { useMyWork } from "@/lib/client/tasks";
 import { BriefCard } from "@/components/app/brief-card";
+import { PrivateList } from "@/components/app/private-list";
 import { TaskRow } from "@/components/app/task-row";
 import { WelcomeCard } from "@/components/app/welcome-card";
 
@@ -61,7 +62,7 @@ function MyWorkInner() {
         )}
 
         {!isLoading && (tasks?.length ?? 0) === 0 && (
-          <div className="mt-16 text-center animate-fade-up">
+          <div className="mt-10 text-center animate-fade-up">
             <CircleCheck className="mx-auto size-9 text-ok" />
             <p className="mt-3 font-medium">Clear runway</p>
             <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
@@ -71,7 +72,7 @@ function MyWorkInner() {
           </div>
         )}
 
-        <div className="mt-4 space-y-6">
+        <div className="mt-4 space-y-6" aria-label="Assigned to me">
           {groups.map((g) => (
             <section key={g.key} aria-label={g.title}>
               <h2
@@ -94,6 +95,8 @@ function MyWorkInner() {
             </section>
           ))}
         </div>
+
+        <PrivateList />
       </div>
     </div>
   );

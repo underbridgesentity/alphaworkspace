@@ -444,6 +444,36 @@ export const voiceCaptures = pgTable(
   (t) => [index("captures_ws_idx").on(t.workspaceId, t.createdAt)],
 );
 
+/* ---------------------------- private tasks ------------------------------ */
+
+/**
+ * A member's private to-do list within a workspace. DELIBERATELY a separate
+ * table from `tasks`: the shared surfaces (board, My Work's team list,
+ * search, KPIs, narrative, briefs) never query it, so nothing can leak by a
+ * forgotten filter. The wall is the meetings wall: owner-only, admins
+ * included. "Promoting" one creates an ordinary workspace task and removes
+ * the private row. No activity_events are written for private items (the
+ * log is workspace-visible); promotion logs task_created like any create.
+ */
+export const privateTasks = pgTable(
+  "private_tasks",
+  {
+    id: id(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    note: text("note").default("").notNull(),
+    dueDate: date("due_date"),
+    createdAt: createdAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+  },
+  (t) => [index("private_tasks_owner_idx").on(t.workspaceId, t.userId)],
+);
+
 /* ------------------------------ meetings -------------------------------- */
 
 export const meetingStatus = pgEnum("meeting_status", [
