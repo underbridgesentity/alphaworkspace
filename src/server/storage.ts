@@ -49,10 +49,18 @@ export async function signedUploadUrl(
   };
 }
 
-/** Short-lived signed download URL (private bucket). */
+/**
+ * Short-lived signed download URL (private bucket).
+ *
+ * A signed URL is an unauthenticated bearer capability for its whole lifetime:
+ * anyone holding it fetches the object with no session, no membership check
+ * and no activity trail. So the default is deliberately short, and every
+ * caller states its own TTL. Only give it longer when a machine (Deepgram)
+ * has to fetch a large object, never for something that lands in a browser.
+ */
 export async function signedDownloadUrl(
   path: string,
-  expiresIn = 3600,
+  expiresIn = 300,
 ): Promise<string> {
   const res = await sb(`/object/sign/${BUCKET}/${path}`, {
     method: "POST",

@@ -4,13 +4,18 @@
  * that (truly) busts the per-file cap or the plan's storage quota.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { createWorkspace } from "@/server/dal/workspaces";
 import { createProject } from "@/server/dal/projects";
 import { createTask } from "@/server/dal/tasks";
-import { confirmUpload } from "@/server/dal/attachments";
+import {
+  confirmUpload,
+  listAttachments,
+  sweepUnconfirmedAttachments,
+  usedAttachmentBytes,
+} from "@/server/dal/attachments";
 import { LimitError, ValidationError } from "@/server/dal/errors";
 import { createTestDb, createTestUser, ctxFor } from "./helpers/db";
 
@@ -39,7 +44,16 @@ beforeAll(async () => {
   ).id;
 });
 
-async function insertAttachment(declared: number, path: string): Promise<string> {
+/**
+ * `confirmed` mirrors reality: a row that already represents stored bytes vs
+ * a reservation from beginUpload whose PUT may never land. Only the former
+ * counts toward quota.
+ */
+async function insertAttachment(
+  declared: number,
+  path: string,
+  opts: { confirmed?: boolean; createdAt?: Date } = {},
+): Promise<string> {
   const id = crypto.randomUUID();
   await db.insert(schema.attachments).values({
     id,
@@ -50,6 +64,8 @@ async function insertAttachment(declared: number, path: string): Promise<string>
     mime: "application/pdf",
     sizeBytes: declared,
     storagePath: path,
+    confirmedAt: opts.confirmed ? new Date() : null,
+    ...(opts.createdAt ? { createdAt: opts.createdAt } : {}),
   });
   return id;
 }
@@ -85,8 +101,11 @@ describe("attachment size reconciliation", () => {
 
   it("refuses when the real size would blow the plan's storage quota", async () => {
     const ctx = await ctxFor(db, user.id, ws.slug);
-    // Free plan = 200 MB. Fill most of it with an existing (directly-set) row.
-    const bigId = await insertAttachment(199 * MB, `${ws.id}/${taskId}/big`);
+    // Free plan = 200 MB. Fill most of it with an existing STORED file, so it
+    // counts toward quota (an unconfirmed reservation deliberately does not).
+    const bigId = await insertAttachment(199 * MB, `${ws.id}/${taskId}/big`, {
+      confirmed: true,
+    });
     const id = await insertAttachment(1, `${ws.id}/${taskId}/tip`);
 
     await expect(
@@ -123,5 +142,82 @@ describe("attachment size reconciliation", () => {
       .from(schema.attachments)
       .where(eq(schema.attachments.id, id));
     expect(row.sizeBytes).toBe(2 * MB);
+  });
+});
+
+describe("unconfirmed uploads can't exhaust the quota", () => {
+  it("a reservation whose bytes never arrived costs nothing", async () => {
+    const ctx = await ctxFor(db, user.id, ws.slug);
+    const before = await usedAttachmentBytes(ctx);
+
+    // What the DoS looked like: hammer beginUpload declaring 25 MB, never PUT.
+    for (let i = 0; i < 8; i++) {
+      await insertAttachment(25 * MB, `${ws.id}/${taskId}/ghost-${i}`);
+    }
+
+    // 200 MB of phantom reservations, and the workspace is no fuller.
+    expect(await usedAttachmentBytes(ctx)).toBe(before);
+  });
+
+  it("hides unconfirmed rows from the task's attachment list", async () => {
+    const ctx = await ctxFor(db, user.id, ws.slug);
+    const listed = await listAttachments(ctx, taskId);
+    const confirmedRows = await db
+      .select({ id: schema.attachments.id })
+      .from(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.taskId, taskId),
+          isNotNull(schema.attachments.confirmedAt),
+        ),
+      );
+    // Exactly the stored files, none of the reservations. There ARE unconfirmed
+    // rows in the table at this point, so this is a real difference.
+    expect(listed).toHaveLength(confirmedRows.length);
+    expect(listed.some((a) => a.sizeBytes === 25 * MB)).toBe(false); // the ghosts
+  });
+
+  it("confirming is what makes bytes count, and is idempotent", async () => {
+    const ctx = await ctxFor(db, user.id, ws.slug);
+    const before = await usedAttachmentBytes(ctx);
+    const id = await insertAttachment(3 * MB, `${ws.id}/${taskId}/real`);
+
+    expect(await usedAttachmentBytes(ctx)).toBe(before); // still a reservation
+    await confirmUpload(ctx, id, { resolveSize: async () => 3 * MB });
+    expect(await usedAttachmentBytes(ctx)).toBe(before + 3 * MB);
+
+    // A retried confirm must not double-count.
+    await confirmUpload(ctx, id, { resolveSize: async () => 3 * MB });
+    expect(await usedAttachmentBytes(ctx)).toBe(before + 3 * MB);
+  });
+
+  it("the sweep clears stale reservations but never confirmed files", async () => {
+    const ctx = await ctxFor(db, user.id, ws.slug);
+    const old = new Date(Date.now() - 3 * 60 * 60_000);
+    const stale = await insertAttachment(MB, `${ws.id}/${taskId}/stale`, {
+      createdAt: old,
+    });
+    const keptFile = await insertAttachment(MB, `${ws.id}/${taskId}/kept`, {
+      confirmed: true,
+      createdAt: old,
+    });
+    const inFlight = await insertAttachment(MB, `${ws.id}/${taskId}/inflight`);
+
+    const { removed } = await sweepUnconfirmedAttachments(db);
+    expect(removed).toBeGreaterThanOrEqual(1);
+
+    const survives = async (id: string) =>
+      (
+        await db
+          .select({ id: schema.attachments.id })
+          .from(schema.attachments)
+          .where(eq(schema.attachments.id, id))
+      ).length === 1;
+
+    expect(await survives(stale)).toBe(false); // abandoned, cleared
+    expect(await survives(keptFile)).toBe(true); // a real file, kept
+    expect(await survives(inFlight)).toBe(true); // still within the window
+    // Quota is untouched by the sweep.
+    expect(await usedAttachmentBytes(ctx)).toBeGreaterThan(0);
   });
 });

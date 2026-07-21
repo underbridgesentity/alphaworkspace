@@ -696,6 +696,13 @@ export const attachments = pgTable(
     sizeBytes: integer("size_bytes").notNull(),
     /** Object key in the Supabase Storage "attachments" bucket. */
     storagePath: text("storage_path").notNull().unique(),
+    /**
+     * Set once the browser confirms the PUT landed. A row is inserted BEFORE
+     * any bytes exist (to hand out a signed URL), so an unconfirmed row is a
+     * reservation, not a file: it must not count against the workspace quota
+     * or appear in listings, and it gets swept if it never completes.
+     */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true, mode: "date" }),
     createdAt: createdAt(),
   },
   (t) => [

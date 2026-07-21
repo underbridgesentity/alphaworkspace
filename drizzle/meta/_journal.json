@@ -78,6 +78,13 @@
       "when": 1784707200000,
       "tag": "0010_rls_default_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784710800000,
+      "tag": "0011_attachment_confirmed_at",
+      "breakpoints": true
     }
   ]
 }

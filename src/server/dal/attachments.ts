@@ -2,7 +2,7 @@
  * Task attachments. Bytes live in Supabase Storage; rows here are metadata +
  * the storage key. Quota is enforced per workspace from the plan config.
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { attachments, tasks, users } from "@/server/db/schema";
 import type { AttachmentDTO } from "@/lib/types";
 import { ctxEntitlements, type Ctx } from "./context";
@@ -18,13 +18,25 @@ import {
 } from "@/server/storage";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+/** Long enough to start the download, short enough that history is stale. */
+const ATTACHMENT_DOWNLOAD_TTL = 120;
 const ALLOWED = /^(image\/(png|jpe?g|gif|webp|avif|heic)|application\/pdf|text\/plain|application\/(msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation))|application\/vnd\.ms-excel)$/i;
 
+/**
+ * Confirmed bytes only. An unconfirmed row is a reservation whose bytes may
+ * never arrive, so counting it would let anyone exhaust the workspace quota by
+ * calling beginUpload in a loop and never uploading.
+ */
 export async function usedAttachmentBytes(ctx: Ctx): Promise<number> {
   const [row] = await ctx.db
     .select({ total: sql<number>`coalesce(sum(${attachments.sizeBytes}), 0)` })
     .from(attachments)
-    .where(eq(attachments.workspaceId, ctx.workspace.id));
+    .where(
+      and(
+        eq(attachments.workspaceId, ctx.workspace.id),
+        isNotNull(attachments.confirmedAt),
+      ),
+    );
   return Number(row?.total ?? 0);
 }
 
@@ -102,32 +114,39 @@ export async function confirmUpload(
       ),
     );
   if (!row) throw new NotFoundError("Attachment not found");
+  // Idempotent: a retried confirm must not log the activity twice.
+  if (row.confirmedAt) return;
 
   const realSize = await (opts.resolveSize ?? objectSize)(row.storagePath);
-  if (realSize !== null && realSize !== row.sizeBytes) {
-    const discard = async () => {
-      await deleteObject(row.storagePath).catch(() => undefined);
-      await ctx.db.delete(attachments).where(eq(attachments.id, row.id));
-    };
-    if (realSize > MAX_FILE_BYTES) {
-      await discard();
-      throw new ValidationError("Files are capped at 25 MB each");
-    }
-    const quotaBytes = ctxEntitlements(ctx).attachmentQuotaMb * 1024 * 1024;
-    const usedExcludingThis = (await usedAttachmentBytes(ctx)) - row.sizeBytes;
-    if (usedExcludingThis + realSize > quotaBytes) {
-      await discard();
-      throw new LimitError(
-        "captures",
-        `Your plan's file storage is full (${ctxEntitlements(ctx).attachmentQuotaMb} MB)`,
-      );
-    }
-    await ctx.db
-      .update(attachments)
-      .set({ sizeBytes: realSize })
-      .where(eq(attachments.id, row.id));
-    row.sizeBytes = realSize;
+  const finalSize = realSize ?? row.sizeBytes;
+  const discard = async () => {
+    await deleteObject(row.storagePath).catch(() => undefined);
+    await ctx.db.delete(attachments).where(eq(attachments.id, row.id));
+  };
+
+  if (finalSize > MAX_FILE_BYTES) {
+    await discard();
+    throw new ValidationError("Files are capped at 25 MB each");
   }
+
+  // Re-check the quota on EVERY confirm, not just when the declared size was
+  // wrong. beginUpload can only measure confirmed bytes, so N uploads started
+  // together each see the same free space; this is where that is settled.
+  const quotaBytes = ctxEntitlements(ctx).attachmentQuotaMb * 1024 * 1024;
+  const usedConfirmed = await usedAttachmentBytes(ctx); // excludes this row
+  if (usedConfirmed + finalSize > quotaBytes) {
+    await discard();
+    throw new LimitError(
+      "storage",
+      `Your plan's file storage is full (${ctxEntitlements(ctx).attachmentQuotaMb} MB)`,
+    );
+  }
+
+  await ctx.db
+    .update(attachments)
+    .set({ sizeBytes: finalSize, confirmedAt: new Date() })
+    .where(eq(attachments.id, row.id));
+  row.sizeBytes = finalSize;
 
   await logActivity(ctx.db, {
     workspaceId: ctx.workspace.id,
@@ -150,7 +169,13 @@ export async function listAttachments(
     .from(attachments)
     .leftJoin(users, eq(attachments.uploaderId, users.id))
     .where(
-      and(eq(attachments.taskId, taskId), eq(attachments.workspaceId, ctx.workspace.id)),
+      and(
+        eq(attachments.taskId, taskId),
+        eq(attachments.workspaceId, ctx.workspace.id),
+        // Reservations whose bytes never arrived are not files; showing them
+        // would offer a download that 404s.
+        isNotNull(attachments.confirmedAt),
+      ),
     )
     .orderBy(attachments.createdAt);
   return rows.map((r) => ({
@@ -178,7 +203,9 @@ export async function attachmentDownloadUrl(
       ),
     );
   if (!row) throw new NotFoundError("Attachment not found");
-  return signedDownloadUrl(row.storagePath);
+  // The route 302s the browser here, so this URL lands in history. Keep the
+  // window short: it is a bearer capability that needs no session to redeem.
+  return signedDownloadUrl(row.storagePath, ATTACHMENT_DOWNLOAD_TTL);
 }
 
 export async function deleteAttachment(ctx: Ctx, attachmentId: string): Promise<void> {
@@ -192,4 +219,31 @@ export async function deleteAttachment(ctx: Ctx, attachmentId: string): Promise<
     )
     .returning({ storagePath: attachments.storagePath });
   if (row) await deleteObject(row.storagePath).catch(() => undefined);
+}
+
+/**
+ * Drop upload reservations whose bytes never arrived. beginUpload writes the
+ * row before the PUT, so an abandoned or failed upload leaves a row (and
+ * possibly a partial object) behind forever. These already don't count against
+ * quota or show in listings, but they still accumulate, so clear them out.
+ *
+ * Workspace-wide, run from the morning cron, so it takes `db` rather than a
+ * Ctx. One hour is far longer than any real browser upload.
+ */
+export async function sweepUnconfirmedAttachments(
+  db: Ctx["db"],
+  opts: { now?: Date; olderThanMs?: number } = {},
+): Promise<{ removed: number }> {
+  const now = opts.now ?? new Date();
+  const cutoff = new Date(now.getTime() - (opts.olderThanMs ?? 60 * 60_000));
+  const stale = await db
+    .delete(attachments)
+    .where(
+      and(isNull(attachments.confirmedAt), lt(attachments.createdAt, cutoff)),
+    )
+    .returning({ storagePath: attachments.storagePath });
+  for (const row of stale) {
+    await deleteObject(row.storagePath).catch(() => undefined);
+  }
+  return { removed: stale.length };
 }

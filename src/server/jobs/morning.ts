@@ -24,11 +24,13 @@ import { composeMorningBrief } from "@/server/ai/brief";
 import { notify } from "@/server/notifications/service";
 import { pushChannel } from "@/server/notifications/channels/push";
 import { sweepExpiredGraceCancellations } from "@/server/payfast/subscriptions";
+import { sweepUnconfirmedAttachments } from "@/server/dal/attachments";
 
 export interface MorningRunResult {
   briefs: number;
   nudged: number;
   downgraded: number;
+  staleUploads: number;
 }
 
 export async function runMorningJobs(
@@ -168,5 +170,14 @@ export async function runMorningJobs(
     console.error("[morning] grace-cancellation sweep failed", err);
   }
 
-  return { briefs, nudged, downgraded };
+  // Upload reservations whose bytes never arrived: clear the rows and any
+  // partial objects so they don't accumulate.
+  let staleUploads = 0;
+  try {
+    ({ removed: staleUploads } = await sweepUnconfirmedAttachments(db, { now }));
+  } catch (err) {
+    console.error("[morning] unconfirmed-attachment sweep failed", err);
+  }
+
+  return { briefs, nudged, downgraded, staleUploads };
 }

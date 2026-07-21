@@ -62,7 +62,7 @@ type MeetingRow = typeof meetings.$inferSelect;
 /** Injectable externals; production uses the real ones. */
 export interface MeetingDeps {
   signUpload?: (path: string) => Promise<{ url: string; token: string }>;
-  signDownload?: (path: string) => Promise<string>;
+  signDownload?: (path: string, expiresIn?: number) => Promise<string>;
   resolveSize?: (path: string) => Promise<number | null>;
   removeObject?: (path: string) => Promise<void>;
   storeObject?: (path: string, body: Uint8Array, mime: string) => Promise<void>;
@@ -80,6 +80,11 @@ export interface MeetingDeps {
 }
 
 const AUDIO_MIME = /^(audio\/[\w.+-]+|video\/(webm|mp4))$/i;
+
+/** Deepgram pulls the object itself; a 2h recording needs room to download. */
+const TRANSCRIBE_URL_TTL = 3600;
+/** Playback in a browser: short, because the URL needs no session to replay. */
+const MEETING_AUDIO_TTL = 300;
 
 function extFor(mime: string): string {
   const m = mime.toLowerCase();
@@ -222,6 +227,25 @@ export async function beginMeeting(
 
   await (deps.prepareBucket ?? ensureBucket)();
   const id = input.id ?? crypto.randomUUID();
+
+  // The id may come from the client (offline-first creates), and the storage
+  // path is derived from it. If it collides with a meeting that isn't this
+  // caller's own, the insert below would be swallowed by onConflictDoNothing
+  // while we still hand back a signed PUT for the object the existing (and
+  // possibly private) meeting points at. Refuse, and give nothing away about
+  // whether the id exists elsewhere.
+  if (input.id) {
+    const [clash] = await ctx.db
+      .select({ workspaceId: meetings.workspaceId, createdBy: meetings.createdBy })
+      .from(meetings)
+      .where(eq(meetings.id, input.id));
+    if (
+      clash &&
+      !(clash.workspaceId === ctx.workspace.id && clash.createdBy === ctx.userId)
+    ) {
+      throw new NotFoundError("Meeting not found");
+    }
+  }
   const storagePath = `${ctx.workspace.id}/meetings/${id}.${extFor(input.mime)}`;
   const { url } = await (deps.signUpload ?? signedUploadUrl)(storagePath);
 
@@ -429,7 +453,12 @@ export async function processMeeting(
         .set({ sizeBytes: realSize })
         .where(eq(meetings.id, row.id));
     }
-    const url = await (deps.signDownload ?? signedDownloadUrl)(row.audioPath);
+    // Machine-to-machine: Deepgram fetches this itself and a 2h recording
+    // takes a while to pull, so this one genuinely needs the long TTL.
+    const url = await (deps.signDownload ?? signedDownloadUrl)(
+      row.audioPath,
+      TRANSCRIBE_URL_TTL,
+    );
     return await runPipeline(ctx, row, url, deps);
   } catch (err) {
     console.error("[meetings] processing failed", err);
@@ -595,7 +624,10 @@ export async function handleBotStatus(
           .update(meetings)
           .set({ audioPath: path, mime: "audio/mpeg", sizeBytes: bytes.byteLength })
           .where(eq(meetings.id, row.id));
-        transcribeUrl = await (deps.signDownload ?? signedDownloadUrl)(path);
+        transcribeUrl = await (deps.signDownload ?? signedDownloadUrl)(
+          path,
+          TRANSCRIBE_URL_TTL,
+        );
       } catch (err) {
         console.warn("[meetings] bot audio store failed, transcript-only", err);
       }
@@ -664,7 +696,13 @@ export async function meetingAudioUrl(
     .where(and(eq(meetings.id, meetingId), visibleTo(ctx)));
   if (!row) throw new NotFoundError("Meeting not found");
   if (!row.audioPath) throw new NotFoundError("The audio was deleted");
-  return (deps.signDownload ?? signedDownloadUrl)(row.audioPath);
+  // Reaches a browser: playback starts immediately, so keep the window tight.
+  // A private recording is the most sensitive object we hold (POPIA), and a
+  // signed URL needs no session at all once it leaves here.
+  return (deps.signDownload ?? signedDownloadUrl)(
+    row.audioPath,
+    MEETING_AUDIO_TTL,
+  );
 }
 
 /* ------------------------------ mutations -------------------------------- */

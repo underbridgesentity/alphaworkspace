@@ -380,3 +380,68 @@ describe("audio cleanup", () => {
     await deleteMeeting(ctx, id, stubs());
   });
 });
+
+describe("private media exposure (guardian findings)", () => {
+  it("signs playback with a short TTL, not the hour-long default", async () => {
+    const ctx = await ctxFor(db, recorder.id, ws.slug);
+    const id = await recordedMeeting(ctx);
+
+    let ttl: number | undefined = -1;
+    await meetingAudioUrl(
+      ctx,
+      id,
+      stubs({
+        signDownload: async (_path, expiresIn) => {
+          ttl = expiresIn;
+          return "https://stub/get";
+        },
+      }),
+    );
+
+    // A signed URL is a bearer capability: anyone holding it replays a private
+    // recording with no session. It must not linger for an hour.
+    expect(ttl).toBeDefined();
+    expect(ttl).toBeLessThanOrEqual(600);
+    expect(ttl).toBeGreaterThan(0);
+  });
+
+  it("refuses a client-supplied id belonging to someone else's meeting", async () => {
+    const ownerCtx = await ctxFor(db, recorder.id, ws.slug);
+    const victimId = await recordedMeeting(ownerCtx);
+
+    // Same workspace, different member, reusing the victim's meeting id. The
+    // insert would be swallowed while still handing back a signed PUT for the
+    // object the victim's private meeting points at.
+    const attackerCtx = await ctxFor(db, member.id, ws.slug);
+    await expect(
+      beginMeeting(
+        attackerCtx,
+        {
+          id: victimId,
+          title: "Mine now",
+          mime: "audio/webm",
+          sizeBytes: 1000,
+          durationSec: 60,
+        },
+        stubs(),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("still allows the creator to resume their own id (offline-first create)", async () => {
+    const ctx = await ctxFor(db, recorder.id, ws.slug);
+    const id = crypto.randomUUID();
+    const first = await beginMeeting(
+      ctx,
+      { id, title: "Retry me", mime: "audio/webm", sizeBytes: 1000, durationSec: 60 },
+      stubs(),
+    );
+    const again = await beginMeeting(
+      ctx,
+      { id, title: "Retry me", mime: "audio/webm", sizeBytes: 1000, durationSec: 60 },
+      stubs(),
+    );
+    expect(first.meetingId).toBe(id);
+    expect(again.meetingId).toBe(id);
+  });
+});
