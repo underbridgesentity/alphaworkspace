@@ -23,10 +23,10 @@ import {
   taskTime,
   weekTime,
 } from "@/server/dal/time";
-import { NotFoundError, ValidationError } from "@/server/dal/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/server/dal/errors";
 import { PLANS } from "@/lib/plans";
 import { todaySAST, weekStart } from "@/lib/dates";
-import { createTestDb, createTestUser, ctxFor } from "./helpers/db";
+import { addMember, createTestDb, createTestUser, ctxFor } from "./helpers/db";
 
 let db: Db;
 let om: { id: string };
@@ -230,5 +230,37 @@ describe("time tracking", () => {
       .set({ plan: "free" })
       .where(eq(schema.workspaces.id, freeWs.id));
     void theirs;
+  });
+});
+
+describe("scorecards are manager-only, on every door", () => {
+  it("a member can neither read nor rewrite the business numbers", async () => {
+    // Scorecards carry revenue, margin and targets. The dashboard route gated
+    // them on isManager, but the /scorecards API route did not, so the wall
+    // has to live in the DAL where every caller passes.
+    const staff = await createTestUser(db, "staff@studio.co.za", "Staff");
+    await addMember(db, studioWs.id, staff.id, "member");
+    const memberCtx = await ctxFor(db, staff.id, studioWs.slug);
+
+    // A card exists, created by the manager.
+    const ownerCtx = await ctxFor(db, om.id, studioWs.slug);
+    const card = await createScorecard(ownerCtx, {
+      name: "Monthly revenue",
+      unit: "ZAR",
+      target: 250000,
+      period: "monthly",
+    });
+
+    await expect(listScorecards(memberCtx)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      upsertScorecardEntry(memberCtx, card.id, {
+        periodStart: periodStartFor("monthly", todaySAST()),
+        value: 1,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    // And the manager is unaffected.
+    const listed = await listScorecards(ownerCtx);
+    expect(listed.some((c) => c.id === card.id)).toBe(true);
   });
 });

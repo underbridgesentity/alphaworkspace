@@ -29,6 +29,12 @@ function assertAligned(period: ScorecardPeriod, periodStart: string): void {
 }
 
 export async function listScorecards(ctx: Ctx): Promise<ScorecardDTO[]> {
+  // Scorecards are the business numbers (revenue, margin, targets), so they are
+  // manager-only like creating and archiving them. The dashboard route already
+  // gated this, but the /scorecards route did not, which left any member able
+  // to read the lot directly from the API. The wall belongs here, in the one
+  // place every caller goes through.
+  assertRole(ctx, "admin");
   const today = todaySAST();
   const defs = await ctx.db
     .select()
@@ -149,6 +155,8 @@ export async function upsertScorecardEntry(
   cardId: string,
   input: { periodStart: string; value: number },
 ): Promise<{ periodStart: string; value: number }> {
+  // Writing a period's value is a manager action, same as creating the card.
+  assertRole(ctx, "admin");
   assertFeature(ctx, "scorecards", "Scorecards");
 
   const [def] = await ctx.db

@@ -1,4 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": "Functions run next to the database. Supabase is in eu-west-2 (London) and Vercel's unset default is iad1 (Washington DC), so every logged-in page was crossing SA -> Virginia -> London and back for each of the several sequential DAL queries a page makes. lhr1 co-locates the functions with Postgres: the DB round trips collapse to single-digit ms and South African users lose a transatlantic hop. Move this if the database ever moves.",
+  "regions": ["lhr1"],
   "crons": [
     {
       "path": "/api/cron/weekly-narrative",
