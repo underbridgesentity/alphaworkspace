@@ -21,7 +21,9 @@ import {
 import { cn } from "@/lib/cn";
 import { ApiError } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
-import { MEETING_MAX_BYTES, MEETING_MAX_SECONDS } from "@/lib/validators";
+// From lib/limits, not lib/validators: importing a value from the schema
+// module would ship zod and every API schema to the browser.
+import { MEETING_MAX_BYTES, MEETING_MAX_SECONDS } from "@/lib/limits";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";

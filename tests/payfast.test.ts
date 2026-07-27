@@ -17,9 +17,13 @@ import {
 import { buildCheckout } from "@/server/payfast/checkout";
 import { processItn } from "@/server/payfast/itn";
 import {
+  ADJUSTMENT_MPAYMENT_PREFIX,
+  bandChangeQuotes,
   cancelSubscription,
+  changeBand,
   createPendingSubscription,
   currentSubscription,
+  prorataCatchUpCents,
   supersedeForComp,
   sweepExpiredGraceCancellations,
 } from "@/server/payfast/subscriptions";
@@ -30,6 +34,10 @@ process.env.PAYFAST_MERCHANT_ID = "10000100";
 process.env.PAYFAST_MERCHANT_KEY = "46f0cd694581a";
 process.env.PAYFAST_PASSPHRASE = "jt7NOE43FZPn";
 process.env.PAYFAST_SANDBOX = "true";
+// In-place band changes are gated off in production until the PayFast API
+// response contract is verified. The suite turns them on so the maths and the
+// ordering stay covered; the gate itself is asserted in its own test below.
+process.env.PAYFAST_PRORATION = "true";
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 
 describe("pfUrlEncode (PHP urlencode semantics)", () => {
@@ -49,11 +57,11 @@ describe("buildSignature", () => {
       ["merchant_id", "10000100"],
       ["merchant_key", "46f0cd694581a"],
       ["amount", "499.00"],
-      ["item_name", "Alpha Workspace — Team plan (monthly)"],
+      ["item_name", "Alpha Workspace, Team plan (monthly)"],
     ];
     const manual =
       "merchant_id=10000100&merchant_key=46f0cd694581a&amount=499.00" +
-      `&item_name=${pfUrlEncode("Alpha Workspace — Team plan (monthly)")}` +
+      `&item_name=${pfUrlEncode("Alpha Workspace, Team plan (monthly)")}` +
       `&passphrase=${pfUrlEncode("jt7NOE43FZPn")}`;
     const expected = createHash("md5").update(manual).digest("hex");
     expect(buildSignature(fields, "jt7NOE43FZPn")).toBe(expected);
@@ -146,7 +154,7 @@ function itnBody(overrides: Record<string, string> = {}): string {
     ["m_payment_id", overrides.m_payment_id ?? mPaymentId],
     ["pf_payment_id", "1089250"],
     ["payment_status", overrides.payment_status ?? "COMPLETE"],
-    ["item_name", "Alpha Workspace — Team plan (monthly)"],
+    ["item_name", "Alpha Workspace, Team plan (monthly)"],
     ["amount_gross", overrides.amount_gross ?? "499.00"],
     ["amount_fee", "-11.48"],
     ["amount_net", "487.52"],
@@ -264,7 +272,7 @@ describe("processItn", () => {
     expect(sub?.status).toBe("past_due");
   });
 
-  it("drops to Free on CANCELLED — plan only, nothing deleted", async () => {
+  it("drops to Free on CANCELLED, plan only, nothing deleted", async () => {
     const result = await processItn(db, itnBody({ payment_status: "CANCELLED" }), {
       skipPostback: true,
     });
@@ -561,7 +569,7 @@ describe("supersedeForComp (operator comp clears grace, keeps live money)", () =
 });
 
 describe("cancel hardening (guardian findings)", () => {
-  it("a past_due cancel drops immediately (its last charge failed) — no grace", async () => {
+  it("a past_due cancel drops immediately (its last charge failed), no grace", async () => {
     const owner = await createTestUser(db, "pastdue@billing.co.za", "PD");
     const ws = await createWorkspace(db, owner.id, {
       name: "PD Co",
@@ -732,5 +740,623 @@ describe("cancel hardening (guardian findings)", () => {
     expect(rows.find((r) => r.mPaymentId === abandoned.mPaymentId)!.status).toBe(
       "cancelled",
     );
+  });
+});
+
+/* --------------------------- band changes -------------------------------- */
+
+const DAY = 86_400_000;
+
+/**
+ * A workspace with exactly one live, tokened, mid-period subscription: the
+ * only shape an in-place band change is allowed to touch.
+ */
+async function seedLive(opts: {
+  email: string;
+  name: string;
+  plan: "team" | "studio";
+  billing?: "monthly" | "annual";
+  token?: string;
+  periodStart: Date;
+  periodEnd: Date;
+}): Promise<{ wsId: string; mPaymentId: string }> {
+  const owner = await createTestUser(db, opts.email, opts.name);
+  const ws = await createWorkspace(db, owner.id, {
+    name: opts.name,
+    seedStarter: false,
+  });
+  const pending = await createPendingSubscription(db, {
+    workspaceId: ws.id,
+    plan: opts.plan,
+    billing: opts.billing ?? "monthly",
+  });
+  await db
+    .update(schema.subscriptions)
+    .set({
+      status: "active",
+      payfastToken: opts.token ?? "tok-live",
+      currentPeriodStart: opts.periodStart,
+      currentPeriodEnd: opts.periodEnd,
+    })
+    .where(eq(schema.subscriptions.mPaymentId, pending.mPaymentId));
+  await db
+    .update(schema.workspaces)
+    .set({ plan: opts.plan, entitlements: null })
+    .where(eq(schema.workspaces.id, ws.id));
+  return { wsId: ws.id, mPaymentId: pending.mPaymentId };
+}
+
+interface PfCall {
+  url: string;
+  method: string;
+  params: URLSearchParams;
+}
+
+/** Records every PayFast API call; `fail` matches a path fragment to reject. */
+function recorder(fail?: string) {
+  const calls: PfCall[] = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({
+      url,
+      method: init?.method ?? "GET",
+      params: new URLSearchParams(String(init?.body ?? "")),
+    });
+    return new Response("", { status: fail && url.includes(fail) ? 500 : 200 });
+  };
+  return { calls, fetchImpl };
+}
+
+function planOf(wsId: string) {
+  return db
+    .select()
+    .from(schema.workspaces)
+    .where(eq(schema.workspaces.id, wsId))
+    .then((r) => r[0].plan);
+}
+
+function subOf(mPaymentId: string) {
+  return db
+    .select()
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.mPaymentId, mPaymentId))
+    .then((r) => r[0]);
+}
+
+/** A signed ITN, independent of the shared fixture above. */
+function signedItn(fields: Record<string, string>): string {
+  const params: Array<[string, string]> = [
+    ["m_payment_id", fields.m_payment_id],
+    ["pf_payment_id", "2000001"],
+    ["payment_status", fields.payment_status ?? "COMPLETE"],
+    ["item_name", "Alpha Workspace, band change"],
+    ["amount_gross", fields.amount_gross ?? "499.00"],
+    ["token", fields.token ?? "tok-live"],
+    ["merchant_id", "10000100"],
+  ];
+  params.push([
+    "signature",
+    buildSignature(params, process.env.PAYFAST_PASSPHRASE),
+  ]);
+  return params
+    .map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%20/g, "+")}`)
+    .join("&");
+}
+
+describe("prorataCatchUpCents (rounds the customer's way, never over the delta)", () => {
+  const base = {
+    fromAmountCents: 49_900,
+    toAmountCents: 99_900,
+  };
+
+  it("a same-day change pays the whole difference, and never more", () => {
+    const start = new Date("2026-08-01T09:00:00Z");
+    const end = new Date(start.getTime() + 31 * DAY);
+    expect(
+      prorataCatchUpCents({ ...base, periodStart: start, periodEnd: end, now: start }),
+    ).toBe(50_000);
+
+    // A clock skewed before the period start still cannot exceed the delta.
+    expect(
+      prorataCatchUpCents({
+        ...base,
+        periodStart: start,
+        periodEnd: end,
+        now: new Date(start.getTime() - 10 * DAY),
+      }),
+    ).toBe(50_000);
+  });
+
+  it("prices 12 of 31 days, rounding cents down", () => {
+    const now = new Date("2026-08-20T09:00:00Z");
+    const cents = prorataCatchUpCents({
+      ...base,
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+      now,
+    });
+    // 50 000 × 12/31 = 19 354.83, floored.
+    expect(cents).toBe(19_354);
+  });
+
+  it("charges nothing on the last day of a period", () => {
+    const now = new Date("2026-08-31T09:00:00Z");
+    expect(
+      prorataCatchUpCents({
+        ...base,
+        periodStart: new Date(now.getTime() - 30.5 * DAY),
+        periodEnd: new Date(now.getTime() + 12 * 3_600_000), // 12 hours left
+        now,
+      }),
+    ).toBe(0);
+  });
+
+  it("charges nothing once the period has elapsed, or when moving down", () => {
+    const start = new Date("2026-08-01T09:00:00Z");
+    const end = new Date(start.getTime() + 31 * DAY);
+    expect(
+      prorataCatchUpCents({
+        ...base,
+        periodStart: start,
+        periodEnd: end,
+        now: new Date(end.getTime() + DAY),
+      }),
+    ).toBe(0);
+    expect(
+      prorataCatchUpCents({
+        fromAmountCents: 99_900,
+        toAmountCents: 49_900,
+        periodStart: start,
+        periodEnd: end,
+        now: start,
+      }),
+    ).toBe(0);
+  });
+
+  it("scales to an annual period", () => {
+    const now = new Date("2026-08-01T09:00:00Z");
+    const cents = prorataCatchUpCents({
+      fromAmountCents: 499_000,
+      toAmountCents: 999_000,
+      periodStart: new Date(now.getTime() - 265 * DAY),
+      periodEnd: new Date(now.getTime() + 100 * DAY),
+      now,
+    });
+    expect(cents).toBe(Math.floor((500_000 * 100) / 365)); // 136 986
+  });
+});
+
+describe("changeBand: downgrade patches the mandate, keeps the paid band", () => {
+  it("moves the recurring amount down and defers the band to the period end", async () => {
+    const now = new Date();
+    const periodEnd = new Date(now.getTime() + 12 * DAY);
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "down@billing.co.za",
+      name: "Down Co",
+      plan: "studio",
+      token: "tok-down",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd,
+    });
+
+    const { calls, fetchImpl } = recorder();
+    const res = await changeBand(db, id, { plan: "team", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+
+    expect(res).toMatchObject({
+      mode: "changed",
+      plan: "team",
+      direction: "downgrade",
+      recurringCents: 49_900,
+      catchUpCents: 0,
+      catchUpCharged: false,
+      effectiveAt: periodEnd.toISOString(),
+    });
+
+    // Exactly one PayFast call: the mandate update. No money moved today.
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("PATCH");
+    expect(calls[0].url).toContain("tok-down/update");
+    expect(calls[0].params.get("amount")).toBe("49900"); // CENTS, not rand
+
+    // The row is on Team so renewals price and audit correctly…
+    const row = await subOf(m);
+    expect(row.plan).toBe("team");
+    expect(row.amountCents).toBe(49_900);
+    // …but the workspace keeps the Studio it already paid for.
+    expect(await planOf(id)).toBe("studio");
+  });
+
+  it("the next renewal ITN lands the deferred band without an amount mismatch", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "renew@billing.co.za",
+      name: "Renew Co",
+      plan: "studio",
+      token: "tok-renew",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+    await changeBand(db, id, { plan: "team", billing: "monthly" }, {
+      fetchImpl: recorder().fetchImpl,
+      now,
+    });
+    expect(await planOf(id)).toBe("studio");
+
+    // PayFast now charges the patched R499. The ITN must accept it and move
+    // the workspace across, not reject it as the wrong amount.
+    const result = await processItn(
+      db,
+      signedItn({ m_payment_id: m, amount_gross: "499.00", token: "tok-renew" }),
+      { skipPostback: true },
+    );
+    expect(result.ok).toBe(true);
+    expect(await planOf(id)).toBe("team");
+    expect(await subOf(m).then((r) => r.status)).toBe("active");
+  });
+});
+
+describe("changeBand: upgrade patches up and charges the pro rata", () => {
+  it("patches the mandate, moves the band now, then takes the catch-up", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "up@billing.co.za",
+      name: "Up Co",
+      plan: "team",
+      token: "tok-up",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    const { calls, fetchImpl } = recorder();
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+
+    expect(res).toMatchObject({
+      mode: "changed",
+      plan: "studio",
+      direction: "upgrade",
+      recurringCents: 99_900,
+      catchUpCents: 19_354,
+      catchUpCharged: true,
+      effectiveAt: null,
+    });
+
+    // MONEY BEFORE ENTITLEMENTS: the catch-up is charged FIRST, and only a
+    // successful charge is allowed to move the mandate and the band. The old
+    // order (patch, move, then charge) handed out the higher band for free
+    // whenever the catch-up failed, which is the expected production path.
+    expect(calls.map((c) => c.method)).toEqual(["POST", "PATCH"]);
+    expect(calls[0].url).toContain("tok-up/adhoc");
+    expect(calls[0].params.get("amount")).toBe("19354");
+    expect(calls[0].params.get("itn")).toBe("true");
+    expect(calls[1].url).toContain("tok-up/update");
+    expect(calls[1].params.get("amount")).toBe("99900");
+    // Its own reference, so the ITN can never read it as a renewal.
+    expect(calls[0].params.get("m_payment_id")).toMatch(
+      new RegExp(`^${ADJUSTMENT_MPAYMENT_PREFIX}`),
+    );
+    expect(calls[0].params.get("m_payment_id")).not.toBe(m);
+
+    expect(await planOf(id)).toBe("studio");
+    const row = await subOf(m);
+    expect(row.plan).toBe("studio");
+    expect(row.amountCents).toBe(99_900);
+  });
+
+  it("a declined catch-up grants NOTHING and falls back to checkout", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "adhocfail@billing.co.za",
+      name: "Adhoc Co",
+      plan: "team",
+      token: "tok-af",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    // The known unverified risk: adhoc may refuse a subscription_type=1 token.
+    const { calls, fetchImpl } = recorder("adhoc");
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+
+    // If the money does not move, nothing moves. Granting the band on a
+    // declined catch-up was farmable: upgrade with a failing charge, then
+    // downgrade, and keep the higher band to period end at the lower price,
+    // every period. The owner is sent to a full checkout where they really pay.
+    expect(res).toEqual({ mode: "checkout", reason: "catch-up-declined" });
+    expect(calls).toHaveLength(1); // charged first, so the mandate was never touched
+    expect(calls[0].url).toContain("adhoc");
+    expect(await planOf(id)).toBe("team"); // NOT upgraded
+    expect(await subOf(m).then((r) => r.amountCents)).toBe(49_900); // mandate untouched
+  });
+
+  it("cannot be farmed: a refused catch-up then a downgrade leaves no free band", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "farm@billing.co.za",
+      name: "Farm Co",
+      plan: "team",
+      token: "tok-farm",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    // Step 1: upgrade whose catch-up is declined.
+    await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl: recorder("adhoc").fetchImpl,
+      now,
+    });
+    expect(await planOf(id)).toBe("team");
+
+    // Step 2: immediately "downgrade" back. A downgrade deliberately leaves
+    // the workspace on the band it paid for until period end, so if step 1 had
+    // granted studio, this is where it would be locked in for free.
+    await changeBand(db, id, { plan: "team", billing: "monthly" }, {
+      fetchImpl: recorder().fetchImpl,
+      now,
+    });
+    expect(await planOf(id)).toBe("team");
+  });
+
+  it("a refused mandate update changes nothing and hands back to checkout", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "patchfail@billing.co.za",
+      name: "Patch Co",
+      plan: "team",
+      token: "tok-pf",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    const { calls, fetchImpl } = recorder("update");
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+
+    // The catch-up is charged first now, so it lands, and then the mandate
+    // refuses. The customer has PAID for this period's higher band, so
+    // withholding it would be theft: grant it, keep amountCents on the real
+    // mandate so renewals still validate, and flag it for reconciliation.
+    expect(res).toMatchObject({
+      mode: "changed",
+      direction: "upgrade",
+      catchUpCharged: true,
+      recurringCents: 49_900, // the REAL mandate, not the target
+    });
+    expect(calls.map((c) => c.method)).toEqual(["POST", "PATCH"]);
+    expect(await planOf(id)).toBe("studio"); // they paid for it
+    // amountCents tracks the live mandate, or every renewal ITN would fail.
+    expect(await subOf(m).then((r) => r.amountCents)).toBe(49_900);
+  });
+});
+
+describe("changeBand idempotency and fallbacks", () => {
+  it("a retried upgrade charges nothing a second time", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "retry@billing.co.za",
+      name: "Retry Co",
+      plan: "team",
+      token: "tok-retry",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    const first = recorder();
+    await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl: first.fetchImpl,
+      now,
+    });
+    expect(first.calls).toHaveLength(2);
+
+    const second = recorder();
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl: second.fetchImpl,
+      now,
+    });
+    expect(res).toEqual({ mode: "noop", plan: "studio" });
+    expect(second.calls).toHaveLength(0); // nothing re-sent, nothing re-charged
+  });
+
+  it("moving back up during a scheduled downgrade costs nothing", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "undo@billing.co.za",
+      name: "Undo Co",
+      plan: "studio",
+      token: "tok-undo",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+    await changeBand(db, id, { plan: "team", billing: "monthly" }, {
+      fetchImpl: recorder().fetchImpl,
+      now,
+    });
+
+    // The row says Team, the workspace still says Studio because Studio is
+    // paid for. Going back up must not re-bill that difference.
+    const { calls, fetchImpl } = recorder();
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+    expect(res).toMatchObject({ mode: "changed", catchUpCents: 0 });
+    expect(calls.map((c) => c.method)).toEqual(["PATCH"]); // no adhoc at all
+    expect(await planOf(id)).toBe("studio");
+  });
+
+  it("falls back to checkout without a token, and on a billing-cycle switch", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "notoken@billing.co.za",
+      name: "NoToken Co",
+      plan: "team",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    // Same mandate, different cycle: the run date would move under the maths.
+    const cycle = await changeBand(db, id, { plan: "studio", billing: "annual" }, {
+      fetchImpl: recorder().fetchImpl,
+      now,
+    });
+    expect(cycle).toEqual({ mode: "checkout", reason: "billing-cycle-change" });
+
+    await db
+      .update(schema.subscriptions)
+      .set({ payfastToken: null })
+      .where(eq(schema.subscriptions.workspaceId, id));
+    const { calls, fetchImpl } = recorder();
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+    expect(res).toEqual({ mode: "checkout", reason: "no-token" });
+    expect(calls).toHaveLength(0);
+    expect(await planOf(id)).toBe("team");
+  });
+
+  it("a grace cancel is left alone: its token is already stopped", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "gracechange@billing.co.za",
+      name: "Grace Co",
+      plan: "team",
+      token: "tok-grace",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+    await db
+      .update(schema.subscriptions)
+      .set({ cancelledAt: now })
+      .where(eq(schema.subscriptions.workspaceId, id));
+
+    const { calls, fetchImpl } = recorder();
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl,
+      now,
+    });
+    expect(res).toEqual({ mode: "checkout", reason: "no-live-subscription" });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("band-change quotes and the catch-up ITN", () => {
+  it("quotes what changeBand would actually charge", async () => {
+    const now = new Date();
+    const { wsId: id } = await seedLive({
+      email: "quote@billing.co.za",
+      name: "Quote Co",
+      plan: "team",
+      token: "tok-quote",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+
+    const quotes = await bandChangeQuotes(db, id, { now });
+    expect(quotes).toHaveLength(1); // only the band they're not on
+    expect(quotes[0]).toMatchObject({
+      plan: "studio",
+      direction: "upgrade",
+      inPlace: true,
+      catchUpCents: 19_354,
+      recurringCents: 99_900,
+    });
+
+    const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+      fetchImpl: recorder().fetchImpl,
+      now,
+    });
+    expect(res).toMatchObject({ catchUpCents: quotes[0].catchUpCents });
+  });
+
+  it("a catch-up ITN is never read as an activation or a renewal", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "adjitn@billing.co.za",
+      name: "AdjItn Co",
+      plan: "studio",
+      token: "tok-adj",
+      periodStart: new Date(now.getTime() - 19 * DAY),
+      periodEnd: new Date(now.getTime() + 12 * DAY),
+    });
+    const before = await subOf(m);
+
+    const result = await processItn(
+      db,
+      signedItn({
+        m_payment_id: `${ADJUSTMENT_MPAYMENT_PREFIX}${before.id}-abc`,
+        amount_gross: "193.54",
+        token: "tok-adj",
+      }),
+      { skipPostback: true },
+    );
+    expect(result).toEqual({ ok: true, reason: "proration-adjustment" });
+
+    // Period untouched (no free extension), plan untouched, nothing logged.
+    const after = await subOf(m);
+    expect(after.currentPeriodEnd?.getTime()).toBe(
+      before.currentPeriodEnd?.getTime(),
+    );
+    expect(after.amountCents).toBe(before.amountCents);
+    expect(await planOf(id)).toBe("studio");
+
+    // A DECLINED catch-up must not push the recurring subscription past due.
+    const declined = await processItn(
+      db,
+      signedItn({
+        m_payment_id: `${ADJUSTMENT_MPAYMENT_PREFIX}${before.id}-abc`,
+        payment_status: "FAILED",
+        amount_gross: "193.54",
+      }),
+      { skipPostback: true },
+    );
+    expect(declined.ok).toBe(true);
+    expect(await subOf(m).then((r) => r.status)).toBe("active");
+  });
+});
+
+describe("proration is gated off until PayFast's contract is verified", () => {
+  it("falls back to the full checkout when the flag is not set", async () => {
+    const now = new Date();
+    const { wsId: id, mPaymentId: m } = await seedLive({
+      email: "gated@billing.co.za",
+      name: "Gated Co",
+      plan: "team",
+      token: "tok-gate",
+      periodStart: new Date(now.getTime() - 10 * DAY),
+      periodEnd: new Date(now.getTime() + 20 * DAY),
+    });
+
+    const prev = process.env.PAYFAST_PRORATION;
+    process.env.PAYFAST_PRORATION = "false";
+    try {
+      const { calls, fetchImpl } = recorder();
+      const res = await changeBand(db, id, { plan: "studio", billing: "monthly" }, {
+        fetchImpl,
+        now,
+      });
+
+      // No PayFast call at all, no local change: the owner goes through the
+      // proven checkout where the money moves before anything is granted.
+      expect(res).toEqual({ mode: "checkout", reason: "proration-disabled" });
+      expect(calls).toHaveLength(0);
+      expect(await planOf(id)).toBe("team");
+      expect(await subOf(m).then((r) => r.amountCents)).toBe(49_900);
+
+      // And the billing surface offers no in-place quotes either.
+      expect(await bandChangeQuotes(db, id, now)).toEqual([]);
+    } finally {
+      process.env.PAYFAST_PRORATION = prev;
+    }
   });
 });

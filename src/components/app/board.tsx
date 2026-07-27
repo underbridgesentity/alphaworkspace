@@ -5,7 +5,7 @@
  * horizontal snap-scroll columns on mobile, quick-add at the top of every
  * column, optimistic everything.
  */
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEventHandler } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -16,9 +16,14 @@ import {
   useDroppable,
   useSensor,
   useSensors,
+  type Announcements,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -35,9 +40,33 @@ import { celebrateAt, useBoard, useTaskMutations } from "@/lib/client/tasks";
 import { useWorkspace } from "@/lib/client/workspace";
 import { useUI } from "./shell";
 import { Avatar } from "@/components/ui/avatar";
-import { ChecklistChip, DueChip, PriorityFlag, statusLabel } from "./status-bits";
+import {
+  ChecklistChip,
+  DueChip,
+  PriorityFlag,
+  STATUS_LABELS,
+  railTone,
+  statusLabel,
+} from "./status-bits";
 
 const GAP = 1024;
+
+/**
+ * Space picks a card up and Space puts it down. dnd-kit's default also binds
+ * Enter, which is why a keyboard user could reorder the board but never open a
+ * single card: Enter started a drag before the card ever saw it. Enter now
+ * belongs to the card.
+ */
+const KEYBOARD_CODES = {
+  start: ["Space"],
+  cancel: ["Escape"],
+  end: ["Space"],
+};
+
+const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
+  draggable:
+    "Press Enter to open this task. Press Space to pick it up, then the arrow keys to move it between columns, Space to drop it, Escape to cancel.",
+};
 
 export function Board({ projectId }: { projectId: string }) {
   const { workspace } = useWorkspace();
@@ -51,7 +80,9 @@ export function Board({ projectId }: { projectId: string }) {
 
   const [local, setLocal] = useState<TaskDTO[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const items = local ?? tasks ?? [];
+  // Memoised so the derived column map and the drag announcements are not
+  // rebuilt on every render of a surface people keep open all day.
+  const items = useMemo(() => local ?? tasks ?? [], [local, tasks]);
 
   const byColumn = useMemo(() => {
     const map = new Map<TaskStatus, TaskDTO[]>();
@@ -73,8 +104,43 @@ export function Board({ projectId }: { projectId: string }) {
     useSensor(TouchSensor, {
       activationConstraint: { delay: 180, tolerance: 6 },
     }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: KEYBOARD_CODES,
+    }),
   );
+
+  // dnd-kit's stock announcements interpolate the draggable id, and ours are
+  // client-generated UUIDs, so a screen reader user heard "Picked up draggable
+  // item 8f14e45f-ceea-...". Titles and column names instead.
+  const announcements = useMemo<Announcements>(() => {
+    const nameOf = (id: UniqueIdentifier | undefined) => {
+      const task = items.find((t) => t.id === String(id));
+      return task ? task.title : "task";
+    };
+    const columnOf = (id: UniqueIdentifier | undefined) => {
+      const task = items.find((t) => t.id === String(id));
+      if (task) return statusLabel(task.status, customName);
+      const key = String(id) as TaskStatus;
+      return key in STATUS_LABELS ? statusLabel(key, customName) : null;
+    };
+    return {
+      onDragStart: ({ active }) => `Picked up ${nameOf(active.id)}.`,
+      onDragOver: ({ active, over }) => {
+        const column = columnOf(over?.id);
+        return column
+          ? `${nameOf(active.id)} is over ${column}.`
+          : `${nameOf(active.id)} is not over a column.`;
+      },
+      onDragEnd: ({ active, over }) => {
+        const column = columnOf(over?.id);
+        return column
+          ? `${nameOf(active.id)} dropped in ${column}.`
+          : `${nameOf(active.id)} was returned.`;
+      },
+      onDragCancel: ({ active }) => `Cancelled. ${nameOf(active.id)} returned.`,
+    };
+  }, [items, customName]);
 
   const findColumn = (id: string): TaskStatus | null => {
     if (columns.includes(id as TaskStatus)) return id as TaskStatus;
@@ -163,6 +229,10 @@ export function Board({ projectId }: { projectId: string }) {
   return (
     <DndContext
       sensors={sensors}
+      accessibility={{
+        announcements,
+        screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
+      }}
       collisionDetection={closestCorners}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -218,8 +288,12 @@ function Column({
       aria-label={statusLabel(status, customName)}
     >
       <header className="flex items-center gap-2 px-1 pb-2 pt-2">
-        <h2 className="text-sm font-semibold">{statusLabel(status, customName)}</h2>
-        <span className="text-xs tabular text-faint">{tasks.length}</span>
+        {/* The one section-head idiom in the app: the cards are the content,
+            the column only has to say which pile you are looking at. */}
+        <h2 className="section-head">
+          {statusLabel(status, customName)}
+        </h2>
+        <span className="text-micro tabular text-faint">{tasks.length}</span>
       </header>
 
       <QuickAddRow projectId={projectId} status={status} />
@@ -242,10 +316,10 @@ function Column({
           ))}
         </SortableContext>
         {tasks.length === 0 && !isOver && (
-          <p className="px-2 pt-6 text-center text-xs text-faint">
-            {status === "done"
-              ? "Finished work lands here."
-              : "Nothing here. Drag a card over, or add one above."}
+          // A drop target, not a sentence. The dashed edge borrows the
+          // marketing site's language and says what the space is for.
+          <p className="mt-1 rounded-card border border-dashed border-line-strong px-3 py-8 text-center text-meta text-faint">
+            {status === "done" ? "Finished work lands here" : "Drop work here"}
           </p>
         )}
       </div>
@@ -285,7 +359,7 @@ function QuickAddRow({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="press flex items-center gap-1.5 rounded-control px-2 py-1.5 text-sm text-faint hover:bg-raised hover:text-muted"
+        className="press flex items-center gap-1.5 rounded-control px-2 py-1.5 text-dense text-faint hover:bg-raised hover:text-muted"
       >
         <Plus className="size-4" />
         Add task
@@ -315,55 +389,101 @@ function QuickAddRow({
       }}
       placeholder="Task title. Enter to add"
       aria-label="New task title"
-      className="w-full rounded-control bg-raised px-3 py-2 text-sm outline-none placeholder:text-faint focus:ring-2 focus:ring-accent/30"
+      className="w-full rounded-control bg-raised px-3 py-2 text-body outline-none placeholder:text-faint focus:ring-2 focus:ring-accent-ring"
     />
   );
 }
 
 /* ------------------------------- card ------------------------------------ */
 
+/** What a sortable card hands its body so the card itself is the drag handle. */
+type DragBindings = {
+  ref: (node: HTMLElement | null) => void;
+  attributes: DraggableAttributes;
+  listeners: DraggableSyntheticListeners;
+};
+
 function SortableCard({ task }: { task: TaskDTO }) {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: task.id });
 
+  // The wrapper is presentation only. It used to carry dnd-kit's attributes,
+  // which meant role="button" tabIndex=0 sitting OUTSIDE a second role="button"
+  // that had tabIndex={-1}: keyboard focus landed on the drag wrapper and the
+  // card underneath could never be opened. One button now, and it is the card.
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(isDragging && "opacity-35")}
-      {...attributes}
-      {...listeners}
     >
-      <CardBody task={task} />
+      <CardBody
+        task={task}
+        drag={{ ref: setActivatorNodeRef, attributes, listeners }}
+      />
     </div>
   );
 }
 
-function CardBody({ task }: { task: TaskDTO }) {
+function CardBody({ task, drag }: { task: TaskDTO; drag?: DragBindings }) {
   const { openTask } = useUI();
   const { update } = useTaskMutations();
   const done = task.status === "done";
 
+  // dnd-kit listens for Space on the activator; keep its handler alive and
+  // take Enter for opening.
+  const dragKeyDown = drag?.listeners?.onKeyDown as
+    | KeyboardEventHandler<HTMLDivElement>
+    | undefined;
+
   return (
     <div
+      ref={drag?.ref}
+      {...(drag?.attributes ?? {})}
+      {...(drag?.listeners ?? {})}
+      // Without drag bindings this is the DragOverlay clone: a picture of the
+      // card being dragged, and the real one is still in the list.
+      role={drag ? "button" : undefined}
+      tabIndex={drag ? 0 : undefined}
+      aria-hidden={drag ? undefined : true}
+      aria-label={drag ? `Open task: ${task.title}` : undefined}
       onClick={() => openTask(task.id)}
-      role="button"
-      tabIndex={-1}
+      onKeyDown={(e) => {
+        // A key pressed inside the complete toggle belongs to the toggle:
+        // without this, Space on the toggle also picked the card up to drag.
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter") {
+          e.preventDefault();
+          openTask(task.id);
+          return;
+        }
+        dragKeyDown?.(e);
+      }}
       className={cn(
-        "group cursor-pointer rounded-card bg-surface p-3 hover:bg-raised",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.14)] transition-colors",
+        "group cursor-pointer rounded-card bg-surface p-3 shadow-e2",
+        // The rail rides in the inset slot so it composes with the card's own
+        // elevation instead of overwriting it.
+        "inset-shadow-[2px_0_0_0_var(--rail,transparent)]",
+        "transition-[box-shadow,translate,background-color] duration-(--dur-quick) ease-move",
+        "motion-safe:hover:-translate-y-px hover:shadow-e3",
+        railTone(task),
         done && "opacity-60",
       )}
     >
       <div className="flex items-start gap-2">
         <button
-          aria-label={done ? "Reopen task" : "Complete task"}
+          aria-label={`Mark "${task.title}" complete`}
+          aria-pressed={done}
+          // The overlay clone is aria-hidden, so nothing inside it may be
+          // reachable by tab.
+          tabIndex={drag ? undefined : -1}
           onClick={(e) => {
             e.stopPropagation();
             if (!done) celebrateAt(e.clientX, e.clientY);
@@ -373,18 +493,28 @@ function CardBody({ task }: { task: TaskDTO }) {
             });
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className={cn(
-            "press mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-            done
-              ? "border-ok bg-ok text-bg"
-              : "border-line-strong text-transparent hover:border-ok hover:text-ok",
-          )}
+          // -m-3 p-3 gives an 18px circle a 44px target and moves no layout.
+          // pt-3.5 keeps the optical 2px drop that lined the circle up with
+          // the first line of the title.
+          className="group/check -m-3 flex shrink-0 p-3 pt-3.5"
         >
-          <Check className="size-3" strokeWidth={3} />
+          <span
+            className={cn(
+              "flex size-4.5 items-center justify-center rounded-full border-2",
+              // Spring, not ease: the circle overshoots as it fills. This is
+              // the gesture people make dozens of times a day.
+              "transition-[background-color,border-color,scale] duration-(--dur-base) ease-spring",
+              done
+                ? "scale-100 border-ok bg-ok text-bg"
+                : "scale-95 border-line-strong text-transparent group-hover/check:border-ok group-hover/check:text-ok",
+            )}
+          >
+            <Check className="size-3" strokeWidth={3} />
+          </span>
         </button>
         <p
           className={cn(
-            "min-w-0 flex-1 text-sm leading-snug",
+            "min-w-0 flex-1 text-body",
             done && "text-muted line-through",
           )}
         >
@@ -410,7 +540,7 @@ function CardBody({ task }: { task: TaskDTO }) {
             />
           ))}
           {task.labels.length > 2 && (
-            <span className="text-[10px] text-faint">+{task.labels.length - 2}</span>
+            <span className="text-micro text-faint">+{task.labels.length - 2}</span>
           )}
           <span className="flex-1" />
           {task.assignee && (

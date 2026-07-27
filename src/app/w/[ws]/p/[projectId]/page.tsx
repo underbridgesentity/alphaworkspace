@@ -4,6 +4,7 @@
  * Project workspace: board (default) / list / calendar via ?view=.
  */
 import { Suspense, use, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
@@ -25,14 +26,37 @@ import { useBoard } from "@/lib/client/tasks";
 import { apiMutate } from "@/lib/client/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Board } from "@/components/app/board";
-import { ListView } from "@/components/app/list-view";
-import { CalendarView } from "@/components/app/calendar-view";
 import { useUI } from "@/components/app/shell";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+/**
+ * Exactly one view renders at a time and board is the default, so only board
+ * (and the drag-and-drop engine it carries) belongs on the first-paint path.
+ * The other two arrive when someone actually presses their switcher button.
+ */
+const ListView = dynamic(
+  () => import("@/components/app/list-view").then((m) => m.ListView),
+  { ssr: false, loading: () => <ViewLoading /> },
+);
+const CalendarView = dynamic(
+  () => import("@/components/app/calendar-view").then((m) => m.CalendarView),
+  { ssr: false, loading: () => <ViewLoading /> },
+);
+
+/** Matches the views' own loading state, so the chunk fetch is invisible. */
+function ViewLoading() {
+  return (
+    <div className="space-y-2 px-4 md:px-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="skeleton h-11" />
+      ))}
+    </div>
+  );
+}
 
 const VIEWS = [
   { key: "board", label: "Board", icon: Columns3 },

@@ -1,9 +1,15 @@
 /**
- * zod schemas for every API boundary. The client uses these to build
- * payloads; route handlers must parse with them before touching the DAL.
+ * zod schemas for every API boundary. Route handlers must parse with them
+ * before touching the DAL.
+ *
+ * Treat this module as server-only. A client component that imports anything
+ * here as a VALUE drags zod plus every schema below into its bundle, which
+ * cost the meetings route 70 KB gzipped for the sake of two numbers. Client
+ * code takes `import type`, or a plain constant from lib/limits.
  */
 import { z } from "zod";
 import { REACTION_EMOJI } from "@/lib/reactions";
+import { MEETING_MAX_BYTES, MEETING_MAX_SECONDS } from "@/lib/limits";
 
 export const uuid = z.uuid();
 export const dayString = z.iso.date(); // YYYY-MM-DD
@@ -248,12 +254,11 @@ export const privateTaskPromoteSchema = z.object({
 /* ------------------------------ meetings ---------------------------------- */
 
 /**
- * Hard caps regardless of plan: 2 hours, 50 MB. The byte cap mirrors the
- * storage bucket's Supabase Free-tier ceiling (see server/storage.ts); an
- * in-app recording (32 kbps opus) reaches ~29 MB at the 2 hour mark.
+ * The caps themselves live in lib/limits so a client component can read them
+ * without pulling zod and every schema below into the bundle. Re-exported
+ * here because this is where callers have always found them.
  */
-export const MEETING_MAX_SECONDS = 7_200;
-export const MEETING_MAX_BYTES = 52_428_800;
+export { MEETING_MAX_BYTES, MEETING_MAX_SECONDS };
 
 export const meetingBeginSchema = z.object({
   id: uuid.optional(),

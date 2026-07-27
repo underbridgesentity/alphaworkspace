@@ -63,17 +63,31 @@ export type MutateResult<T> = { queued: true } | ({ queued?: false } & T);
  * Fire a mutation. Offline (or on network failure) it queues for background
  * sync and resolves { queued: true } so callers keep their optimistic state.
  * Server-side rejections (4xx/5xx) throw, those are real answers.
+ *
+ * Pass `queue: false` for anything that MOVES MONEY. A queued write replays
+ * from the service worker later, with no tab open and nobody watching: a band
+ * change that failed on a patchy link would silently apply minutes later, long
+ * after the owner was told it did not, and could revert a decision they made
+ * in between. Money must fail loudly instead of arriving late.
  */
 export async function apiMutate<T>(
   path: string,
-  opts: { method: "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown },
+  opts: {
+    method: "POST" | "PUT" | "PATCH" | "DELETE";
+    body?: unknown;
+    queue?: boolean;
+  },
 ): Promise<MutateResult<T>> {
+  const mayQueue = opts.queue !== false;
   const queue = async (): Promise<{ queued: true }> => {
     await enqueue({ url: path, method: opts.method, body: opts.body });
     return { queued: true };
   };
 
-  if (typeof navigator !== "undefined" && !navigator.onLine) return queue();
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (!mayQueue) throw new ApiError("offline", "You need a connection for that", 0);
+    return queue();
+  }
 
   let res: Response;
   try {
@@ -83,7 +97,16 @@ export async function apiMutate<T>(
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
     });
   } catch {
-    return queue(); // network dropped mid-request
+    // Network dropped mid-request. We cannot know whether the server saw it,
+    // so for money the only safe answer is to surface it, never to replay it.
+    if (!mayQueue) {
+      throw new ApiError(
+        "offline",
+        "The connection dropped. Check your billing page before trying again.",
+        0,
+      );
+    }
+    return queue();
   }
   if (!res.ok) await throwFrom(res);
   return res.json() as Promise<MutateResult<T>>;

@@ -7,7 +7,7 @@
  * outside; day/period blocks carry intensity, never colour alone (numbers
  * are always present in text or tooltips).
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, Plus, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -46,6 +46,66 @@ interface DashboardData {
   narratives: NarrativeRow[];
 }
 
+/**
+ * The one heading idiom, now the `section-head` utility in globals.css so that
+ * every surface spells it identically. This rank used to be three near-misses
+ * (text-sm font-semibold here, uppercase micro on My Work, 11px in the
+ * sidebar), and text at body size is not a heading in the first place.
+ */
+const SECTION_HEAD = "section-head";
+
+/** React's CSSProperties has no slot for custom properties, so name the shape
+ *  once rather than casting at every call site. */
+type StyleVars = React.CSSProperties & Record<`--${string}`, string | number>;
+const styleVars = (v: StyleVars): StyleVars => v;
+
+/**
+ * THE LEDGER LINE. A 2px rule under a number, filled to that number's share of
+ * its own context: completion against 100, work cleared against work that came
+ * in, overdue against everything still open, a scorecard against its target.
+ * `of` is null when there is no honest denominator, and then nothing is drawn,
+ * because an empty rule reads as a measured zero.
+ *
+ * The fill rides scaleX from a left origin, so it never leaves the compositor,
+ * and the global reduced-motion block collapses it straight to its final
+ * state.
+ */
+function Ledger({
+  value,
+  of,
+  tone,
+}: {
+  value: number;
+  of: number | null;
+  tone?: "danger" | "warn";
+}) {
+  const ratio =
+    of !== null && of > 0 ? Math.min(1, Math.max(0, value / of)) : null;
+  const fill = useRef<HTMLSpanElement>(null);
+
+  // Written to the DOM rather than rendered. The first paint leaves --fill at
+  // its CSS default of 0 and this write, one tick later, is what the transition
+  // interpolates from; rendering the value would paint the rule already full.
+  // It reruns only when the ratio itself changes, so the growth is an entry
+  // animation, not a per-render effect.
+  useEffect(() => {
+    fill.current?.style.setProperty("--fill", String(ratio ?? 0));
+  }, [ratio]);
+
+  if (ratio === null) return null;
+  return (
+    <span className="ledger-track" aria-hidden="true">
+      <span
+        ref={fill}
+        className="ledger-fill"
+        style={
+          tone ? styleVars({ "--ledger-tone": `var(--${tone})` }) : undefined
+        }
+      />
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const { workspace, projects } = useWorkspace();
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -62,13 +122,13 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-5 md:px-6 md:pt-7">
-      <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-      <p className="mt-0.5 text-sm text-muted">
+      <h1 className="text-display-sm">Pulse</h1>
+      <p className="mt-tight text-body text-muted">
         Nobody compiled this. It’s all from the work itself.
       </p>
 
       {/* Scope chips */}
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+      <div className="mt-item flex flex-wrap items-center gap-1.5">
         <ScopeChip active={projectId === null} onClick={() => setProjectId(null)}>
           Whole workspace
         </ScopeChip>
@@ -87,14 +147,19 @@ export default function DashboardPage() {
       {projectId === null && <NarrativeSection narratives={data?.narratives} />}
 
       {isLoading ? (
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="skeleton h-24" />
-          ))}
-        </div>
+        <>
+          <div className="mt-group grid gap-sibling sm:grid-cols-3">
+            <div className="skeleton h-28 sm:col-span-2" />
+            <div className="skeleton h-28" />
+          </div>
+          <div className="mt-sibling grid grid-cols-2 gap-sibling">
+            <div className="skeleton h-24" />
+            <div className="skeleton h-24" />
+          </div>
+        </>
       ) : data ? (
         <>
-          <KpiTiles kpis={data.kpis} />
+          <KpiBoard kpis={data.kpis} />
           <Momentum days={data.kpis.completionsByDay} />
           <div
             className={cn(
@@ -132,7 +197,11 @@ function ScopeChip({
     <button
       onClick={onClick}
       className={cn(
-        "press flex h-8 max-w-48 items-center gap-1.5 rounded-full px-3 text-sm",
+        // 32px reads right in a dense filter row but is under the 44px touch
+        // floor, so the hit area is grown with a pseudo-element instead of the
+        // visible chip. The 6px row gap means neighbours only ever touch.
+        "press relative flex h-8 max-w-48 items-center gap-1.5 rounded-full px-3 text-dense",
+        "before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
         active
           ? "bg-ink text-bg font-medium"
           : "bg-raised text-muted hover:text-ink",
@@ -161,7 +230,7 @@ function NarrativeFeedback({ narrativeId }: { narrativeId: string }) {
 
   return (
     <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-2.5">
-      <span className="text-xs text-faint">Was this useful?</span>
+      <span className="text-meta text-faint">Was this useful?</span>
       <button
         onClick={() => rate("up")}
         aria-label="Helpful"
@@ -182,7 +251,7 @@ function NarrativeFeedback({ narrativeId }: { narrativeId: string }) {
       >
         <ThumbsDown className="size-3.5" />
       </button>
-      {vote && <span className="text-xs text-faint">Thanks, noted.</span>}
+      {vote && <span className="text-meta text-faint">Thanks, noted.</span>}
     </div>
   );
 }
@@ -217,36 +286,40 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
     <section className="mt-5" aria-label="Weekly briefing">
       <div className="rounded-card bg-surface p-5">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-accent" />
-          <h2 className="flex-1 text-sm font-semibold">
+          {/* The same 6px accent square the morning brief wears. Both of these
+              are the workspace writing to you, so they carry one house mark;
+              the Sparkles that used to sit here claimed the weekly narrative
+              was magic, when its whole pitch is that it is routine. */}
+          <span className="size-1.5 shrink-0 rounded-[2px] bg-accent" aria-hidden />
+          <h2 className={cn("flex-1", SECTION_HEAD)}>
             {latest
               ? `Weekly briefing · week of ${formatDay(latest.weekStart)}`
               : "Weekly briefing"}
           </h2>
           {latest && (
-            <span className="text-xs text-faint">{timeAgo(latest.createdAt)}</span>
+            <span className="text-meta text-faint">{timeAgo(latest.createdAt)}</span>
           )}
         </div>
 
         {latest ? (
           <>
-            <div className="mt-3 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-ink/95">
+            <div className="mt-3 whitespace-pre-wrap text-body leading-relaxed text-ink/95">
               {latest.narrative}
             </div>
             <NarrativeFeedback narrativeId={latest.id} />
           </>
         ) : preview ? (
           <>
-            <p className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">
+            <p className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-meta font-medium text-accent">
               Preview, the real one lands Monday 06:30
             </p>
-            <div className="mt-2 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-ink/95">
+            <div className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-ink/95">
               {preview.narrative}
             </div>
           </>
         ) : (
           <div className="mt-3">
-            <p className="text-sm text-muted">
+            <p className="text-body text-muted">
               Every Monday at 06:30 a short, human briefing lands here, what
               got done, what’s at risk, who’s carrying too much, what to watch.
               Written from your team’s actual activity. Nobody compiles a
@@ -272,17 +345,17 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
         <div className="mt-2">
           <button
             onClick={() => setHistory((h) => !h)}
-            className="press rounded-control px-2 py-1 text-xs font-medium text-faint hover:text-muted"
+            className="press rounded-control px-2 py-1 text-meta font-medium text-faint hover:text-muted"
           >
             {history ? "Hide past briefings" : `Past briefings (${narratives.length - 1})`}
           </button>
           {history &&
             narratives.slice(1).map((n) => (
               <details key={n.id} className="mt-1 rounded-card bg-surface px-4 py-3">
-                <summary className="cursor-pointer select-none text-sm font-medium text-muted">
+                <summary className="cursor-pointer select-none text-body font-medium text-muted">
                   Week of {formatDay(n.weekStart)}
                 </summary>
-                <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/90">
+                <div className="mt-2 whitespace-pre-wrap text-dense leading-relaxed text-ink/90">
                   {n.narrative}
                 </div>
               </details>
@@ -293,68 +366,119 @@ function NarrativeSection({ narratives }: { narratives?: NarrativeRow[] }) {
   );
 }
 
-/* ------------------------------ KPI tiles -------------------------------- */
+/* ------------------------------ KPI board -------------------------------- */
 
-function KpiTiles({ kpis }: { kpis: WorkspaceKpis }) {
+/**
+ * One hero, two states, a footnote. Six identical tiles gave "Overdue, needs a
+ * decision" exactly the voice of "Open now", which is a grid filled by listing
+ * the metrics we happen to have rather than by deciding what an owner opens
+ * this page to find out. Tiles are wells, not cards: elevation in this system
+ * means a thing can be opened or dragged, and a number can do neither.
+ */
+function KpiBoard({ kpis }: { kpis: WorkspaceKpis }) {
+  const rate = kpis.completionRatePct;
+
   return (
-    <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
-      <Tile
-        label="Completion rate"
-        value={kpis.completionRatePct !== null ? `${kpis.completionRatePct}%` : "-"}
-        context="of this week's plate got done"
-      />
-      <Tile
-        label="Done this week"
-        value={String(kpis.completedThisWeek)}
-        context={`${kpis.createdThisWeek} new came in`}
-      />
-      <Tile
-        label="Overdue"
-        value={String(kpis.overdueNow)}
-        tone={kpis.overdueNow > 0 ? "danger" : "ok"}
-        context={kpis.overdueNow > 0 ? "need a decision" : "nothing slipping"}
-      />
-      <Tile
-        label="Stale"
-        value={String(kpis.staleNow)}
-        tone={kpis.staleNow > 0 ? "warn" : undefined}
-        context="untouched for a while"
-      />
-      <Tile
-        label="Cycle time"
-        value={kpis.avgCycleTimeDays !== null ? `${kpis.avgCycleTimeDays}d` : "-"}
-        context="created → done, this week"
-      />
-      <Tile label="Open now" value={String(kpis.openNow)} context="across active projects" />
-    </div>
+    <section className="mt-group" aria-label="Key numbers">
+      <div className="grid gap-sibling sm:grid-cols-3">
+        <div className="rounded-card bg-sunken p-item sm:col-span-2">
+          <h2 className={SECTION_HEAD}>Completion rate</h2>
+          <p className="ledger mt-tight num text-display font-bold">
+            {rate !== null ? `${rate}%` : "-"}
+            <Ledger value={rate ?? 0} of={rate !== null ? 100 : null} />
+          </p>
+          <p className="mt-tight text-meta text-faint">
+            of this week’s plate got done
+          </p>
+        </div>
+
+        <div className="rounded-card bg-sunken p-item">
+          <h2 className={SECTION_HEAD}>Done this week</h2>
+          {/* Measured against what came in, so a big number in a big week
+              still reads as the share it actually is. */}
+          <p className="ledger mt-tight num text-display-sm">
+            {kpis.completedThisWeek}
+            <Ledger
+              value={kpis.completedThisWeek}
+              of={kpis.createdThisWeek > 0 ? kpis.createdThisWeek : null}
+            />
+          </p>
+          <p className="mt-tight text-meta text-faint">
+            {kpis.createdThisWeek} new came in
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-sibling grid grid-cols-2 gap-sibling">
+        <StateTile
+          label="Overdue"
+          count={kpis.overdueNow}
+          of={kpis.openNow}
+          tone="danger"
+          context={kpis.overdueNow > 0 ? "need a decision" : "nothing slipping"}
+        />
+        <StateTile
+          label="Stale"
+          count={kpis.staleNow}
+          of={kpis.openNow}
+          tone="warn"
+          context={
+            kpis.staleNow > 0 ? "untouched for a while" : "nothing gone quiet"
+          }
+        />
+      </div>
+
+      {/* The genuinely secondary numbers. They answer a question nobody opens
+          this page with, so they get a line, not a box. */}
+      <p className="mt-item text-meta text-faint">
+        {kpis.avgCycleTimeDays !== null && (
+          <>
+            Cycle time{" "}
+            <span className="num text-ink">{kpis.avgCycleTimeDays}d</span>{" "}
+            created to done ·{" "}
+          </>
+        )}
+        <span className="num text-ink">{kpis.openNow}</span> open across active
+        projects
+      </p>
+    </section>
   );
 }
 
-function Tile({
+/**
+ * A state that earns emphasis. The rail carries the tone, not the digits:
+ * colouring the number puts the alarm inside the reading line where it
+ * competes with the value. At zero there is no rail and no rule, so a calm
+ * week looks calm. Tone is set inline because "stale" is not one of the
+ * time-pressure states the rail-* classes name.
+ */
+function StateTile({
   label,
-  value,
+  count,
   context,
+  of,
   tone,
 }: {
   label: string;
-  value: string;
+  count: number;
   context: string;
-  tone?: "danger" | "warn" | "ok";
+  of: number;
+  tone: "danger" | "warn";
 }) {
+  const active = count > 0;
   return (
-    <div className="rounded-card bg-surface p-4">
-      <p className="text-xs font-medium text-faint">{label}</p>
-      <p
-        className={cn(
-          "mt-1.5 text-2xl font-semibold tracking-tight tabular",
-          tone === "danger" && "text-danger",
-          tone === "warn" && "text-warn",
-          tone === "ok" && "text-ok",
-        )}
-      >
-        {value}
+    <div
+      className="rail rounded-card bg-sunken p-item"
+      style={active ? styleVars({ "--rail": `var(--${tone})` }) : undefined}
+    >
+      <h2 className={SECTION_HEAD}>{label}</h2>
+      <p className="ledger mt-tight num text-display-sm">
+        {count}
+        {/* Share of everything still open, so "3 overdue" of 9 and of 90 stop
+            looking like the same sentence. */}
+        <Ledger value={count} of={active ? of : null} tone={tone} />
       </p>
-      <p className="mt-0.5 text-xs text-faint">{context}</p>
+      <p className="mt-tight text-meta text-faint">{context}</p>
     </div>
   );
 }
@@ -398,14 +522,17 @@ function Momentum({ days }: { days: WorkspaceKpis["completionsByDay"] }) {
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-32">
-          <h3 className="text-sm font-semibold">Momentum</h3>
-          <p className="mt-1 text-3xl font-semibold tracking-tight tabular">
+          <h3 className={SECTION_HEAD}>Momentum</h3>
+          {/* No ledger under the streak: a run of days has no ceiling to be a
+              share of, and inventing one would be a chart pretending to be a
+              fact. The blocks beside it already carry the shape. */}
+          <p className="mt-tight num text-display-sm">
             {streak}
-            <span className="ml-1.5 text-sm font-medium text-muted">
+            <span className="ml-1.5 text-meta font-medium text-muted">
               day streak
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-faint">
+          <p className="mt-tight text-meta text-faint">
             weekdays in a row with something finished
           </p>
         </div>
@@ -420,7 +547,7 @@ function Momentum({ days }: { days: WorkspaceKpis["completionsByDay"] }) {
                   aria-label={`${formatDay(d.day)}: ${d.completed} completed`}
                   title={`${formatDay(d.day)} · ${d.completed} done`}
                   className={cn(
-                    "size-7 rounded-[7px] sm:size-8",
+                    "size-7 rounded-chip sm:size-8",
                     d.completed === 0 && "bg-raised",
                     d.completed === 1 && "bg-accent/30",
                     d.completed >= 2 && d.completed <= 3 && "bg-accent/55",
@@ -431,7 +558,7 @@ function Momentum({ days }: { days: WorkspaceKpis["completionsByDay"] }) {
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-faint">
+          <p className="mt-2 text-meta text-faint">
             last {blocks.length} weekdays · {doneThisMonth} done in 28 days ·
             darker means more
           </p>
@@ -451,8 +578,10 @@ function ThroughputChart({
   const max = Math.max(1, ...weeks.map((w) => w.completed));
   return (
     <section className="rounded-card bg-surface p-4" aria-label="Weekly throughput">
-      <h3 className="text-sm font-semibold">Throughput</h3>
-      <p className="text-xs text-faint">tasks completed per week, last 8 weeks</p>
+      <h3 className={SECTION_HEAD}>Throughput</h3>
+      <p className="mt-hair text-meta text-faint">
+        tasks completed per week, last 8 weeks
+      </p>
       <div className="mt-4 flex h-36 items-end gap-1.5">
         {weeks.map((w, i) => {
           const pct = Math.round((w.completed / max) * 100);
@@ -464,7 +593,7 @@ function ThroughputChart({
               className="relative flex h-full flex-1 flex-col items-center justify-end"
             >
               {!inside && w.completed > 0 && (
-                <span className="mb-1 text-[10px] font-medium tabular leading-none text-muted">
+                <span className="mb-1 num text-micro font-medium leading-none text-muted">
                   {w.completed}
                 </span>
               )}
@@ -473,7 +602,7 @@ function ThroughputChart({
                 aria-label={`Week of ${formatDay(w.weekStart)}: ${w.completed} completed`}
                 title={`Week of ${formatDay(w.weekStart)} · ${w.completed} done`}
                 className={cn(
-                  "relative flex w-full max-w-9 items-start justify-center rounded-[7px] pt-1 transition-colors",
+                  "relative flex w-full max-w-9 items-start justify-center rounded-chip pt-1 transition-colors",
                   isLast ? "bg-accent" : "bg-accent/45 hover:bg-accent/70",
                 )}
                 style={{ height: `${Math.max(6, pct)}%` }}
@@ -481,7 +610,7 @@ function ThroughputChart({
                 {inside && (
                   <span
                     className={cn(
-                      "text-[10px] font-semibold tabular leading-none",
+                      "num text-micro font-semibold leading-none",
                       isLast ? "text-on-accent" : "text-ink/70",
                     )}
                   >
@@ -497,7 +626,7 @@ function ThroughputChart({
         {weeks.map((w, i) => (
           <span
             key={w.weekStart}
-            className="flex-1 text-center text-[9px] leading-none text-faint"
+            className="flex-1 text-center text-micro leading-none text-faint"
           >
             {i % 2 === 1 ? formatDay(w.weekStart).replace(/^\w+ /, "") : ""}
           </span>
@@ -528,15 +657,15 @@ function People({
 
   return (
     <section className="mt-6" aria-label="People">
-      <h2 className="text-sm font-semibold">People</h2>
-      <p className="mt-0.5 text-xs text-muted">
+      <h2 className={SECTION_HEAD}>People</h2>
+      <p className="mt-tight text-meta text-muted">
         Only admins see this. Numbers come from the work itself, done means
         marked done by that person.
       </p>
       <div className="mt-2 overflow-x-auto rounded-card bg-surface">
-        <table className="w-full min-w-[28rem] text-sm">
+        <table className="w-full min-w-[28rem] text-dense">
           <thead>
-            <tr className="border-b border-line text-left text-xs text-faint">
+            <tr className="border-b border-line text-left text-meta text-faint">
               <th className="px-3 py-2 font-medium">Person</th>
               <th className="px-3 py-2 text-right font-medium">Done 7d</th>
               <th className="px-3 py-2 text-right font-medium">Done 28d</th>
@@ -575,7 +704,9 @@ function People({
                 <td
                   className={cn(
                     "px-3 py-2.5 text-right tabular",
-                    p.overdueNow > 0 ? "font-semibold text-danger" : "text-faint",
+                    p.overdueNow > 0
+                      ? "font-semibold text-danger-quiet"
+                      : "text-faint",
                   )}
                 >
                   {p.overdueNow}
@@ -589,7 +720,7 @@ function People({
             ))}
             {people.length === 0 && (
               <tr>
-                <td colSpan={showTime ? 6 : 5} className="px-3 py-4 text-sm text-faint">
+                <td colSpan={showTime ? 6 : 5} className="px-3 py-4 text-dense text-faint">
                   No members yet.
                 </td>
               </tr>
@@ -607,8 +738,10 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
   const max = Math.max(1, ...kpis.memberLoad.map((m) => m.open));
   return (
     <section className="rounded-card bg-surface p-4" aria-label="Load per person">
-      <h3 className="text-sm font-semibold">Who’s carrying what</h3>
-      <p className="text-xs text-faint">open tasks per person, spot the overload</p>
+      <h3 className={SECTION_HEAD}>Who’s carrying what</h3>
+      <p className="mt-hair text-meta text-faint">
+        open tasks per person, spot the overload
+      </p>
       <div className="mt-4 space-y-2.5">
         {kpis.memberLoad.map((m) => {
           const pct = Math.round((m.open / max) * 100);
@@ -621,30 +754,30 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
                 image={m.user.image}
                 size={22}
               />
-              <span className="w-24 truncate text-sm sm:w-28">
+              <span className="w-24 truncate text-dense sm:w-28">
                 {m.user.name ?? m.user.email.split("@")[0]}
               </span>
-              <div className="relative h-5 flex-1 overflow-hidden rounded-[6px] bg-raised">
+              <div className="relative h-5 flex-1 overflow-hidden rounded-chip bg-raised">
                 <div
-                  className="flex h-full items-center justify-end rounded-r-[6px] bg-accent/70 pr-1.5"
+                  className="flex h-full items-center justify-end rounded-r-chip bg-accent/70 pr-1.5"
                   style={{ width: `${pct}%` }}
                 >
                   {inside && (
-                    <span className="text-[10px] font-semibold tabular leading-none text-on-accent">
+                    <span className="num text-micro font-semibold leading-none text-on-accent">
                       {m.open}
                     </span>
                   )}
                 </div>
                 {!inside && (
-                  <span className="absolute inset-y-0 left-1.5 flex items-center text-[10px] font-medium tabular text-muted">
+                  <span className="absolute inset-y-0 left-1.5 flex items-center num text-micro font-medium text-muted">
                     {m.open}
                   </span>
                 )}
               </div>
               <span
                 className={cn(
-                  "w-16 text-right text-xs tabular",
-                  m.overdue > 0 ? "font-semibold text-danger" : "text-faint",
+                  "w-16 text-right num text-meta",
+                  m.overdue > 0 ? "font-semibold text-danger-quiet" : "text-faint",
                 )}
               >
                 {m.overdue > 0 ? `${m.overdue} overdue` : "-"}
@@ -653,7 +786,7 @@ function MemberLoad({ kpis }: { kpis: WorkspaceKpis }) {
           );
         })}
         {kpis.memberLoad.length === 0 && (
-          <p className="text-sm text-faint">No members yet.</p>
+          <p className="text-dense text-faint">No members yet.</p>
         )}
       </div>
     </section>
@@ -714,13 +847,13 @@ function FeatureTeaser({
     <section className="mt-4 rounded-card border border-dashed border-line-strong bg-surface/60 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
-          <p className="text-sm font-semibold">
+          <p className="text-body font-semibold">
             {title}
-            <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+            <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-micro font-medium text-accent-quiet">
               {plan.name}
             </span>
           </p>
-          <p className="mt-0.5 text-sm text-muted">{blurb}</p>
+          <p className="mt-tight text-dense text-muted">{blurb}</p>
         </div>
         <Button
           size="sm"
@@ -790,8 +923,8 @@ function Scorecards({ scorecards }: { scorecards: ScorecardDTO[] }) {
     <section className="mt-6" aria-label="Scorecards">
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <h2 className="text-sm font-semibold">Scorecards</h2>
-          <p className="text-xs text-faint">
+          <h2 className={SECTION_HEAD}>Scorecards</h2>
+          <p className="mt-hair text-meta text-faint">
             the numbers you track by hand, beside the ones that track themselves
           </p>
         </div>
@@ -805,7 +938,7 @@ function Scorecards({ scorecards }: { scorecards: ScorecardDTO[] }) {
 
       {scorecards.length === 0 ? (
         <div className="mt-3 rounded-card border border-dashed border-line-strong bg-surface/60 p-4">
-          <p className="text-sm text-muted">
+          <p className="text-dense text-muted">
             New business, client NPS, invoices sent, whatever the studio steers
             by. Add a scorecard and fill in one number a {""}
             week. It lands in the Monday briefing too.
@@ -873,45 +1006,54 @@ function ScorecardCard({ card, isAdmin }: { card: ScorecardDTO; isAdmin: boolean
     <div className="rounded-card bg-surface p-4">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-faint">{card.name}</p>
-          {editing ? (
-            <input
-              autoFocus
-              type="number"
-              inputMode="decimal"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={() => void save()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void save();
-                if (e.key === "Escape") setEditing(false);
-              }}
-              aria-label={`${card.name}, this ${card.period === "weekly" ? "week" : "month"}`}
-              className="mt-1 w-28 rounded-control border border-line bg-bg px-2 py-1 text-xl font-semibold tabular outline-none focus:border-accent"
-            />
-          ) : (
-            <button
-              onClick={() => {
-                setDraft(current !== undefined ? String(current) : "");
-                setEditing(true);
-              }}
-              className={cn(
-                "press mt-1 rounded-control text-left text-2xl font-semibold tracking-tight tabular",
-                current === undefined && "text-faint",
-              )}
-              title="Tap to enter this period's number"
-            >
-              {current !== undefined ? fmtValue(card.unit, current) : "+ add"}
-            </button>
-          )}
-          <p className="mt-0.5 text-xs text-faint">
+          {/* Not the section-head idiom: this is a name the customer typed, so
+              it stays sentence case and truncates. */}
+          <p className="truncate text-meta font-medium text-faint">{card.name}</p>
+          {/* The ledger sits on the wrapper, not the value, so the rule spans
+              the card and reads as a gauge rather than an underline. */}
+          <div className="ledger mt-1">
+            {editing ? (
+              <input
+                autoFocus
+                type="number"
+                inputMode="decimal"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => void save()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void save();
+                  if (e.key === "Escape") setEditing(false);
+                }}
+                aria-label={`${card.name}, this ${card.period === "weekly" ? "week" : "month"}`}
+                className="w-28 rounded-control border border-line bg-bg px-2 py-1 num text-title outline-none focus:border-accent"
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  setDraft(current !== undefined ? String(current) : "");
+                  setEditing(true);
+                }}
+                className={cn(
+                  "press rounded-control text-left num text-title",
+                  current === undefined && "text-faint",
+                )}
+                title="Tap to enter this period's number"
+              >
+                {current !== undefined ? fmtValue(card.unit, current) : "+ add"}
+              </button>
+            )}
+            {!editing && current !== undefined && (
+              <Ledger value={current} of={card.target} />
+            )}
+          </div>
+          <p className="mt-tight text-meta text-faint">
             {periodLabel(card.period, card.currentPeriodStart)}
             {card.target !== null && (
               <span
                 className={cn(
                   "ml-1.5",
-                  onTrack === true && "font-medium text-ok",
-                  onTrack === false && "font-medium text-warn",
+                  onTrack === true && "font-medium text-ok-quiet",
+                  onTrack === false && "font-medium text-warn-quiet",
                 )}
               >
                 target {fmtValue(card.unit, card.target)}
@@ -962,7 +1104,7 @@ function ScorecardCard({ card, isAdmin }: { card: ScorecardDTO; isAdmin: boolean
               aria-label={`${periodLabel(card.period, p)}: ${v !== undefined ? fmtValue(card.unit, v) : "no entry"}`}
               title={`${periodLabel(card.period, p)} · ${v !== undefined ? fmtValue(card.unit, v) : "no entry"}`}
               className={cn(
-                "h-6 flex-1 rounded-[5px]",
+                "h-6 flex-1 rounded-chip",
                 ratio === null && "border border-dashed border-line bg-transparent",
                 ratio !== null && ratio < 0.6 && "bg-accent/30",
                 ratio !== null && ratio >= 0.6 && ratio < 1 && "bg-accent/55",
@@ -1013,7 +1155,7 @@ function NewScorecardDialog({ onClose }: { onClose: () => void }) {
 
   const chip = (active: boolean) =>
     cn(
-      "press rounded-full px-3 py-1.5 text-sm",
+      "press rounded-full px-3 py-1.5 text-dense",
       active ? "bg-ink text-bg font-medium" : "bg-raised text-muted hover:text-ink",
     );
 
@@ -1031,7 +1173,7 @@ function NewScorecardDialog({ onClose }: { onClose: () => void }) {
           autoFocus
         />
         <div>
-          <p className="text-xs font-medium text-faint">Unit</p>
+          <p className="text-meta font-medium text-faint">Unit</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {(
               [
@@ -1048,7 +1190,7 @@ function NewScorecardDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div>
-          <p className="text-xs font-medium text-faint">Rhythm</p>
+          <p className="text-meta font-medium text-faint">Rhythm</p>
           <div className="mt-1.5 flex gap-1.5">
             <button type="button" className={chip(period === "weekly")} onClick={() => setPeriod("weekly")}>
               Weekly
@@ -1089,16 +1231,20 @@ function TimeWeekCard({ timeWeek }: { timeWeek?: WeekTimeDTO }) {
     <section className="mt-6 rounded-card bg-surface p-4" aria-label="Time this week">
       <div className="flex items-baseline gap-3">
         <div className="flex-1">
-          <h3 className="text-sm font-semibold">Time this week</h3>
-          <p className="text-xs text-faint">logged with timers and quick logs</p>
+          <h3 className={SECTION_HEAD}>Time this week</h3>
+          <p className="mt-hair text-meta text-faint">
+            logged with timers and quick logs
+          </p>
         </div>
-        <p className="text-2xl font-semibold tracking-tight tabular">
+        {/* No ledger on the total: there is no hours budget in the product, and
+            a denominator we made up would be a chart pretending to be a fact. */}
+        <p className="num text-display-sm">
           {formatMinutes(timeWeek.totalMinutes)}
         </p>
       </div>
 
       {timeWeek.byMember.length === 0 ? (
-        <p className="mt-3 text-sm text-faint">
+        <p className="mt-3 text-dense text-faint">
           Nothing logged yet. Start a timer from any task.
         </p>
       ) : (
@@ -1115,22 +1261,22 @@ function TimeWeekCard({ timeWeek }: { timeWeek?: WeekTimeDTO }) {
                     image={m.user.image}
                     size={22}
                   />
-                  <span className="w-24 truncate text-sm sm:w-28">
+                  <span className="w-24 truncate text-dense sm:w-28">
                     {m.user.name ?? m.user.email.split("@")[0]}
                   </span>
-                  <div className="relative h-5 flex-1 overflow-hidden rounded-[6px] bg-raised">
+                  <div className="relative h-5 flex-1 overflow-hidden rounded-chip bg-raised">
                     <div
-                      className="flex h-full items-center justify-end rounded-r-[6px] bg-accent/70 pr-1.5"
+                      className="flex h-full items-center justify-end rounded-r-chip bg-accent/70 pr-1.5"
                       style={{ width: `${Math.max(4, pct)}%` }}
                     >
                       {inside && (
-                        <span className="text-[10px] font-semibold tabular leading-none text-on-accent">
+                        <span className="num text-micro font-semibold leading-none text-on-accent">
                           {formatMinutes(m.minutes)}
                         </span>
                       )}
                     </div>
                     {!inside && (
-                      <span className="absolute inset-y-0 left-1.5 flex items-center text-[10px] font-medium tabular text-muted">
+                      <span className="absolute inset-y-0 left-1.5 flex items-center num text-micro font-medium text-muted">
                         {formatMinutes(m.minutes)}
                       </span>
                     )}
@@ -1144,11 +1290,11 @@ function TimeWeekCard({ timeWeek }: { timeWeek?: WeekTimeDTO }) {
               {timeWeek.byProject.slice(0, 4).map((p) => (
                 <span
                   key={p.id}
-                  className="flex items-center gap-1.5 rounded-full bg-raised px-2.5 py-1 text-xs text-muted"
+                  className="flex items-center gap-1.5 rounded-full bg-raised px-2.5 py-1 text-meta text-muted"
                 >
                   <span className="size-2 rounded-full" style={{ background: p.color }} />
                   {p.name}
-                  <span className="font-semibold tabular text-ink">
+                  <span className="num font-semibold text-ink">
                     {formatMinutes(p.minutes)}
                   </span>
                 </span>

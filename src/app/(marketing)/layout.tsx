@@ -3,15 +3,6 @@ import { Logo } from "@/components/ui/logo";
 import { ForceLight } from "@/components/marketing/force-light";
 import { NavCta } from "@/components/marketing/nav-cta";
 
-function Wordmark({ small = false }: { small?: boolean }) {
-  return (
-    <span className={small ? "text-base tracking-tight" : "text-lg tracking-tight sm:text-xl"}>
-      <span className="font-semibold text-ink">Alpha</span>
-      <span className="text-muted">Workspace</span>
-    </span>
-  );
-}
-
 export default function MarketingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -23,8 +14,7 @@ export default function MarketingLayout({
       <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/95">
         <div className="mx-auto flex h-[4.5rem] w-full max-w-5xl items-center gap-3 px-4 sm:px-5 md:px-8">
         <Link href="/" className="press flex min-w-0 items-center gap-2.5" aria-label="Alpha Workspace home">
-          <Logo size={32} wordmark={false} />
-          <Wordmark />
+          <Logo size="md" />
         </Link>
         <nav className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <Link
@@ -57,8 +47,7 @@ export default function MarketingLayout({
           </p>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
-              <Logo size={26} wordmark={false} />
-              <Wordmark small />
+              <Logo size="sm" />
             </div>
             <p className="text-sm text-faint sm:ml-2">
               Made in South Africa, for South African teams.

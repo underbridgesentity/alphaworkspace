@@ -94,7 +94,7 @@ export function CalendarView({ projectId }: { projectId?: string }) {
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div
             key={d}
-            className="bg-surface px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wider text-faint"
+            className="bg-surface px-2 py-1.5 text-center section-head"
           >
             {d}
           </div>

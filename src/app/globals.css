@@ -2,115 +2,289 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * Alpha Workspace design tokens.
+ * Alpha Workspace design tokens: "Ledger Frost".
  * Calm, minimal, confident. Frost white (#FBFAF2) paper with midnight ink
  * (#0B1215) and a deep teal accent used sparingly, plus soft mint tints.
  * Light is the default theme; dark is a toggle.
+ *
+ * Three rules that shape everything below.
+ *  1. Surfaces are an elevation LADDER with a different MECHANISM per theme:
+ *     light lifts with a cast shadow, dark lifts with a top rim light. A cast
+ *     shadow is invisible on a near-black canvas, which is why dark mode
+ *     collapses into one flat plane if both themes share one shadow.
+ *  2. Semantic colour comes in three strengths with three jobs: the base is a
+ *     MARK (dot, bar, rail), -quiet is the same tone safe as TEXT, -soft is a
+ *     tinted chip background. Never use a mark tone for small text.
+ *  3. Motion animates transform and opacity only. No filter, no width/height,
+ *     no background-position. Everything else re-rasterises a layer per frame
+ *     on the entry-level Adreno/Mali this product is built for.
  * ------------------------------------------------------------------------- */
 
 :root {
   color-scheme: light;
 
-  --bg: #fbfaf2;
-  --surface: #ffffff;
-  --raised: #f1efe7;
-  --overlay: #ffffff;
+  /* Surfaces. --surface sits at ~1.05:1 against --bg, so a card is only
+     legible once it carries an elevation shadow; the shadow is the mechanism,
+     not decoration. --raised was #f1efe7, DARKER than the page, so it always
+     read as recessed; it now aliases --sunken, which names that honestly. */
+  --bg: #fbfaf2;      /* E0 canvas, never bordered */
+  --sunken: #f2f0e7;  /* E1 wells: fields, board columns, table stripes */
+  --surface: #ffffff; /* E2 cards: things you can open or drag */
+  --overlay: #ffffff; /* E3 dialogs, menus, sheets, toasts */
+  --raised: var(--sunken); /* back-compat alias, prefer --sunken in new code */
 
   --ink: #0b1215;
+  --ink-strong: #000407; /* the one thing that must win a screen */
   --muted: #5c6b6e;
-  --faint: #93a1a3;
+  /* Was #93a1a3 = 2.55:1, which failed WCAG AA on ~221 small-text call sites.
+     The audience reads this on a cheap Android panel in Highveld sun, so this
+     is the single highest-value value in the file.
+     Measured against --sunken (#f2f0e7), not --bg: sunken is the darkest thing
+     faint text ever sits on, and the KPI tiles are wells now, so bg alone
+     would have shipped a 4.19:1 label. 4.56 sunken / 4.97 bg / 5.21 surface. */
+  --faint: #616f74;
+  --faint-mark: #93a1a3; /* the old value, for NON-text marks only: icon
+                            strokes, empty dots, divider glyphs */
 
-  --line: rgba(11, 18, 21, 0.08);
-  --line-strong: rgba(11, 18, 21, 0.16);
+  --line: rgba(11, 18, 21, 0.07);
+  --line-strong: rgba(11, 18, 21, 0.14);
 
-  --accent: #17685c;
+  /* Accent in four strengths for four jobs. Only --accent is ever a fill, and
+     only once per viewport; the rest let teal carry meaning without shouting. */
+  --accent: #17685c;                     /* solid fill */
   --accent-hover: #125045;
-  --accent-soft: rgba(23, 104, 92, 0.1);
+  --accent-soft: rgba(23, 104, 92, 0.09); /* selected/active tint */
+  --accent-quiet: #17685c;               /* accent AS TEXT, 6.33:1 */
+  --accent-line: #17685c;                /* 2px rails, underlines */
+  --accent-ring: rgba(23, 104, 92, 0.34);
   --on-accent: #fbfaf2;
 
-  --ok: #2e8b6b;
-  --warn: #a97e22;
-  --danger: #bc584a;
+  /* Semantic. Hue law: warn stays >= 38deg (gold, never orange), danger stays
+     <= 8deg (crimson, never orange). --info is indigo and deliberately NOT the
+     accent, so "AI proposed this" can never wear the primary-action colour
+     (product law 3). */
+  --ok: #2e8b6b;     --ok-quiet: #1f6f54;     --ok-soft: rgba(46, 139, 107, 0.1);
+  --warn: #a97e22;   --warn-quiet: #8a6413;   --warn-soft: rgba(169, 126, 34, 0.11);
+  --danger: #bc584a; --danger-quiet: #b03f3c; --danger-soft: rgba(188, 88, 74, 0.1);
+  --info: #4d5fa8;   --info-quiet: #3f4f92;   --info-soft: rgba(77, 95, 168, 0.1);
 
-  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+  /* Elevation, light theme: cast shadow. Raw values live under --elev-* and
+     are exposed to Tailwind as --shadow-e1..e3 in @theme; a theme key cannot
+     reference a :root property of its own name without forming a cycle. */
+  --elev-1: inset 0 1px 0 0 rgba(11, 18, 21, 0.035);
+  --elev-2: 0 1px 1px -0.5px rgba(11, 18, 21, 0.05),
+            0 2px 6px -2px rgba(11, 18, 21, 0.07);
+  --elev-3: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+  --shadow-overlay: var(--elev-3); /* back-compat, used via shadow-[var(...)] */
+
+  /* Durations live outside @theme (v4 has no duration namespace); consume as
+     duration-(--dur-quick) in Tailwind, or var() in plain CSS. */
+  --dur-instant: 80ms; /* switch-like flips: checkbox tick, tab change */
+  --dur-quick: 140ms;  /* hover, press, tint change */
+  --dur-base: 220ms;   /* element enter/exit, menu, toast */
+  --dur-panel: 300ms;  /* panel / bottom sheet slide */
+  --dur-slow: 520ms;   /* celebration only, never a repeated action */
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
   --bg: #0b1215;
-  --surface: #111a1e;
-  --raised: #162328;
-  --overlay: #1b2a30;
+  --sunken: #141d21;
+  --surface: #162126;
+  --overlay: #1c2b31;
+  --raised: var(--sunken);
 
   --ink: #fbfaf2;
+  --ink-strong: #ffffff;
   --muted: #9fadb3;
-  --faint: #69787f;
+  /* Was #69787f = 4.13:1. Measured against --overlay (#1c2b31), the lightest
+     thing faint text sits on in midnight, so dialogs and toasts clear AA too:
+     4.53 overlay / 5.09 surface / 5.31 sunken / 5.86 bg. */
+  --faint: #829298;
+  --faint-mark: #69787f;
 
   --line: rgba(251, 250, 242, 0.08);
-  --line-strong: rgba(251, 250, 242, 0.16);
+  --line-strong: rgba(251, 250, 242, 0.17);
 
   --accent: #45b39a;
   --accent-hover: #5ac7ae;
-  --accent-soft: rgba(69, 179, 154, 0.14);
+  --accent-soft: rgba(69, 179, 154, 0.13);
+  --accent-quiet: #45b39a; /* 7.35:1 */
+  --accent-line: #45b39a;
+  --accent-ring: rgba(69, 179, 154, 0.4);
   --on-accent: #06231d;
 
-  --ok: #67a985;
-  --warn: #d2a648;
-  --danger: #db6a5c;
+  --ok: #67a985;     --ok-quiet: #7fc0a0;     --ok-soft: rgba(103, 169, 133, 0.14);
+  --warn: #d2a648;   --warn-quiet: #ddb862;   --warn-soft: rgba(210, 166, 72, 0.14);
+  --danger: #db6a5c; --danger-quiet: #e08b86; --danger-soft: rgba(219, 106, 92, 0.14);
+  --info: #8b9ae0;   --info-quiet: #a3b0ea;   --info-soft: rgba(139, 154, 224, 0.14);
 
-  --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
+  /* Elevation, dark theme: top rim light. Same token names, different physics,
+     because a cast shadow does not exist against a near-black page. */
+  --elev-1: inset 0 1px 0 0 rgba(251, 250, 242, 0.03);
+  --elev-2: inset 0 1px 0 0 rgba(251, 250, 242, 0.07),
+            0 1px 2px 0 rgba(0, 0, 0, 0.45);
+  --elev-3: 0 24px 64px -16px rgba(0, 0, 0, 0.6),
+            inset 0 1px 0 0 rgba(251, 250, 242, 0.09),
+            0 0 0 1px var(--line);
+  --shadow-overlay: var(--elev-3);
 }
 
 @theme inline {
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
+  /* ===== TYPE ============================================================
+   * Instrument Sans variable is wght 400-700 only (see public/fonts), so
+   * display confidence has to come from SIZE + TIGHT TRACKING + TIGHT
+   * LEADING, not weight. Optical rule baked into every step: tracking goes
+   * positive below 13px (small text needs air) and progressively negative
+   * above 17px (large text needs closing up).
+   *
+   * The ratios climb 1.09 -> 1.44 on purpose: dense at the reading end so
+   * tables and rows stay compact on a 360px screen, dramatic at the display
+   * end so a page title cannot be mistaken for a section heading.
+   *   11 12 13 15 17 22 28 36 52
+   *
+   * Weight roles, keep 700 RARE (scarcity is what makes it register):
+   *   400 body prose | 500 UI labels, meta emphasis | 600 titles, actions,
+   *   section heads | 700 numeric hero + wordmark only.                    */
+  --text-micro: 0.6875rem; /* 11px: counts, kbd, bar labels. Replaces the
+                              hardcoded text-[10px]/text-[11px]; 10px is under
+                              the legibility floor on a budget Android panel. */
+  --text-micro--line-height: 1.36;
+  --text-micro--letter-spacing: 0.012em;
+  --text-micro--font-weight: 500;
+
+  --text-meta: 0.75rem; /* 12px: labels, timestamps */
+  --text-meta--line-height: 1.4;
+  --text-meta--letter-spacing: 0.005em;
+
+  --text-dense: 0.8125rem; /* 13px: table cells, comments */
+  --text-dense--line-height: 1.42;
+  --text-dense--letter-spacing: -0.004em;
+
+  --text-body: 0.9375rem; /* 15px: default, task titles */
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: -0.011em;
+
+  --text-lede: 1.0625rem; /* 17px: intros, mobile workspace name */
+  --text-lede--line-height: 1.45;
+  --text-lede--letter-spacing: -0.018em;
+
+  --text-title: 1.375rem; /* 22px: section titles */
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.021em;
+  --text-title--font-weight: 600;
+
+  --text-display-sm: 1.75rem; /* 28px: app page titles, KPI hero values */
+  --text-display-sm--line-height: 1.1;
+  --text-display-sm--letter-spacing: -0.026em;
+  --text-display-sm--font-weight: 600;
+
+  --text-display: 2.25rem; /* 36px: marketing section heads */
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.029em;
+  --text-display--font-weight: 600;
+
+  --text-display-lg: 3.25rem; /* 52px: mobile hero, scale up at sm: in the
+                                 hero only */
+  --text-display-lg--line-height: 1.02;
+  --text-display-lg--letter-spacing: -0.034em;
+  --text-display-lg--font-weight: 600;
+
+  /* ===== SPACE ===========================================================
+   * A rhythm, not a ramp: roughly 1.5x between consecutive roles,
+   * 8 -> 16 -> 24 -> 40 -> 64. The load-bearing rule is that the gap BETWEEN
+   * siblings (8) is smaller than the padding INSIDE an item (16), so a stack
+   * of rows reads as one body rather than as scattered boxes. These are named
+   * additions; the numeric scale (p-4, gap-2) is untouched.                */
+  --spacing-hair: 0.125rem;    /* 2px  label to value inside a tile */
+  --spacing-tight: 0.375rem;   /* 6px  icon to text, chip internals */
+  --spacing-sibling: 0.5rem;   /* 8px  row to row, card to card in a stack */
+  --spacing-snug: 0.625rem;    /* 10px control vertical padding */
+  --spacing-item: 1rem;        /* 16px card padding, field to field */
+  --spacing-group: 1.5rem;     /* 24px group to group inside a section */
+  --spacing-section: 2.5rem;   /* 40px section to section */
+  --spacing-chapter: 4rem;     /* 64px page header to body, marketing band */
+
+  /* ===== RADIUS: laddered to elevation ==================================
+   * Nesting rule: inner radius = outer radius - padding. A control at 0.5rem
+   * inside a card at 0.75rem needs 0.25rem of padding to look concentric.  */
+  --radius-chip: 0.375rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-overlay: 1rem;
+  --radius-sheet: 1.25rem;
+
+  --shadow-e1: var(--elev-1);
+  --shadow-e2: var(--elev-2);
+  --shadow-e3: var(--elev-3);
+
   --color-bg: var(--bg);
+  --color-sunken: var(--sunken);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
   --color-overlay: var(--overlay);
   --color-ink: var(--ink);
+  --color-ink-strong: var(--ink-strong);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
+  --color-faint-mark: var(--faint-mark);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-quiet: var(--accent-quiet);
+  --color-accent-line: var(--accent-line);
+  --color-accent-ring: var(--accent-ring);
   --color-on-accent: var(--on-accent);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
+  --color-ok: var(--ok);         --color-ok-quiet: var(--ok-quiet);         --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);     --color-warn-quiet: var(--warn-quiet);     --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger); --color-danger-quiet: var(--danger-quiet); --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);     --color-info-quiet: var(--info-quiet);     --color-info-soft: var(--info-soft);
 
-  --radius-card: 0.75rem;
-  --radius-control: 0.5rem;
+  /* ===== MOTION ==========================================================
+   * Named easings only, paired with the --dur-* durations above:
+   *   ease-enter duration-(--dur-base)                                     */
+  --ease-enter: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-exit: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
 
-  --animate-fade-up: fade-up 0.35s cubic-bezier(0.21, 0.6, 0.35, 1) both;
-  --animate-fade-in: fade-in 0.2s ease-out both;
-  --animate-scale-in: scale-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-  --animate-slide-panel: slide-panel 0.28s cubic-bezier(0.21, 0.6, 0.35, 1) both;
-  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-fade-up: fade-up 0.22s var(--ease-enter) both;
+  --animate-fade-in: fade-in 0.14s linear both;
+  --animate-scale-in: scale-in 0.14s var(--ease-spring) both;
+  --animate-slide-panel: slide-panel 0.3s var(--ease-enter) both;
+  --animate-pulse-soft: pulse-soft 1.5s var(--ease-move) infinite;
 }
 
+/* Travel distance scales with element size: chips 4px, rows 6px, cards 8px,
+ * panels 24px, sheets full height. One distance for everything is the tell of
+ * a system that was never designed. */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(10px); filter: blur(8px); }
-  to { opacity: 1; transform: none; filter: blur(0); }
+  /* Was translateY(10px) + filter: blur(8px) over 0.35s, on the app's DEFAULT
+     entry animation. The blur forced a full-layer re-rasterisation every
+     frame; dropping it is the biggest single jank win in the stylesheet. */
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes slide-panel {
-  from { opacity: 0.4; transform: translateX(24px); }
+  from { opacity: 0.5; transform: translate3d(24px, 0, 0); }
   to { opacity: 1; transform: none; }
 }
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 @layer base {
@@ -128,7 +302,9 @@
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: 0.9375rem;
+    font-size: 0.9375rem; /* --text-body, spelled literally so the base size
+                             does not depend on theme-variable emission */
+    line-height: 1.5;
     letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -139,10 +315,12 @@
     color: var(--ink);
   }
 
+  /* No border-radius here on purpose: the outline already follows the
+     element's own shape, and overriding it drew a near-square ring around
+     circular targets like the FAB and the complete toggle. */
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-line);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 
   /* Quiet scrollbars, content over chrome. */
@@ -199,28 +377,247 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    /* The blanket collapse above leaves Tailwind's ping/pulse running once at
+       0.01ms, which flickers instead of settling. Stop them outright. */
+    .animate-ping,
+    .animate-pulse {
+      animation: none !important;
     }
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * ELEVATION
+ * Three rules that kill card-soup:
+ *  1. One elevation level per view region. A card never contains a card. Need
+ *     grouping inside a card? Use a hairline or an e1 well.
+ *  2. Lists are not cards. Board tasks, My Work rows, search results and
+ *     comments are ROWS on the canvas with a hover tint. The column gets the
+ *     elevation, the items do not.
+ *  3. Elevation encodes INTERACTIVITY, not importance. If it cannot be opened
+ *     or dragged, it does not lift.
+ * ------------------------------------------------------------------------- */
+@utility e1 { /* recessed well */
+  background: var(--sunken);
+  box-shadow: var(--elev-1);
+  border-radius: var(--radius-card);
+}
+@utility e2 { /* a real card */
+  background: var(--surface);
+  box-shadow: var(--elev-2);
+  border-radius: var(--radius-card);
+}
+@utility e3 { /* dialog, menu, sheet */
+  background: var(--overlay);
+  box-shadow: var(--elev-3);
+  border-radius: var(--radius-overlay);
+}
+@utility row-item { /* the anti-card: a list item on the canvas */
+  border-radius: var(--radius-control);
+  transition: background-color var(--dur-quick) var(--ease-move);
+  &:hover {
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+  }
+}
+
+/* The one section heading in the app. Previously this was five near-misses
+ * (text-sm semibold, text-xs uppercase tracking-wider, 11px tracking-widest,
+ * ...) which read as five different products. It lives as a utility rather
+ * than a shared string constant so that plain markup, and files no one is
+ * actively editing, converge on it too. Never bolder than 600: a label that
+ * competes with the number underneath it is a label in the wrong place. */
+@utility section-head {
+  font-size: 0.6875rem; /* literal, not var(--text-micro): @theme vars are
+                         * tree-shaken when nothing in the markup uses them,
+                         * and this utility is meant to become the only user */
+  line-height: 1.45;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------------------
+ * NUMERALS
+ * Numbers are this product's proof of work: KPIs, counts, minutes, rand.
+ * `tabular` is redefined rather than replaced, so all ~50 existing call sites
+ * gain the full treatment for free.
+ *   tnum  columns of figures line up across rows
+ *   lnum  lining figures sit on the cap line, so 3 and 5 stop descending
+ *   zero  slashed zero, so R0/RO and 0/O never blur on a small panel
+ *   -0.02em  tabular figures carry wide sidebearings and read loose
+ * ------------------------------------------------------------------------- */
 @utility tabular {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "lnum" 1, "zero" 1;
+  letter-spacing: -0.02em;
+}
+@utility num { /* alias with the honest name, for new code */
+  font-variant-numeric: tabular-nums lining-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "lnum" 1, "zero" 1;
+  letter-spacing: -0.02em;
+}
+@utility num-hero {
+  font-variant-numeric: tabular-nums lining-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "lnum" 1, "zero" 1;
+  font-size: 1.75rem;
+  font-weight: 700; /* one of only two places 700 is allowed */
+  line-height: 1;
+  letter-spacing: -0.032em;
+  font-variant-ligatures: none;
+}
+/* Currency: render the R smaller, muted and with a little air, so R and the
+ * value never fuse into one glyph cluster. Apply to the R span only. */
+@utility zar {
+  font-size: 0.72em;
+  font-weight: 500;
+  color: var(--muted);
+  margin-inline-end: 0.14em;
+  vertical-align: 0.06em;
+}
+
+/* ---------------------------------------------------------------------------
+ * SIGNATURE 1: THE FOLLOW-UP RAIL
+ * A 2px inset rail on the leading edge of every work item, and the only place
+ * semantic colour is allowed to appear in a list. Because the rail carries the
+ * state, every row's text stays pure ink and the list stays calm: you read the
+ * strip of colour down the left before you read a word, so My Work becomes a
+ * legible histogram of your week. The grammar is fractal, a project card whose
+ * work is slipping carries the same red edge at card level.
+ * Cost: zero elements, zero layout, one inset box-shadow.
+ * ------------------------------------------------------------------------- */
+/* Longhands, not the `transition` shorthand. `rail` sorts after `press` and
+ * after the hover-tint utilities, so a shorthand here would silently reset
+ * whatever transition those declared, and a row that is both railed and
+ * pressable would lose its press easing. */
+@utility rail {
+  box-shadow: inset 2px 0 0 0 var(--rail, transparent);
+  transition-property: box-shadow;
+  transition-duration: var(--dur-quick);
+  transition-timing-function: var(--ease-move);
+}
+@utility rail-overdue { --rail: var(--danger); }
+@utility rail-today { --rail: var(--warn); }
+@utility rail-active { --rail: var(--accent-line); } /* in progress */
+@utility rail-idle { --rail: var(--line-strong); }
+@utility rail-done { --rail: transparent; } /* completion IS the rail fading */
+/* Private work gets a dashed rail. A box-shadow colour cannot be a gradient,
+   so this one variant paints the edge as a background instead and leaves the
+   shadow transparent. Composes with `rail` like the others. */
+@utility rail-private {
+  --rail: transparent;
+  background-image: repeating-linear-gradient(
+    180deg,
+    var(--line-strong) 0 3px,
+    transparent 3px 6px
+  );
+  background-size: 2px 100%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+
+/* ---------------------------------------------------------------------------
+ * SIGNATURE 2: THE LEDGER LINE
+ * A number sits on a 2px rule that fills to that number's share of its own
+ * context (completion, quota used, load against the team). A grid of tiles
+ * stops being tiles and becomes an instrument panel: relative magnitude is
+ * legible with no chart, no legend and no extra request.
+ * Cost: one span, animated by transform: scaleX only, so compositor-only.
+ * Usage:
+ *   <p class="num-hero ledger">87%<span class="ledger-track">
+ *     <span class="ledger-fill" style="--fill:.87"></span></span></p>
+ * ------------------------------------------------------------------------- */
+@utility ledger {
+  position: relative;
+  padding-block-end: calc(0.375rem + 2px);
+}
+@utility ledger-track {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  overflow: hidden;
+}
+@utility ledger-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--ledger-tone, var(--accent-line));
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition: transform var(--dur-panel) var(--ease-enter);
+}
+
+/* ---------------------------------------------------------------------------
+ * SIGNATURE 3: THE FROST FADE
+ * The sticky header and bottom nav lay a 14px gradient scrim below/above
+ * themselves, so scrolling content dissolves into the bar instead of smearing
+ * under it. This replaces backdrop-blur: a live backdrop-filter over a
+ * scrolling list re-samples the layer beneath on every frame and is the number
+ * one jank source in a PWA on a budget Android. Static gradient, zero
+ * per-frame cost, and a gradient on a background is exactly where gradients
+ * belong. Give the bar itself a stacking context above the scroller.
+ * ------------------------------------------------------------------------- */
+@utility frost-edge-b {
+  position: relative;
+  background: var(--bg);
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 14px;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      var(--bg) 0%,
+      color-mix(in srgb, var(--bg) 62%, transparent) 45%,
+      color-mix(in srgb, var(--bg) 0%, transparent) 100%
+    );
+  }
+}
+@utility frost-edge-t {
+  position: relative;
+  background: var(--bg);
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 100%;
+    height: 14px;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      var(--bg) 0%,
+      color-mix(in srgb, var(--bg) 62%, transparent) 45%,
+      color-mix(in srgb, var(--bg) 0%, transparent) 100%
+    );
+  }
 }
 
 /* Micro-interaction: gentle press on tappable things. */
 @utility press {
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition:
+    transform var(--dur-quick) var(--ease-move),
+    opacity var(--dur-quick) var(--ease-move);
   &:active {
     transform: scale(0.97);
   }
 }
 
-/* Skeleton shimmer block. */
+/* Skeleton block. The old one animated a 200%-wide gradient's
+ * background-position, repainting the element every frame; six skeletons on
+ * the dashboard meant six continuous repaints during the exact moment the app
+ * is trying to become interactive. Opacity is compositor-only. */
 @utility skeleton {
-  background: linear-gradient(100deg, var(--raised) 40%, var(--overlay) 50%, var(--raised) 60%);
-  background-size: 200% 100%;
-  animation: var(--animate-shimmer);
-  border-radius: 0.5rem;
+  background: var(--sunken);
+  animation: var(--animate-pulse-soft);
+  border-radius: var(--radius-control);
   color: transparent;
   user-select: none;
   pointer-events: none;
@@ -241,27 +638,26 @@
   50% { translate: 2% -3%; rotate: 6deg; scale: 1.05; }
 }
 
-/* Scroll-appearance: <Reveal> toggles .is-visible via IntersectionObserver. */
+/* Scroll-appearance: <Reveal> toggles .is-visible via IntersectionObserver.
+ * The blur(14px) that used to ride along here was the most expensive
+ * declaration in the stylesheet, a full-section re-rasterisation per frame.
+ * Transform and opacity only; it reads almost identically. */
 .reveal {
   opacity: 0;
-  transform: translateY(28px) scale(0.97);
-  filter: blur(14px);
+  transform: translate3d(0, 24px, 0) scale(0.985);
   transition:
-    opacity 0.85s cubic-bezier(0.21, 0.6, 0.35, 1),
-    transform 0.85s cubic-bezier(0.21, 0.6, 0.35, 1),
-    filter 0.85s cubic-bezier(0.21, 0.6, 0.35, 1);
+    opacity 0.7s var(--ease-enter),
+    transform 0.7s var(--ease-enter);
   transition-delay: var(--reveal-delay, 0ms);
 }
 .reveal.is-visible {
   opacity: 1;
   transform: none;
-  filter: blur(0);
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
     transform: none;
-    filter: none;
     transition: none;
   }
 }
@@ -269,7 +665,7 @@
 /* Gentle lift + brightened dashed edge on hover. */
 @utility card-lift {
   transition:
-    transform 0.35s cubic-bezier(0.21, 0.6, 0.35, 1),
+    transform 0.35s var(--ease-enter),
     border-color 0.35s ease,
     background-color 0.35s ease,
     box-shadow 0.35s ease;
@@ -297,46 +693,72 @@
 
 /* Inverted marketing bands: a frost section on the dark theme (and a
  * midnight section when the app theme is light), the alternation keeps
- * its contrast in both modes. Token-scoped, so everything inside adapts. */
+ * its contrast in both modes. Token-scoped, so everything inside adapts.
+ * Elevation flips mechanism here too, otherwise an inverted band keeps the
+ * other theme's physics and goes flat. */
 .section-invert {
   color-scheme: dark;
   --bg: #0b1215;
-  --surface: #111a1e;
-  --raised: #162328;
-  --overlay: #1b2a30;
+  --sunken: #141d21;
+  --surface: #162126;
+  --overlay: #1c2b31;
+  --raised: var(--sunken);
   --ink: #fbfaf2;
+  --ink-strong: #ffffff;
   --muted: #9fadb3;
-  --faint: #69787f;
+  --faint: #829298;
+  --faint-mark: #69787f;
   --line: rgba(251, 250, 242, 0.08);
-  --line-strong: rgba(251, 250, 242, 0.16);
+  --line-strong: rgba(251, 250, 242, 0.17);
   --accent: #45b39a;
   --accent-hover: #5ac7ae;
-  --accent-soft: rgba(69, 179, 154, 0.14);
+  --accent-soft: rgba(69, 179, 154, 0.13);
+  --accent-quiet: #45b39a;
+  --accent-line: #45b39a;
+  --accent-ring: rgba(69, 179, 154, 0.4);
   --on-accent: #06231d;
-  --ok: #67a985;
-  --warn: #d2a648;
-  --danger: #db6a5c;
-  --shadow-overlay: 0 24px 64px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line);
+  --ok: #67a985;     --ok-quiet: #7fc0a0;     --ok-soft: rgba(103, 169, 133, 0.14);
+  --warn: #d2a648;   --warn-quiet: #ddb862;   --warn-soft: rgba(210, 166, 72, 0.14);
+  --danger: #db6a5c; --danger-quiet: #e08b86; --danger-soft: rgba(219, 106, 92, 0.14);
+  --info: #8b9ae0;   --info-quiet: #a3b0ea;   --info-soft: rgba(139, 154, 224, 0.14);
+  --elev-1: inset 0 1px 0 0 rgba(251, 250, 242, 0.03);
+  --elev-2: inset 0 1px 0 0 rgba(251, 250, 242, 0.07),
+            0 1px 2px 0 rgba(0, 0, 0, 0.45);
+  --elev-3: 0 24px 64px -16px rgba(0, 0, 0, 0.6),
+            inset 0 1px 0 0 rgba(251, 250, 242, 0.09),
+            0 0 0 1px var(--line);
+  --shadow-overlay: var(--elev-3);
 }
 [data-theme="dark"] .section-invert {
   color-scheme: light;
   --bg: #fbfaf2;
+  --sunken: #f2f0e7;
   --surface: #ffffff;
-  --raised: #f1efe7;
   --overlay: #ffffff;
+  --raised: var(--sunken);
   --ink: #0b1215;
+  --ink-strong: #000407;
   --muted: #5c6b6e;
-  --faint: #93a1a3;
-  --line: rgba(11, 18, 21, 0.08);
-  --line-strong: rgba(11, 18, 21, 0.16);
+  --faint: #616f74;
+  --faint-mark: #93a1a3;
+  --line: rgba(11, 18, 21, 0.07);
+  --line-strong: rgba(11, 18, 21, 0.14);
   --accent: #17685c;
   --accent-hover: #125045;
-  --accent-soft: rgba(23, 104, 92, 0.1);
+  --accent-soft: rgba(23, 104, 92, 0.09);
+  --accent-quiet: #17685c;
+  --accent-line: #17685c;
+  --accent-ring: rgba(23, 104, 92, 0.34);
   --on-accent: #fbfaf2;
-  --ok: #2e8b6b;
-  --warn: #a97e22;
-  --danger: #bc584a;
-  --shadow-overlay: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+  --ok: #2e8b6b;     --ok-quiet: #1f6f54;     --ok-soft: rgba(46, 139, 107, 0.1);
+  --warn: #a97e22;   --warn-quiet: #8a6413;   --warn-soft: rgba(169, 126, 34, 0.11);
+  --danger: #bc584a; --danger-quiet: #b03f3c; --danger-soft: rgba(188, 88, 74, 0.1);
+  --info: #4d5fa8;   --info-quiet: #3f4f92;   --info-soft: rgba(77, 95, 168, 0.1);
+  --elev-1: inset 0 1px 0 0 rgba(11, 18, 21, 0.035);
+  --elev-2: 0 1px 1px -0.5px rgba(11, 18, 21, 0.05),
+            0 2px 6px -2px rgba(11, 18, 21, 0.07);
+  --elev-3: 0 24px 56px -20px rgba(11, 18, 21, 0.22), 0 0 0 1px var(--line);
+  --shadow-overlay: var(--elev-3);
 }
 
 
@@ -360,7 +782,9 @@
     color-mix(in oklab, var(--accent) 6%, transparent) 55%,
     transparent 75%
   );
-  will-change: transform, opacity;
+  /* No static will-change: it pinned a compositor layer for the whole session
+     on every device that ever scrolled past. A transform animation gets its
+     own layer while it runs anyway. */
   animation: streak-drift 16s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {

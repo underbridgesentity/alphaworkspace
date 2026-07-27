@@ -45,7 +45,7 @@ export default function AdminPage() {
 
   const setPlan = useMutation({
     mutationFn: (vars: { workspaceId: string; plan: PlanId }) =>
-      apiMutate("/api/admin", { method: "POST", body: vars }),
+      apiMutate("/api/admin", { method: "POST", body: vars, queue: false }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["admin"] });
       toast("Plan updated", { variant: "success" });
@@ -55,7 +55,7 @@ export default function AdminPage() {
 
   const setBots = useMutation({
     mutationFn: (vars: { workspaceId: string; meetingBots: boolean }) =>
-      apiMutate("/api/admin", { method: "POST", body: vars }),
+      apiMutate("/api/admin", { method: "POST", body: vars, queue: false }),
     onSuccess: async (_r, vars) => {
       await qc.invalidateQueries({ queryKey: ["admin"] });
       toast(vars.meetingBots ? "Meeting bots enabled" : "Meeting bots disabled", {

@@ -44,8 +44,8 @@ export function Sidebar({ className }: { className?: string }) {
           className="w-56"
           trigger={
             <button className="press flex w-full items-center gap-2 rounded-control px-2 py-2 hover:bg-raised">
-              <Logo size={28} wordmark={false} />
-              <span className="min-w-0 flex-1 truncate text-left font-semibold tracking-tight">
+              <Logo size="md" wordmark={false} />
+              <span className="min-w-0 flex-1 truncate text-left text-body font-semibold">
                 {workspace.name}
               </span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-faint" />
@@ -66,7 +66,7 @@ export function Sidebar({ className }: { className?: string }) {
             active={pathname.startsWith(`${base}/dashboard`)}
             icon={ChartNoAxesColumn}
           >
-            Dashboard
+            Pulse
           </NavLink>
           <NavLink
             href={`${base}/meetings`}
@@ -79,14 +79,15 @@ export function Sidebar({ className }: { className?: string }) {
 
         <div className="mt-6">
           <div className="flex items-center justify-between px-2 pb-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">
+            {/* The one section-head idiom, same on every surface in the app. */}
+            <span className="section-head">
               Projects
             </span>
             {isAdmin && (
               <button
                 onClick={() => setNewProject(true)}
                 aria-label="New project"
-                className="press rounded p-1 text-faint hover:bg-raised hover:text-ink"
+                className="press rounded-chip p-1.5 text-faint hover:bg-raised hover:text-ink"
               >
                 <Plus className="size-3.5" />
               </button>
@@ -102,14 +103,14 @@ export function Sidebar({ className }: { className?: string }) {
               >
                 <span className="min-w-0 flex-1 truncate">{p.name}</span>
                 {(p.overdueCount ?? 0) > 0 && (
-                  <span className="ml-auto shrink-0 rounded-full bg-danger/15 px-1.5 text-[11px] font-semibold tabular text-danger">
+                  <span className="ml-auto shrink-0 rounded-full bg-danger-soft px-1.5 text-micro font-semibold tabular text-danger-quiet">
                     {p.overdueCount}
                   </span>
                 )}
               </NavLink>
             ))}
             {projects.length === 0 && (
-              <p className="px-2 py-1.5 text-sm text-faint">
+              <p className="px-2 py-1.5 text-body text-faint">
                 No projects yet{isAdmin ? ", create one." : "."}
               </p>
             )}
@@ -123,12 +124,12 @@ export function Sidebar({ className }: { className?: string }) {
             href={`${base}/settings/billing`}
             className="press mb-2 block rounded-card bg-raised px-3 py-2.5 hover:bg-overlay"
           >
-            <p className="text-xs font-semibold">Free plan</p>
-            <p className="mt-0.5 text-xs text-muted">
+            <p className="text-meta font-semibold">Free plan</p>
+            <p className="mt-hair text-meta text-muted">
               {usage.activeProjects}/{limits.maxActiveProjects ?? "∞"} projects ·{" "}
               {usage.voiceCapturesThisMonth}/{limits.voiceCapturesPerMonth} captures
             </p>
-            <p className="mt-1 text-xs font-medium text-accent">Upgrade →</p>
+            <p className="mt-1 text-meta font-medium text-accent-quiet">Upgrade →</p>
           </Link>
         )}
         {isAdmin && (
@@ -170,8 +171,9 @@ function NavLink({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "press flex items-center gap-2.5 rounded-control px-2 py-1.5 text-sm",
+        "press flex items-center gap-2.5 rounded-control px-2 py-1.5 text-body",
         active
           ? "bg-raised font-medium text-ink"
           : "text-muted hover:bg-raised hover:text-ink",

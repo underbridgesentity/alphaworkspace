@@ -246,7 +246,7 @@ describe("scorecards are manager-only, on every door", () => {
     const ownerCtx = await ctxFor(db, om.id, studioWs.slug);
     const card = await createScorecard(ownerCtx, {
       name: "Monthly revenue",
-      unit: "ZAR",
+      unit: "currency",
       target: 250000,
       period: "monthly",
     });

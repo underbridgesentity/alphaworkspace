@@ -13,7 +13,10 @@ import { logActivity } from "@/server/dal/activity";
 import { verifyItnSignature } from "./signature";
 import { payfastSandbox } from "./checkout";
 import { snapshotForPlan } from "./entitlements";
-import { supersedeOtherSubscriptions } from "./subscriptions";
+import {
+  ADJUSTMENT_MPAYMENT_PREFIX,
+  supersedeOtherSubscriptions,
+} from "./subscriptions";
 
 export { entitlementsSnapshot } from "./entitlements";
 
@@ -93,8 +96,18 @@ export async function processItn(
     }
   }
 
-  // Locate our subscription.
   const mPaymentId = get("m_payment_id");
+
+  // A one-off pro-rata catch-up for a band upgrade. It carries its own
+  // reference precisely so it can never be read as an activation or a
+  // renewal: the mandate and the local period both moved when the band
+  // changed, and its failure is not the recurring charge failing either, so a
+  // decline must not push the subscription past_due. Acknowledge and stop.
+  if (mPaymentId.startsWith(ADJUSTMENT_MPAYMENT_PREFIX)) {
+    return { ok: true, reason: "proration-adjustment" };
+  }
+
+  // Locate our subscription.
   const [sub] = await db
     .select()
     .from(subscriptions)
@@ -112,8 +125,8 @@ export async function processItn(
   const now = new Date();
 
   if (status === "COMPLETE") {
-    // A COMPLETE for a subscription the user already cancelled — fully, or
-    // scheduled-to-end (grace: still "active" but cancelledAt is set) — is a
+    // A COMPLETE for a subscription the user already cancelled, fully or
+    // scheduled-to-end (grace: still "active" but cancelledAt is set), is a
     // stale or duplicated notification, NEVER a resurrection or extension.
     // Record it, change nothing (billing was already stopped at PayFast).
     if (sub.status === "cancelled" || sub.cancelledAt != null) {

@@ -5,8 +5,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    // Every createTestDb() boots a fresh PGlite and replays all 12 checked-in
+    // migrations, which measures at ~40s on a loaded laptop and only gets
+    // slower as migrations accumulate. 30s made whichever test happened to be
+    // scheduled first fail as a timeout, with nothing wrong with the assertion.
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
   },
   resolve: {
     alias: {

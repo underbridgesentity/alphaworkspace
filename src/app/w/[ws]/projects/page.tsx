@@ -179,7 +179,7 @@ function ArchivedProjects() {
     <div className="mt-8">
       <button
         onClick={() => setOpen(!open)}
-        className="press flex items-center gap-1.5 rounded-control px-1 py-1 text-xs font-semibold uppercase tracking-wider text-faint hover:text-muted"
+        className="press flex items-center gap-1.5 rounded-control px-1 py-1 section-head hover:text-muted"
       >
         <ChevronRight
           className={cnRotate(open)}

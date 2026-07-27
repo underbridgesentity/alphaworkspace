@@ -2,8 +2,12 @@
 
 /**
  * The app chrome: sidebar (desktop), top bar, bottom tab bar with the centre
- * mic FAB (mobile, thumb-reachable, per the product spec), and the global
+ * create FAB (mobile, thumb-reachable, per the product spec), and the global
  * overlays (task panel, search, quick-add, voice capture, notifications).
+ *
+ * Both bars use the frost fade rather than backdrop-blur: a static gradient
+ * scrim costs nothing per frame, where a live backdrop-filter over a scrolling
+ * list re-samples the layer beneath it on every one.
  */
 import {
   createContext,
@@ -34,12 +38,23 @@ import { ThemeToggleItem, ThemeToggleButton } from "@/components/ui/theme-toggle
 import { TimerChip } from "@/components/app/timer";
 import dynamic from "next/dynamic";
 import { Sidebar, WorkspaceMenuItems } from "./sidebar";
-import { TaskPanel } from "./task-panel";
-import { SearchPalette } from "./search-palette";
-import { NotificationsPanel } from "./notifications-panel";
 
-// Capture surfaces are code-split, they only load when summoned, keeping
-// the app shell inside the 3G budget.
+// Every overlay is code-split, they only load when summoned, keeping the app
+// shell inside the 3G budget. The task panel, search and notifications were
+// static until now, which put 18.7 KB gz of never-rendered markup in the
+// critical path of every workspace route.
+const TaskPanel = dynamic(
+  () => import("./task-panel").then((m) => m.TaskPanel),
+  { ssr: false },
+);
+const SearchPalette = dynamic(
+  () => import("./search-palette").then((m) => m.SearchPalette),
+  { ssr: false },
+);
+const NotificationsPanel = dynamic(
+  () => import("./notifications-panel").then((m) => m.NotificationsPanel),
+  { ssr: false },
+);
 const QuickAddDialog = dynamic(
   () => import("./quick-add").then((m) => m.QuickAddDialog),
   { ssr: false },
@@ -69,6 +84,19 @@ export function useUI(): UIState {
   return ctx;
 }
 
+/**
+ * True from the first time `open` goes true, and true from then on. The
+ * overlays are dynamic(), so they must not render before their first summon
+ * or the chunk lands in the first paint anyway; but once mounted they stay
+ * mounted, because <Dialog> owns the close transition and focus restore, and
+ * unmounting an open native <dialog> drops keyboard focus to the body.
+ */
+function useSummoned(open: boolean): boolean {
+  const [summoned, setSummoned] = useState(false);
+  if (open && !summoned) setSummoned(true);
+  return summoned;
+}
+
 function ShellInner({ children }: { children: React.ReactNode }) {
   const { workspace, me, unread, isOperator } = useWorkspace();
   const router = useRouter();
@@ -81,6 +109,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const [quickAdd, setQuickAdd] = useState<{ projectId?: string } | null>(null);
   const [mic, setMic] = useState<{ projectId?: string } | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
+
+  // A ?task= deep link counts as a summon, so the panel still opens on load.
+  const taskSummoned = useSummoned(!!taskId);
+  const searchSummoned = useSummoned(searchOpen);
+  const notifSummoned = useSummoned(notifOpen);
 
   const openTask = useCallback(
     (id: string) => {
@@ -137,19 +170,28 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   return (
     <UIContext.Provider value={ui}>
       <div className="min-h-dvh md:grid md:grid-cols-[232px_minmax(0,1fr)]">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-control focus:bg-overlay focus:px-3 focus:py-2 focus:shadow-e3"
+        >
+          Skip to content
+        </a>
         <Sidebar className="hidden md:flex" />
 
         <div className="flex min-h-dvh min-w-0 flex-col pb-16 md:pb-0">
-          {/* Top bar */}
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-1.5 border-b border-line bg-bg/90 px-3 backdrop-blur-sm sm:px-4 md:px-6">
+          {/* Top bar. frost-edge-b lays a 14px scrim below the bar so scrolling
+              content dissolves into it. The old bg-bg/90 + backdrop-blur-sm
+              re-sampled the whole scroller every frame, which is the single
+              worst thing you can leave running on a budget Android. */}
+          <header className="frost-edge-b sticky top-0 z-30 flex h-14 items-center gap-1.5 px-3 sm:px-4 md:px-6">
             {/* Mobile: workspace name/menu */}
             <div className="min-w-0 flex-1 md:hidden">
               <Menu
                 align="start"
                 trigger={
                   <button className="press flex max-w-full items-center gap-2 rounded-control px-1.5 py-1.5 hover:bg-raised">
-                    <Logo size={26} wordmark={false} />
-                    <span className="truncate text-[1.0625rem] font-semibold tracking-tight">
+                    <Logo size="md" wordmark={false} />
+                    <span className="truncate text-lede font-semibold">
                       {workspace.name}
                     </span>
                   </button>
@@ -163,11 +205,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             <div className="hidden flex-1 md:block">
               <button
                 onClick={() => setSearchOpen(true)}
-                className="press flex w-64 items-center gap-2 rounded-control bg-raised px-3 py-2 text-sm text-faint hover:text-muted"
+                className="press flex w-64 items-center gap-2 rounded-control bg-raised px-3 py-2 text-body text-faint hover:text-muted"
               >
                 <Search className="size-4" />
                 <span className="flex-1 text-left">Search…</span>
-                <kbd className="rounded bg-overlay px-1.5 py-0.5 text-[11px] text-faint">
+                <kbd className="rounded-chip bg-overlay px-1.5 py-0.5 text-micro text-faint">
                   ⌘K
                 </kbd>
               </button>
@@ -191,19 +233,22 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
             <button
               onClick={() => setQuickAdd({})}
-              className="press hidden h-9 items-center gap-1.5 rounded-control bg-raised px-3 text-sm font-medium text-ink hover:bg-overlay md:flex"
+              className="press hidden h-9 items-center gap-1.5 rounded-control bg-raised px-3 text-body font-medium text-ink hover:bg-overlay md:flex"
             >
               <Plus className="size-4" />
               New task
-              <kbd className="ml-1 rounded bg-overlay px-1.5 py-0.5 text-[11px] text-faint">
+              <kbd className="ml-1 rounded-chip bg-overlay px-1.5 py-0.5 text-micro text-faint">
                 N
               </kbd>
             </button>
 
+            {/* One filled accent per viewport. On mobile that is the create
+                FAB, so the desktop mic wears the quiet teal instead, matching
+                the project-header mic. */}
             <button
               onClick={() => setMic({})}
               aria-label="Voice capture"
-              className="press hidden size-9 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover md:flex"
+              className="press hidden size-9 items-center justify-center rounded-full bg-raised text-accent-quiet hover:bg-accent-soft md:flex"
             >
               <Mic className="size-4.5" />
             </button>
@@ -237,8 +282,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               {(close) => (
                 <>
                   <div className="px-2.5 pb-1.5 pt-1">
-                    <p className="truncate text-sm font-medium">{me.name ?? me.email}</p>
-                    <p className="truncate text-xs text-faint">{me.email}</p>
+                    <p className="truncate text-body font-medium">{me.name ?? me.email}</p>
+                    <p className="truncate text-meta text-faint">{me.email}</p>
                   </div>
                   <MenuSeparator />
                   <MenuItem
@@ -269,11 +314,16 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
           <OfflineBadge />
 
-          <main className="min-w-0 flex-1">{children}</main>
+          <main id="main" tabIndex={-1} className="min-w-0 flex-1">
+            {children}
+          </main>
         </div>
 
-        {/* Mobile bottom bar with centre "+" FAB that opens a create menu. */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur-sm md:hidden">
+        {/* Mobile bottom bar with centre "+" FAB that opens a create menu.
+            frost-edge-t is the same dissolve as the header, mirrored upward,
+            and it replaces a second live backdrop-filter that sat over the
+            scroller for the whole session. */}
+        <nav className="frost-edge-t fixed inset-x-0 bottom-0 z-30 md:hidden">
           <div className="grid h-16 grid-cols-5 items-center px-1 pb-[env(safe-area-inset-bottom)]">
             <TabLink href={base} active={pathname === base} icon={Home} label="My Work" />
             <TabLink
@@ -289,7 +339,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                 aria-haspopup="menu"
                 aria-expanded={plusOpen}
                 className={cn(
-                  "press -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] transition-transform hover:bg-accent-hover",
+                  // relative so the FAB paints above the bar's scrim
+                  // pseudo-element, which occupies the 14px it overhangs into.
+                  "press relative -mt-7 flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-e3 transition-transform hover:bg-accent-hover",
                   plusOpen && "rotate-45",
                 )}
               >
@@ -307,7 +359,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               className="press relative flex flex-col items-center gap-1 py-1.5 text-faint"
             >
               <Bell className="size-5" />
-              <span className="text-[10px] leading-none">Alerts</span>
+              <span className="text-micro leading-none">Alerts</span>
               {unread > 0 && (
                 <span className="absolute right-[calc(50%-14px)] top-1 size-2 rounded-full bg-accent" />
               )}
@@ -315,10 +367,14 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
 
-        {/* Overlays */}
-        <TaskPanel taskId={taskId} onClose={closeTask} />
-        <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
-        <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+        {/* Overlays. Each mounts on first summon and stays mounted after. */}
+        {taskSummoned && <TaskPanel taskId={taskId} onClose={closeTask} />}
+        {searchSummoned && (
+          <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+        )}
+        {notifSummoned && (
+          <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+        )}
         {quickAdd && (
           <QuickAddDialog
             defaultProjectId={quickAdd.projectId}
@@ -341,7 +397,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           variant="center"
         >
           <div className="p-2">
-            <p className="px-3 pb-1 pt-2 text-xs font-medium text-faint">Create</p>
+            <p className="px-3 pb-1 pt-2 section-head">
+              Create
+            </p>
             <button
               onClick={() => {
                 setPlusOpen(false);
@@ -349,12 +407,14 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               }}
               className="press flex w-full items-center gap-3 rounded-control px-3 py-3 text-left hover:bg-raised"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+              {/* Quiet badges: the teal FAB the user just pressed is still the
+                  one saturated thing on the screen behind this sheet. */}
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-raised text-muted">
                 <Plus className="size-5" />
               </span>
               <span className="min-w-0">
-                <span className="block font-medium">Quick add</span>
-                <span className="block text-sm text-faint">
+                <span className="block text-body font-medium">Quick add</span>
+                <span className="block text-dense text-muted">
                   A new task or project, typed
                 </span>
               </span>
@@ -366,12 +426,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               }}
               className="press flex w-full items-center gap-3 rounded-control px-3 py-3 text-left hover:bg-raised"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-raised text-muted">
                 <Mic className="size-5" />
               </span>
               <span className="min-w-0">
-                <span className="block font-medium">Voice capture</span>
-                <span className="block text-sm text-faint">
+                <span className="block text-body font-medium">Voice capture</span>
+                <span className="block text-dense text-muted">
                   Speak, we sort it into tasks
                 </span>
               </span>
@@ -400,13 +460,14 @@ function TabLink({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "press flex flex-col items-center gap-1 py-1.5",
         active ? "text-ink" : "text-faint",
       )}
     >
       <Icon className="size-5" />
-      <span className="text-[10px] leading-none">{label}</span>
+      <span className="text-micro leading-none">{label}</span>
     </Link>
   );
 }

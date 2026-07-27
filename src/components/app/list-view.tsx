@@ -47,7 +47,7 @@ export function ListView({ projectId }: { projectId: string }) {
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pb-24 md:px-6">
       {groups.map((g) => (
         <section key={g.status} aria-label={statusLabel(g.status, customName)}>
-          <h2 className="px-3 text-xs font-semibold uppercase tracking-wider text-faint">
+          <h2 className="px-3 section-head">
             {statusLabel(g.status, customName)}
             <span className="ml-1.5 tabular">{g.tasks.length}</span>
           </h2>

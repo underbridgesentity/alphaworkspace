@@ -6,6 +6,7 @@
  * item is the one door out, it becomes an ordinary team task in a project.
  */
 import { useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -14,6 +15,7 @@ import {
   checklistProgress,
   hasPlainBullets,
 } from "@/lib/checklist";
+import { isDueToday, isOverdue } from "@/lib/dates";
 import { ApiError, apiGet, apiMutate } from "@/lib/client/api";
 import { useWorkspace } from "@/lib/client/workspace";
 import type { PrivateTaskDTO, TaskDTO } from "@/lib/types";
@@ -107,44 +109,51 @@ export function PrivateList() {
   };
 
   return (
-    <section className="mt-8" aria-label="Private tasks">
+    <section className="mt-section" aria-label="Private tasks">
       <div className="flex items-center gap-1.5 px-3">
-        <Lock className="size-3.5 text-faint" />
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-faint">
+        {/* faint-mark, not faint: this is a glyph, not text, so it keeps the
+            lighter tone that would fail contrast on a word. */}
+        <Lock className="size-3.5 text-faint-mark" />
+        <h2 className="section-head">
           Private
         </h2>
-        <span className="text-[11px] text-faint">· only you see these</span>
+        <span className="text-micro font-normal text-faint">
+          · only you see these
+        </span>
       </div>
 
-      {/* At-a-glance progress: where the whole list stands without opening it. */}
+      {/* At-a-glance progress on the ledger line: the figure sits on a rule
+          that fills to its own share, so the list reports itself. */}
       {total > 0 && (
-        <div className="mt-2 px-3">
-          <div className="flex items-center justify-between text-[11px] text-faint">
-            <span>
+        <div className="mt-tight px-3">
+          <div className="ledger flex items-baseline justify-between gap-2">
+            <span className="text-meta text-faint">
               {done.length} of {total} done
               {steps.total > 0 && ` · ${steps.done}/${steps.total} steps`}
             </span>
-            <span className="tabular">{pct}%</span>
-          </div>
-          <div
-            className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised"
-            role="progressbar"
-            aria-valuenow={pct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Private tasks done"
-          >
-            <div
-              className="h-full rounded-full bg-accent transition-[width] duration-500"
-              style={{ width: `${pct}%` }}
-            />
+            <span className="num text-meta text-muted">{pct}%</span>
+            <span
+              className="ledger-track"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Private tasks done"
+            >
+              <span
+                className="ledger-fill"
+                style={{ "--fill": pct / 100 } as CSSProperties}
+              />
+            </span>
           </div>
         </div>
       )}
 
-      <div className="mt-2 rounded-card bg-surface p-2">
+      <div className="mt-sibling e2 p-2">
+        {/* The plus sits exactly where every row's toggle sits, so the field
+            reads as the next row rather than as a separate control. */}
         <form
-          className="flex items-center gap-2 px-1"
+          className="flex items-center gap-3 px-3"
           onSubmit={(e) => {
             e.preventDefault();
             const t = title.trim();
@@ -153,19 +162,19 @@ export function PrivateList() {
             add.mutate(t);
           }}
         >
-          <Plus className="size-4 shrink-0 text-faint" />
+          <Plus className="size-5 shrink-0 text-faint-mark" />
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Add a private task…"
             maxLength={500}
             aria-label="Add a private task"
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
+            className="h-10 min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
           />
         </form>
 
         {open.length > 0 && (
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-hair space-y-0.5">
             {open.map((t) => (
               <Row key={t.id} task={t} onToggle={toggle} onOpen={setEditing} />
             ))}
@@ -173,15 +182,18 @@ export function PrivateList() {
         )}
 
         {done.length > 0 && (
-          <div className="mt-1 border-t border-line/60 pt-1">
+          <div className="mt-tight border-t border-line pt-tight">
             <button
               onClick={() => setShowDone(!showDone)}
-              className="press flex items-center gap-1 rounded-control px-2 py-1 text-xs text-faint hover:text-muted"
+              className="press flex items-center gap-1 rounded-control px-2 py-1.5 text-meta text-faint hover:text-muted"
             >
               <ChevronDown
-                className={cn("size-3.5 transition-transform", !showDone && "-rotate-90")}
+                className={cn(
+                  "size-3.5 transition-transform duration-(--dur-quick)",
+                  !showDone && "-rotate-90",
+                )}
               />
-              Done <span className="tabular">{done.length}</span>
+              Done <span className="num">{done.length}</span>
             </button>
             {showDone &&
               done.map((t) => (
@@ -208,6 +220,21 @@ export function PrivateList() {
   );
 }
 
+/**
+ * The follow-up rail for a private row. Urgency outranks privacy: a personal
+ * task that is already late still has to look late. The dashed rail is what a
+ * private item wears when it has nothing urgent to say, which is the one place
+ * the dash earns its keep instead of just repeating the section's own lock.
+ */
+function railTone(task: PrivateTaskDTO): string {
+  if (task.completedAt) return "rail-done";
+  if (isOverdue(task.dueDate)) return "rail-overdue";
+  if (isDueToday(task.dueDate)) return "rail-today";
+  const steps = checklistProgress(task.note);
+  if (steps && steps.done > 0 && steps.done < steps.total) return "rail-active";
+  return "rail-private";
+}
+
 function Row({
   task,
   onToggle,
@@ -219,27 +246,49 @@ function Row({
 }) {
   const isDone = Boolean(task.completedAt);
   return (
-    <div className="group flex items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-raised">
+    <div
+      className={cn(
+        // px-3 py-3 and a size-5 circle, exactly matching TaskRow: the two
+        // lists sit on the same My Work page, so their left edges and row
+        // heights have to agree or the page reads as two products.
+        "group flex items-center gap-3 rounded-control px-3 py-3 hover:bg-raised",
+        "transition-[box-shadow,background-color] duration-(--dur-quick) ease-move",
+        "rail",
+        railTone(task),
+      )}
+    >
       <button
+        // Per-task label, not "Mark done": a screen reader on a list of ten
+        // private tasks otherwise hears the same three words ten times.
+        aria-label={`Mark "${task.title}" complete`}
+        aria-pressed={isDone}
         onClick={() => onToggle(task)}
-        aria-label={isDone ? "Reopen" : "Mark done"}
-        className={cn(
-          "press grid size-[18px] shrink-0 place-items-center rounded-full border",
-          isDone
-            ? "border-accent bg-accent text-on-accent"
-            : "border-line-strong hover:border-accent",
-        )}
+        // -m-3 p-3 gives the 20px circle a 44px target that exactly fills the
+        // 44px row, so no two rows' hit areas overlap.
+        className="group/check -m-3 flex shrink-0 items-center justify-center p-3"
       >
-        {isDone && (
-          <svg viewBox="0 0 10 8" className="size-2" fill="none" aria-hidden>
-            <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        )}
+        <span
+          className={cn(
+            "flex size-5 items-center justify-center rounded-full border-2",
+            "transition-[background-color,border-color,scale] duration-(--dur-base) ease-spring",
+            // --ok, not --accent: done is green in every other list in the
+            // app, and teal here would make completion look like selection.
+            isDone
+              ? "scale-100 border-ok bg-ok text-bg"
+              : "scale-95 border-line-strong group-hover/check:border-ok",
+          )}
+        >
+          {isDone && (
+            <svg viewBox="0 0 10 8" className="size-2" fill="none" aria-hidden>
+              <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          )}
+        </span>
       </button>
       <button
         onClick={() => onOpen(task)}
         className={cn(
-          "min-w-0 flex-1 truncate text-left text-sm",
+          "min-w-0 flex-1 truncate text-left",
           isDone && "text-faint line-through decoration-line",
         )}
       >
@@ -302,7 +351,7 @@ function NoteField({
       ) : (
         <div
           onClick={() => setEditing(true)}
-          className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-[0.9375rem] leading-relaxed"
+          className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-body leading-relaxed"
         >
           <RichText text={note} onToggleCheck={toggle} />
         </div>
@@ -315,7 +364,7 @@ function NoteField({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={addStep}
-          className="press text-xs font-medium text-accent"
+          className="press text-meta font-medium text-accent-quiet"
         >
           + Add step
         </button>
@@ -324,7 +373,7 @@ function NoteField({
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange(bulletsToSteps(note))}
-            className="press text-xs text-muted underline decoration-line underline-offset-2 hover:text-ink"
+            className="press text-meta text-muted underline decoration-line underline-offset-2 hover:text-ink"
           >
             Make these tickable
           </button>
@@ -419,8 +468,8 @@ function PrivateTaskDialog({
             so it can be ticked off, and the card shows your progress. */}
         <NoteField note={note} onChange={setNote} />
 
-        <label className="mt-3 block">
-          <span className="text-xs font-medium text-muted">Due date</span>
+        <label className="mt-item block">
+          <span className="text-meta font-medium text-muted">Due date</span>
           <span className="relative mt-1 block">
             <input
               type="date"
@@ -438,7 +487,7 @@ function PrivateTaskDialog({
           </span>
         </label>
 
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-item flex items-center gap-2">
           <Button size="sm" loading={busy === "save"} onClick={save}>
             Save
           </Button>
@@ -454,8 +503,8 @@ function PrivateTaskDialog({
         </div>
 
         {/* The one door out of the wall: make it real, team-visible work. */}
-        <div className="mt-5 rounded-card bg-raised p-3">
-          <p className="text-xs font-medium text-muted">
+        <div className="mt-group e1 p-3">
+          <p className="text-meta font-medium text-muted">
             Make it a team task, visible to everyone in the project:
           </p>
           <div className="mt-2 flex items-center gap-2">
@@ -463,7 +512,7 @@ function PrivateTaskDialog({
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               aria-label="Project for the team task"
-              className="h-9 min-w-0 flex-1 rounded-control border border-line bg-surface px-2 text-sm"
+              className="h-9 min-w-0 flex-1 rounded-control border border-line bg-surface px-2 text-dense"
             >
               <option value="">Pick a project…</option>
               {projects.map((p) => (

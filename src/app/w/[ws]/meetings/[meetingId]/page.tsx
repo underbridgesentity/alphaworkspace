@@ -350,7 +350,7 @@ export default function MeetingPage() {
           </p>
           {meeting.summary.decisions.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
+              <h3 className="section-head">
                 Decisions
               </h3>
               <ul className="mt-1.5 space-y-1">
@@ -365,7 +365,7 @@ export default function MeetingPage() {
           )}
           {meeting.summary.risks.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
+              <h3 className="section-head">
                 Watch out for
               </h3>
               <ul className="mt-1.5 space-y-1">

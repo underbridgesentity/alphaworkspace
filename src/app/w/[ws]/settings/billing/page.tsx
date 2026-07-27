@@ -4,6 +4,11 @@
  * Billing: flat rand bands via PayFast. The checkout is a plain form POST
  * to PayFast, card details never touch Alpha. Cancelling keeps the plan until
  * the paid period ends, then drops to Free; nothing is deleted, nothing locks.
+ *
+ * Band changes ride the live mandate where they can (upgrade now for a
+ * pro-rata catch-up, downgrade at the next run date) and fall back to a full
+ * checkout otherwise. Every rand quoted here comes from the server so the
+ * number on the confirm step is the number charged.
  */
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +21,25 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+
+interface BandChangeQuote {
+  plan: "team" | "studio";
+  billing: "monthly" | "annual";
+  direction: "upgrade" | "downgrade";
+  inPlace: boolean;
+  catchUpCents: number;
+  recurringCents: number;
+  effectiveAt: string | null;
+}
+
+interface BandChangeOutcome {
+  mode: "checkout" | "noop" | "changed";
+  plan?: "team" | "studio";
+  direction?: "upgrade" | "downgrade";
+  catchUpCents?: number;
+  catchUpCharged?: boolean;
+  effectiveAt?: string | null;
+}
 
 interface BillingData {
   plan: PlanId;
@@ -32,6 +56,8 @@ interface BillingData {
     activeProjects: number;
     voiceCapturesThisMonth: number;
   };
+  /** Empty when no live mandate can be patched; then every switch is a checkout. */
+  bandChanges: BandChangeQuote[];
   sandbox: boolean;
 }
 
@@ -60,6 +86,14 @@ function fmtDate(iso: string | null): string {
   });
 }
 
+/** Pro-rata amounts land on odd cents, so unlike band prices they show them. */
+function fmtCents(cents: number): string {
+  return `R${(cents / 100).toLocaleString("en-ZA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export default function BillingSettingsPage() {
   const { workspace } = useWorkspace();
   const qc = useQueryClient();
@@ -68,6 +102,7 @@ export default function BillingSettingsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
+  const [switchTo, setSwitchTo] = useState<BandChangeQuote | null>(null);
 
   // A plan carried from the pricing page: "Start with Team" lands here so the
   // final checkout step is one obvious click, not a hunt through the bands.
@@ -87,13 +122,19 @@ export default function BillingSettingsPage() {
   // Grace: cancelled but still inside the period they've already paid for.
   const grace = sub?.status === "active" && !!sub.cancelledAt;
   const graceEnds = grace ? fmtDate(sub?.currentPeriodEnd ?? null) : "";
+  // A downgrade already patched onto the mandate: the row is on the smaller
+  // band while the workspace keeps the one it paid for until the period ends.
+  const scheduledBand =
+    sub && sub.status === "active" && !grace && sub.plan !== currentPlan
+      ? sub.plan
+      : null;
 
   const checkout = async (plan: "team" | "studio") => {
     setBusy(plan);
     try {
       const res = await apiMutate<{ action: string; fields: [string, string][] }>(
         `/api/w/${workspace.slug}/billing/checkout`,
-        { method: "POST", body: { plan, billing: annual ? "annual" : "monthly" } },
+        { method: "POST", body: { plan, billing: annual ? "annual" : "monthly" }, queue: false },
       );
       if ("queued" in res && res.queued) {
         toast("You're offline, billing needs a connection", { variant: "error" });
@@ -118,6 +159,75 @@ export default function BillingSettingsPage() {
     }
   };
 
+  // A quote exists only for the cycle the live mandate is already on; anything
+  // else (no mandate, cycle switch, grace, past due) is a full checkout.
+  const quoteFor = (plan: "team" | "studio"): BandChangeQuote | null =>
+    data?.bandChanges.find(
+      (q) => q.plan === plan && q.billing === (annual ? "annual" : "monthly"),
+    ) ?? null;
+
+  const applySwitch = async (quote: BandChangeQuote) => {
+    // Never let a band change sit in the offline outbox: it would replay and
+    // charge long after the owner saw this screen.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast("You're offline, billing needs a connection", { variant: "error" });
+      return;
+    }
+    setBusy(quote.plan);
+    try {
+      const res = await apiMutate<BandChangeOutcome>(
+        `/api/w/${workspace.slug}/billing`,
+        { method: "PATCH", body: { plan: quote.plan, billing: quote.billing }, queue: false },
+      );
+      if ("queued" in res && res.queued) {
+        toast("You're offline, billing needs a connection", { variant: "error" });
+        return;
+      }
+      // The mandate moved under us (renewal, cancel, cycle switch): fall back
+      // to the full checkout rather than leaving the owner stuck.
+      if (res.mode === "checkout") {
+        await checkout(quote.plan);
+        return;
+      }
+      setSwitchTo(null);
+      await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
+      if (res.mode === "noop") {
+        toast(`Already on ${PLANS[quote.plan].name}.`, { variant: "success" });
+        return;
+      }
+      if (quote.direction === "downgrade") {
+        toast(
+          `Done. You keep ${PLANS[currentPlan].name} until ${fmtDate(
+            res.effectiveAt ?? null,
+          )}, then ${PLANS[quote.plan].name}.`,
+          { variant: "success" },
+        );
+        return;
+      }
+      toast(
+        res.catchUpCharged && (res.catchUpCents ?? 0) > 0
+          ? `You're on ${PLANS[quote.plan].name}. ${fmtCents(
+              res.catchUpCents ?? 0,
+            )} charged for the rest of this period.`
+          : `You're on ${PLANS[quote.plan].name}, nothing extra charged this period.`,
+        { variant: "success" },
+      );
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Band change failed", {
+        variant: "error",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Confirm in place when we can quote it, otherwise straight to checkout. */
+  const startSwitch = (plan: "team" | "studio") => {
+    const quote = quoteFor(plan);
+    if (quote) setSwitchTo(quote);
+    else void checkout(plan);
+  };
+
   const cancel = async () => {
     setBusy("cancel");
     try {
@@ -128,6 +238,7 @@ export default function BillingSettingsPage() {
       }>(`/api/w/${workspace.slug}/billing`, {
         method: "DELETE",
         body: { reason },
+        queue: false,
       });
       await qc.invalidateQueries({ queryKey: ["ws", workspace.slug] });
       setCancelOpen(false);
@@ -248,6 +359,25 @@ export default function BillingSettingsPage() {
             >
               Resume {PLANS[currentPlan].name}
             </Button>
+          </div>
+        )}
+
+        {/* Scheduled move down: they keep what they paid for until it lands. */}
+        {scheduledBand && sub && (
+          <div className="mt-3 rounded-control bg-raised p-3">
+            <p className="flex items-start gap-2 text-xs text-muted">
+              <Clock className="mt-px size-3.5 shrink-0 text-warn" />
+              <span>
+                You keep {PLANS[currentPlan].name} until{" "}
+                <strong className="text-ink">
+                  {fmtDate(sub.currentPeriodEnd)}
+                </strong>
+                , then it becomes {PLANS[scheduledBand].name} at{" "}
+                {fmtCents(sub.amountCents)}/
+                {sub.billing === "annual" ? "year" : "month"}. Changed your
+                mind? Move back up, it costs nothing this period.
+              </span>
+            </p>
           </div>
         )}
 
@@ -377,13 +507,17 @@ export default function BillingSettingsPage() {
                   <p className="mt-3 text-center text-xs font-medium text-faint">
                     Your current band
                   </p>
+                ) : plan.id === scheduledBand ? (
+                  <p className="mt-3 text-center text-xs font-medium text-warn">
+                    Starts {fmtDate(sub?.currentPeriodEnd ?? null)}
+                  </p>
                 ) : isOwner ? (
                   <Button
                     size="sm"
                     className="mt-3"
                     variant={isDowngrade ? "quiet" : "primary"}
                     loading={busy === plan.id}
-                    onClick={() => void checkout(plan.id as "team" | "studio")}
+                    onClick={() => startSwitch(plan.id as "team" | "studio")}
                   >
                     {isDowngrade ? "Switch to" : "Upgrade to"} {plan.name}
                   </Button>
@@ -397,9 +531,22 @@ export default function BillingSettingsPage() {
           })}
         </div>
         <p className="mt-3 text-xs text-faint">
-          Switching bands starts the new plan immediately and is billed in full,
-          the current period isn&apos;t prorated. Cancelling keeps your plan
-          until the period you&apos;ve paid for ends.
+          {data && data.bandChanges.length > 0 ? (
+            <>
+              Moving up starts straight away and you pay only for the days left
+              in this period. Moving down keeps your current band until the
+              period you&apos;ve paid for ends, then bills the smaller amount,
+              we don&apos;t refund the difference. You&apos;ll see the exact
+              rand before you confirm. Cancelling also keeps your plan until the
+              paid period ends.
+            </>
+          ) : (
+            <>
+              Switching band or billing cycle starts a fresh period at the full
+              price. Cancelling keeps your plan until the period you&apos;ve
+              paid for ends.
+            </>
+          )}
         </p>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-faint">
           <ShieldCheck className="size-3.5" />
@@ -407,6 +554,89 @@ export default function BillingSettingsPage() {
           Alpha · your work stays either way.
         </p>
       </section>
+
+      {/* Band change: say exactly what happens and what it costs, then commit. */}
+      <Dialog
+        open={switchTo !== null}
+        onClose={() => setSwitchTo(null)}
+        ariaLabel="Confirm band change"
+        variant="center"
+      >
+        {switchTo && (
+          <>
+            <DialogHeader
+              title={`Move to ${PLANS[switchTo.plan].name}?`}
+              onClose={() => setSwitchTo(null)}
+            />
+            <div className="space-y-4 p-4">
+              {switchTo.direction === "upgrade" ? (
+                <p className="text-sm text-muted">
+                  {PLANS[switchTo.plan].name} starts now.{" "}
+                  {switchTo.catchUpCents > 0 ? (
+                    <>
+                      You pay{" "}
+                      <strong className="text-ink tabular">
+                        {fmtCents(switchTo.catchUpCents)}
+                      </strong>{" "}
+                      today for the rest of this period, then{" "}
+                      {fmtCents(switchTo.recurringCents)}/
+                      {switchTo.billing === "annual" ? "year" : "month"} from{" "}
+                      <strong className="text-ink">
+                        {fmtDate(sub?.currentPeriodEnd ?? null)}
+                      </strong>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      There&apos;s too little of this period left to charge for,
+                      so nothing comes off your card today. From{" "}
+                      <strong className="text-ink">
+                        {fmtDate(sub?.currentPeriodEnd ?? null)}
+                      </strong>{" "}
+                      it&apos;s {fmtCents(switchTo.recurringCents)}/
+                      {switchTo.billing === "annual" ? "year" : "month"}.
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm text-muted">
+                  You keep {PLANS[currentPlan].name} until{" "}
+                  <strong className="text-ink">
+                    {fmtDate(switchTo.effectiveAt)}
+                  </strong>
+                  , the time you&apos;ve already paid for. From then it&apos;s{" "}
+                  {PLANS[switchTo.plan].name} at{" "}
+                  {fmtCents(switchTo.recurringCents)}/
+                  {switchTo.billing === "annual" ? "year" : "month"}. Nothing is
+                  charged today and we don&apos;t refund the difference for the
+                  rest of this period.
+                </p>
+              )}
+              <p className="text-xs text-faint">
+                Nothing is deleted either way, your projects, tasks and history
+                all stay. VAT inclusive.
+              </p>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="ghost" onClick={() => setSwitchTo(null)}>
+                  Keep {PLANS[currentPlan].name}
+                </Button>
+                <Button
+                  loading={busy === switchTo.plan}
+                  onClick={() => void applySwitch(switchTo)}
+                >
+                  {switchTo.direction === "upgrade"
+                    ? `Pay ${
+                        switchTo.catchUpCents > 0
+                          ? fmtCents(switchTo.catchUpCents)
+                          : "nothing"
+                      } and move up`
+                    : `Move to ${PLANS[switchTo.plan].name}`}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </Dialog>
 
       {/* Cancellation experience: calm, honest, one soft off-ramp. */}
       <Dialog
@@ -451,7 +681,10 @@ export default function BillingSettingsPage() {
                 variant="quiet"
                 className="mt-2"
                 loading={busy === "team"}
-                onClick={() => void checkout("team")}
+                onClick={() => {
+                  setCancelOpen(false);
+                  startSwitch("team");
+                }}
               >
                 Switch to Team instead
               </Button>
