@@ -1,319 +1,196 @@
 import Link from "next/link";
-import { Mic, Sparkles } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { InView } from "@/components/marketing/in-view";
-import { Parallax } from "@/components/marketing/parallax";
-import { TypeLines } from "@/components/marketing/type-lines";
 
-/* Demo palette: avatar circles + project dots (the only sanctioned hexes). */
-const PEOPLE = {
-  naledi: "#6FAE87",
-  thabo: "#7A9BD1",
-} as const;
-const PROJECTS = {
-  vodacom: "#5B7C99",
-  liberty: "#B48EAD",
-} as const;
+/* ---------------------------------------------------------------------------
+ * THE HERO: EDITORIAL
+ *
+ * The stance: there is no product illustration, because the sentence is the
+ * product. A collage of tilted cards is a picture of software; a title page is
+ * a picture of a point of view. So this is set like the opening spread of a
+ * magazine: a masthead rule with a running head under it, one enormous type
+ * block, one deck, two actions, a colophon rule to close the page.
+ *
+ * Three decisions carry the whole thing.
+ *
+ * 1. THE LINE BREAKS ARE DESIGNED, NOT DISCOVERED. The browser never chooses
+ *    where this sentence turns. A wide screen gets two lines, so the promise
+ *    stays whole on the second one ("does the following up."); a phone gets
+ *    three at a narrower measure. Two rags, both hand set, neither one an
+ *    accident of the viewport. The deck below is broken by hand for the same
+ *    reason.
+ *
+ * 2. THE FULL STOP IS TEAL. One glyph. It is the only ornament in the type,
+ *    it costs nothing, and it is the argument in miniature: this product ends
+ *    the conversation. You do not notice it, then you do.
+ *
+ * 3. THE HANGING RULE IS A CHANGE BAR. In print, a vertical rule in the margin
+ *    marks the line that changed, the line you are meant to read. Here it runs
+ *    the height of the headline in hairline grey and turns accent for exactly
+ *    the last line, the one that carries the promise. It is also, not by
+ *    coincidence, the follow-up rail from the app: the same 2px mark that sits
+ *    on the leading edge of every piece of work inside the product.
+ *
+ * At 375px: the visual survives whole rather than simplifying, because it IS
+ * the type. The headline re-breaks to three hand-set lines, the hanging rule
+ * moves from a 2rem margin to 1rem, and its accent segment moves from the
+ * bottom half to the bottom third so it still lands on the payoff line. Nothing
+ * is hidden on a phone because nothing decorative exists to hide.
+ *
+ * Motion: two things move, both once, both transform and opacity only. Copy
+ * rises in reading order, and the change bar draws downward, which is the
+ * follow-up arriving. No idle loops, no bobbing, nothing repeating in the
+ * corner of the eye. Reduced motion collapses all of it to visible and still.
+ * ------------------------------------------------------------------------- */
 
-const WAVE_BARS = [
-  { height: "h-3", delay: "0ms" },
-  { height: "h-5", delay: "120ms" },
-  { height: "h-6", delay: "240ms" },
-  { height: "h-4", delay: "360ms" },
-  { height: "h-3", delay: "480ms" },
-];
-
-/* Last five solid: the streak the caption talks about. */
-const MOMENTUM_BLOCKS = [
-  "bg-accent/30",
-  "bg-accent/55",
-  "bg-accent/55",
-  "bg-accent",
-  "bg-accent",
-  "bg-accent",
-  "bg-accent",
-  "bg-accent",
-];
-
-const AUDIENCES = [
-  "Agencies",
-  "Design studios",
-  "Dev shops",
-  "Ops teams",
-  "Consultancies",
-  "Marketing teams",
-  "Accounting firms",
-  "NPOs",
-];
-
-function MiniTask({
-  title,
-  project,
-  dot,
-  initial,
-  avatar,
-  due,
-}: {
-  title: string;
-  project: string;
-  dot: string;
-  initial: string;
-  avatar: string;
-  due?: string;
-}) {
-  return (
-    <div className="rounded-control border border-line bg-surface p-3">
-      <p className="text-sm font-medium leading-snug text-ink">{title}</p>
-      <div className="mt-2 flex items-center gap-1.5">
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: dot }}
-        />
-        <span className="min-w-0 flex-1 truncate text-[11px] text-muted">
-          {project}
-        </span>
-        {due ? (
-          <span className="shrink-0 text-[11px] text-muted">{due}</span>
-        ) : null}
-        <span
-          className="grid size-5 shrink-0 place-items-center rounded-full text-[9px] font-semibold text-white"
-          style={{ backgroundColor: avatar }}
-        >
-          {initial}
-        </span>
-      </div>
-    </div>
-  );
+/* Type spec lives here rather than in arbitrary Tailwind values: this hero is
+ * a typographic object, and size, leading and tracking should be legible as one
+ * paragraph of intent. Both tracking and leading close up as the size grows,
+ * which is the optical rule the token scale already follows. */
+const CSS = `
+.hero-head {
+  font-size: clamp(2.25rem, 11vw, 3.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.032em;
 }
-
-/* Monday-signature floating chip, in Alpha teal. Bob on the wrapper so the
- * pop (fill-mode both) and the idle float never fight over transform. */
-function FloatChip({
-  label,
-  className,
-  bobDelay,
-  popDelay,
-}: {
-  label: string;
-  className: string;
-  bobDelay: string;
-  popDelay: string;
-}) {
-  return (
-    <div
-      className={cn("anim-bob absolute z-30", className)}
-      style={{ animationDelay: bobDelay }}
-    >
-      <div
-        className="anim anim-pop flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink shadow"
-        style={{ animationDelay: popDelay }}
-      >
-        <span className="size-1.5 shrink-0 rounded-full bg-accent" />
-        {label}
-      </div>
-    </div>
-  );
+@media (min-width: 40rem) {
+  .hero-head {
+    font-size: clamp(3rem, 8.4vw, 5.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.042em;
+  }
 }
-
-function BeltRow({ hidden = false }: { hidden?: boolean }) {
-  return (
-    <div aria-hidden={hidden || undefined} className="flex gap-2 pr-2">
-      {AUDIENCES.map((audience) => (
-        <span
-          key={audience}
-          className="whitespace-nowrap rounded-full border border-line bg-surface/70 px-3.5 py-1.5 text-sm text-muted"
-        >
-          {audience}
-        </span>
-      ))}
-    </div>
-  );
+/* The change bar draws top to bottom. Pairs with .anim, which supplies the
+   duration, the easing and the pause-until-in-view; only the name and the
+   origin are set here, so nothing fights the shared choreography. */
+@keyframes hero-draw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
+.hero-rule {
+  animation-name: hero-draw;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-rule { animation: none; transform: none; }
+}
+`;
+
+/* The colophon. Three facts, no adjectives, set as a printer's note under the
+ * closing rule so the page has a bottom edge instead of trailing off. */
+const COLOPHON = [
+  "One flat price, in rand",
+  "Works on a bad connection",
+  "Built for Android first",
+];
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div aria-hidden className="streak left-[-10%] top-[30%]" />
+    <section className="relative">
+      <style href="hero" precedence="medium">
+        {CSS}
+      </style>
 
-      <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <InView className="grid items-center gap-8 md:grid-cols-[55fr_45fr] md:gap-10">
-          {/* ------------------------------ copy ------------------------------ */}
-          <div>
-            <p className="anim anim-rise w-fit rounded-full border border-dashed border-line-strong px-3.5 py-1 text-xs font-medium text-muted">
-              For South African teams of 2–15 people
-            </p>
-            <h1
-              className="anim anim-rise mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] sm:text-6xl"
-              style={{ animationDelay: "80ms" }}
+      <div className="mx-auto w-full max-w-5xl px-5 py-20 md:px-8 md:py-32">
+        <InView>
+          {/* --------------------------- masthead ------------------------- */}
+          <div aria-hidden className="h-px w-full bg-line-strong" />
+          <p className="anim anim-rise mt-3 section-head">
+            For South African teams of 2–15 people
+          </p>
+
+          {/* ------------------------- the type block --------------------- */}
+          {/* Indented past the change bar, which hangs in the margin and lines
+              up in x with the left end of the rule above it. */}
+          <div className="mt-10 pl-4 sm:mt-14 sm:pl-8">
+            {/* The rise lives on the wrapper, not the h1, so the change bar
+                and the words travel together instead of drifting apart by the
+                18px of the entry while it plays. */}
+            <div
+              className="anim anim-rise relative"
+              style={{ animationDelay: "60ms" }}
             >
-              The workspace that does the following up.
-            </h1>
+              <span
+                aria-hidden
+                className="anim hero-rule absolute inset-y-0 -left-4 flex w-0.5 flex-col sm:-left-8"
+                style={{ animationDelay: "200ms" }}
+              >
+                <span className="flex-1 bg-line-strong" />
+                {/* Marks the last line: three lines on a phone, two on a
+                    desktop, so the accent always covers the promise. */}
+                <span className="h-1/3 shrink-0 bg-accent-line sm:h-1/2" />
+              </span>
+
+              <h1 className="hero-head font-semibold text-ink-strong">
+                The workspace{" "}
+                <br aria-hidden className="sm:hidden" />
+                that{" "}
+                <br aria-hidden className="hidden sm:inline" />
+                does the{" "}
+                <br aria-hidden className="sm:hidden" />
+                following up
+                <span className="text-accent-quiet">.</span>
+              </h1>
+            </div>
+
+            {/* The deck is deliberately a narrow column under a full-measure
+                headline. That width difference is the composition. Its break is
+                hand set too, on the comma, so the two parallel clauses stay on
+                one line together instead of the browser splitting them. */}
             <p
-              className="anim anim-rise mt-5 max-w-xl text-pretty text-lg text-muted"
+              className="anim anim-rise mt-8 max-w-[34rem] text-lede text-muted sm:mt-10 sm:text-[1.1875rem]"
               style={{ animationDelay: "160ms" }}
             >
-              Alpha Workspace is the project and work-management app that
-              follows up so your team doesn’t have to. Stop chasing status on
-              WhatsApp and email: work captures itself, reports itself, and
-              keeps moving even when the connection doesn’t, one flat price for
-              the whole team, in rand.
+              A project workspace where work captures itself,{" "}
+              <br aria-hidden className="hidden sm:inline" />
+              status reports itself, and nobody has to ask twice.
             </p>
+
             <div
-              className="anim anim-rise mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+              className="anim anim-rise mt-9 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:gap-7"
               style={{ animationDelay: "240ms" }}
             >
               <Link
                 href="/sign-in"
-                className="press rounded-[0.625rem] bg-accent px-6 py-3 text-center font-semibold text-on-accent hover:bg-accent-hover"
+                className="press rounded-control bg-accent px-7 py-3.5 text-center font-semibold text-on-accent hover:bg-accent-hover"
               >
                 Start free, no card
               </Link>
+              {/* Secondary is a rule under a word, not a second button. Two
+                  buttons side by side means neither one is the answer. */}
               <Link
                 href="/pricing"
-                className="press rounded-[0.625rem] border border-dashed border-line-strong px-6 py-3 text-center font-medium text-ink transition-colors hover:bg-raised"
+                className="press group inline-flex min-h-11 items-center justify-center font-medium text-ink sm:justify-start"
               >
-                See pricing
+                <span className="border-b border-line-strong pb-1 transition-colors group-hover:border-accent-line group-hover:text-accent-quiet">
+                  See pricing
+                </span>
               </Link>
             </div>
           </div>
 
-          {/* ---------------------- product collage --------------------------- */}
-          <Parallax speed={0.06}>
-            {/* Outer box owns the layout height (the VISUAL size); the canvas
-                is absolute, so scaling it down on phones leaves no layout
-                ghost below the collage. */}
-            <div aria-hidden className="relative h-[358px] sm:h-[480px]">
-            <div
-              className="absolute inset-x-0 top-0 h-[420px] origin-top scale-[0.85] sm:h-[480px] sm:scale-100"
-            >
-              {/* Back: a slice of the board. */}
-              <div
-                className="anim anim-pop absolute left-0 top-0 w-56 rotate-[-2deg] rounded-card border border-line bg-raised/80 p-3 shadow-[var(--shadow-overlay)]"
-                style={{ animationDelay: "150ms" }}
+          {/* --------------------------- colophon ------------------------- */}
+          <div aria-hidden className="mt-16 h-px w-full bg-line sm:mt-24" />
+          <ul
+            className="anim anim-rise mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 section-head"
+            style={{ animationDelay: "320ms" }}
+          >
+            {COLOPHON.map((fact, i) => (
+              /* One line each on a phone with no slashes, because a wrapped
+                 slash strands at a line edge and reads as a typo. On a wide
+                 screen they run together as one rule of printer's marks. */
+              <li
+                key={fact}
+                className="flex w-full items-center gap-x-3 sm:w-auto"
               >
-                <div className="flex items-center gap-2">
-                  <span className="size-3.5 shrink-0 rounded-full border-2 border-accent" />
-                  <p className="text-xs font-semibold text-ink">In progress</p>
-                  <span className="ml-auto text-[11px] font-medium text-faint">
-                    2
+                {i > 0 ? (
+                  <span aria-hidden className="hidden text-faint-mark sm:inline">
+                    /
                   </span>
-                </div>
-                <div className="mt-2.5 space-y-2">
-                  <MiniTask
-                    title="Homepage concepts"
-                    project="Sable rebrand"
-                    dot={PROJECTS.liberty}
-                    initial="N"
-                    avatar={PEOPLE.naledi}
-                  />
-                  <MiniTask
-                    title="Send the Karoo Coffee report"
-                    project="Karoo Coffee retainer"
-                    dot={PROJECTS.vodacom}
-                    initial="T"
-                    avatar={PEOPLE.thabo}
-                    due="Friday"
-                  />
-                </div>
-              </div>
-
-              {/* Mid: the briefing that wrote itself. */}
-              <div
-                className="anim anim-pop grad-card absolute right-0 top-28 z-10 w-64 rotate-[1.5deg] rounded-card border border-line bg-surface p-4 shadow-[var(--shadow-overlay)]"
-                style={{ animationDelay: "300ms" }}
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-3.5 shrink-0 text-accent" />
-                  <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-faint">
-                    Monday 06:30 · Weekly briefing
-                  </p>
-                </div>
-                <TypeLines
-                  lines={[
-                    "The team closed out 14 tasks against 11 new ones.",
-                    "Sable has had nothing move in 6 days; watch it.",
-                  ]}
-                  startDelay={650}
-                  step={420}
-                  className="mt-2.5 space-y-1.5"
-                  lineClassName="text-xs leading-relaxed text-ink/85"
-                />
-              </div>
-
-              {/* Front left: voice capture mid-flight. */}
-              <div
-                className="anim anim-pop absolute bottom-[108px] left-1 z-20 w-48 rotate-[3deg] rounded-card border border-line bg-surface p-3 shadow-[var(--shadow-overlay)]"
-                style={{ animationDelay: "400ms" }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
-                    <Mic className="size-3.5" />
-                  </span>
-                  <span className="flex h-6 items-center gap-1">
-                    {WAVE_BARS.map((bar, i) => (
-                      <span
-                        key={i}
-                        className={cn(
-                          "anim-wave w-1 rounded-full bg-accent",
-                          bar.height,
-                        )}
-                        style={{ animationDelay: bar.delay }}
-                      />
-                    ))}
-                  </span>
-                </div>
-                <p className="mt-2 text-[11px] text-muted">
-                  Naledi to send the report by Friday…
-                </p>
-              </div>
-
-              {/* Front right: momentum, the habit loop. */}
-              <div
-                className="anim anim-pop grad-card absolute bottom-3 right-5 z-20 w-40 rotate-[-2deg] rounded-card border border-line bg-surface p-3 shadow-[var(--shadow-overlay)]"
-                style={{ animationDelay: "450ms" }}
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-faint">
-                  Momentum
-                </p>
-                <div className="mt-2 flex justify-between">
-                  {MOMENTUM_BLOCKS.map((block, i) => (
-                    <span key={i} className={cn("size-4 rounded", block)} />
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-muted">5 day streak</p>
-              </div>
-
-              <FloatChip
-                label="2 tasks created from voice"
-                className="bottom-[86px] left-24"
-                bobDelay="-2.2s"
-                popDelay="500ms"
-              />
-              <FloatChip
-                label="Report wrote itself"
-                className="right-2 top-24"
-                bobDelay="-4.6s"
-                popDelay="650ms"
-              />
-            </div>
-            </div>
-          </Parallax>
-        </InView>
-
-        {/* ---------------------- audience belt ------------------------------ */}
-        <InView className="relative mt-10 overflow-hidden sm:mt-16">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bg to-transparent"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-bg to-transparent"
-          />
-          <div className="anim-marquee flex w-max">
-            <BeltRow />
-            <BeltRow hidden />
-          </div>
+                ) : null}
+                {fact}
+              </li>
+            ))}
+          </ul>
         </InView>
       </div>
     </section>
