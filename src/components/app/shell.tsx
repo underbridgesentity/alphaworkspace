@@ -65,6 +65,7 @@ const VoiceCaptureSheet = dynamic(
 );
 import { OfflineBadge } from "./offline-badge";
 import { Celebration } from "./celebration";
+import { UpdatePrompt } from "./update-prompt";
 import { UpgradePrompt } from "./upgrade-prompt";
 
 interface UIState {
@@ -440,6 +441,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         </Dialog>
 
         <Celebration />
+        <UpdatePrompt />
         <UpgradePrompt />
       </div>
     </UIContext.Provider>

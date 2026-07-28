@@ -34,14 +34,22 @@ queue) · Tailwind v4 · vitest + PGlite (74 tests).
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in at least DATABASE_URL and AUTH_SECRET
-npm run db:migrate           # apply checked-in migrations
-npm run seed                 # optional: demo agency with 3 weeks of history
-npm run dev
+createdb alphaworkspace_dev              # a throwaway local Postgres
+cp .env.dev-local.example .env.dev-local # local-only config, gitignored
+npm run db:migrate:local                 # apply checked-in migrations
+npm run seed:local                       # demo agency with 3 weeks of history
+npm run dev:local
 ```
 
-Sign in at `http://localhost:3000/sign-in`. Without `RESEND_API_KEY`, the magic
-link prints to the dev server console. The seed creates **Mzansi Studio**, sign in as `lerato@mzansi.studio` (owner).
+Sign in at `http://localhost:3000/sign-in` on the **Password** tab as
+`lerato@mzansi.studio` with the `SEED_DEV_PASSWORD` from `.env.dev-local`
+(`local-dev-password` by default). That is the ordinary password provider, not
+a dev bypass. Magic links work too: without `RESEND_API_KEY` the link prints to
+the dev server console.
+
+If a maintainer's `.env.local` points at a deployed database, `npm run dev`
+will talk to it. Prefer the `:local` scripts; see "Local development" in
+`AGENTS.md` for the guards that keep them apart.
 
 ### Environment
 
@@ -71,11 +79,13 @@ link prints to the dev server console. The seed creates **Mzansi Studio**, sign 
 ## Commands
 
 ```bash
+npm run dev:local      # dev server against the local database (preferred)
 npm run dev / build / start
-npm test               # 74 vitest tests (PGlite, no database needed)
+npm test               # vitest (PGlite, no database needed)
 npm run lint
 npm run db:generate    # regenerate migrations after schema changes
 npm run db:migrate     # apply migrations
+npm run db:migrate:local / seed:local / db:reset:local
 npm run seed           # demo workspace
 npm run push:keys      # VAPID key pair
 npm run icons          # regenerate PWA icons from brand assets

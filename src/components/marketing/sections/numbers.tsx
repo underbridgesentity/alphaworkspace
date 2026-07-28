@@ -1,6 +1,6 @@
 /**
- * Marketing section: scorecards + time tracking, "for the numbers work
- * can't count". Dark (inverted) band; copy right, animated scorecard demo
+ * Marketing section: scorecards + time tracking, "for the numbers the board
+ * cannot see". Dark (inverted) band; copy right, animated scorecard demo
  * left on md+. All choreography runs through the shared anim system and
  * only starts once the InView gate opens.
  */
@@ -78,8 +78,8 @@ export function Numbers() {
         drift={42}
         strength={0.05}
       />
-      <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <div className="grid items-center gap-10 md:grid-cols-2">
+      <div className="relative mx-auto w-full max-w-5xl px-5 py-chapter md:px-8 md:py-24">
+        <div className="grid items-center gap-group md:grid-cols-2 md:gap-14">
           {/* ----------------------------- demo ----------------------------- */}
           <Reveal delay={120} className="order-2 md:order-1">
             <Parallax speed={0.05}>
@@ -89,21 +89,21 @@ export function Numbers() {
                   className="grad-card rounded-card border border-dashed border-line-strong bg-surface p-5"
                 >
                   {/* Scorecard rows */}
-                  <div className="space-y-4">
+                  <div className="space-y-item">
                     {SCORECARDS.map((row) => (
                       <div key={row.label}>
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <p className="text-xs font-medium">{row.label}</p>
+                        <div className="mb-tight flex items-center justify-between gap-2">
+                          <p className="text-meta font-medium">{row.label}</p>
                           {row.target && (
-                            <span className="rounded-full bg-raised px-2 py-0.5 text-[10px] font-medium text-faint">
+                            <span className="rounded-full bg-raised px-2 py-0.5 text-micro text-faint">
                               {row.target}
                             </span>
                           )}
                         </div>
-                        <div className="relative h-6 overflow-hidden rounded-[6px] bg-raised">
+                        <div className="relative h-6 overflow-hidden rounded-chip bg-raised">
                           <div
                             className={cn(
-                              "anim anim-grow-x h-full rounded-[6px]",
+                              "anim anim-grow-x h-full rounded-chip",
                               row.fill,
                             )}
                             style={{ animationDelay: `${row.delay}ms` }}
@@ -111,7 +111,7 @@ export function Numbers() {
                           {/* Label lives outside the scaled fill so it never stretches. */}
                           <span
                             className={cn(
-                              "tabular absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold",
+                              "num absolute right-2 top-1/2 -translate-y-1/2 text-micro font-semibold",
                               row.valueClass,
                             )}
                           >
@@ -122,7 +122,7 @@ export function Numbers() {
                     ))}
                   </div>
 
-                  <div className="hairline-fade my-4" />
+                  <div className="hairline-fade my-item" />
 
                   {/* Running timer */}
                   <div
@@ -132,10 +132,10 @@ export function Numbers() {
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
                       <Timer className="size-4" />
                     </span>
-                    <p className="min-w-0 flex-1 truncate text-sm">
+                    <p className="min-w-0 flex-1 truncate text-body">
                       Design pass · running
                     </p>
-                    <span className="tabular flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-on-accent">
+                    <span className="num flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-meta font-semibold text-on-accent">
                       <span className="size-1.5 animate-pulse rounded-full bg-current opacity-70" />
                       1h 24m
                     </span>
@@ -143,30 +143,30 @@ export function Numbers() {
 
                   {/* Where the week's hours went, per person */}
                   <div
-                    className="anim anim-rise mt-4 space-y-2"
+                    className="anim anim-rise mt-item space-y-sibling"
                     style={{ animationDelay: "1200ms" }}
                   >
                     {HOURS.map((p) => (
                       <div key={p.name} className="flex items-center gap-2">
                         <span
-                          className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white"
+                          className="flex size-5 shrink-0 items-center justify-center rounded-full text-micro font-semibold text-white"
                           style={{ backgroundColor: p.color }}
                         >
                           {p.initial}
                         </span>
-                        <span className="w-16 shrink-0 truncate text-xs text-muted">
+                        <span className="w-16 shrink-0 truncate text-meta text-muted">
                           {p.name}
                         </span>
-                        <div className="h-4 min-w-0 flex-1 overflow-hidden rounded-[6px] bg-raised">
+                        <div className="h-4 min-w-0 flex-1 overflow-hidden rounded-chip bg-raised">
                           <div
                             className={cn(
-                              "anim anim-grow-x h-full rounded-[6px] bg-accent/60",
+                              "anim anim-grow-x h-full rounded-chip bg-accent/60",
                               p.fill,
                             )}
                             style={{ animationDelay: `${p.delay}ms` }}
                           />
                         </div>
-                        <span className="tabular w-12 shrink-0 text-right text-[11px] text-muted">
+                        <span className="num w-12 shrink-0 text-right text-micro text-muted">
                           {p.time}
                         </span>
                       </div>
@@ -180,9 +180,9 @@ export function Numbers() {
                   className="anim anim-pop absolute -top-3 right-6"
                   style={{ animationDelay: "1900ms" }}
                 >
-                  <div className="anim-bob flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-medium shadow">
+                  <div className="anim-bob flex items-center gap-tight rounded-full border border-line bg-surface px-2.5 py-1 text-micro shadow-e2">
                     <span className="size-1.5 rounded-full bg-accent" />
-                    In Monday’s briefing too
+                    In Monday&rsquo;s briefing too
                   </div>
                 </div>
               </InView>
@@ -191,20 +191,20 @@ export function Numbers() {
 
           {/* ----------------------------- copy ----------------------------- */}
           <Reveal className="order-1 md:order-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-faint">
-              For the numbers work can’t count
-            </p>
-            <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Scorecards and time, beside the work.
+            <p className="section-head">The numbers the board can&rsquo;t see</p>
+            <h2 className="mt-group text-balance text-display-sm sm:text-display">
+              The number you steer by, and where the hours went.
             </h2>
-            <p className="mt-3 max-w-prose text-muted">
-              New business calls, invoices sent, client NPS: add a scorecard
-              and fill in one number a week, it lands in the Monday briefing
-              with everything else. Start a timer on any task and see where the
-              week’s hours actually went.
+            <p className="mt-item max-w-prose text-lede text-muted">
+              New business calls made. Invoices sent. Add the number you
+              actually run the place on, fill it in once a week, and it lands
+              in Monday&rsquo;s briefing with everything else. Start a timer on
+              any task and find out what a week of that work really costs,
+              before you quote the next one like it.
             </p>
-            <p className="mt-3 text-xs text-faint">
-              Both come with the paid plans, Team and Studio alike.
+            <p className="mt-group text-body text-faint">
+              On both paid plans. Team and Studio share every feature, they
+              differ only in how many of you there are.
             </p>
           </Reveal>
         </div>

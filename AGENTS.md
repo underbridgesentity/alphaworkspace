@@ -13,12 +13,87 @@ connectivity, priced in rand.
 
 ## Commands
 
-- `npm run dev`, dev server (Turbopack)
+- `npm run dev:local`, dev server against the LOCAL database (use this one)
+- `npm run dev`, dev server against whatever `.env.local` says, which is PRODUCTION
 - `npm run build`, production build (must stay green)
 - `npm test`, vitest (DAL isolation, entitlements, PayFast, extraction, KPI)
 - `npm run db:generate` / `db:migrate` / `db:push`. Drizzle migrations
-- `npm run seed`, demo agency workspace (needs DATABASE_URL)
+- `npm run db:migrate:local` / `seed:local` / `db:reset:local`, see Local development
+- `npm run seed`, demo agency workspace (refuses a remote DATABASE_URL)
 - `npm run push:keys`, generate VAPID keys for web push
+
+## Local development
+
+**`.env.local` points at PRODUCTION.** Plain `npm run dev` therefore edits the
+live product, which is why the redesign shipped for weeks without anyone
+looking at it. Use the local database instead:
+
+```
+createdb alphaworkspace_dev            # once
+cp .env.dev-local.example .env.dev-local
+npm run db:migrate:local               # replays the checked-in migrations
+npm run seed:local                     # Mzansi Studio, 3 projects, 20 tasks
+npm run dev:local                      # http://localhost:3000
+```
+
+`npm run db:reset:local` does the drop, recreate, migrate and seed in one go
+(~2 minutes). It force-drops, so you can leave the dev server running: it
+reconnects on the next request. It pins `-h localhost` on `dropdb`/`createdb`
+so a stray `PGHOST` cannot aim that `--force` at a remote server.
+
+Seeded sign-in, at `/sign-in`, **Password** tab:
+
+```
+lerato@mzansi.studio  /  local-dev-password      (owner)
+```
+
+`/sign-in?mode=password` opens straight on that tab. `thabo@` is admin,
+`naledi@` and `sipho@` are members, same password. The workspace is put on the
+`studio` band by the seed so every surface is visible (the free band's
+2-project cap used to kill the seed on the third project).
+
+After a reset, **sign out before signing back in**. Sessions are JWTs, so the
+old cookie survives the database going away, and its `sub` now points at a user
+id that no longer exists. The app reads that as a signed-in stranger and shows
+"Create your workspace", which looks exactly like a failed seed. `/api/auth/signout`
+clears it. (Worth noting that this is production behaviour too: a deleted user
+holding a live JWT lands in onboarding rather than being signed out.)
+
+**There is no dev auth bypass, deliberately.** Local sign-in goes through the
+ordinary `Credentials("password")` provider that real users use: the seed just
+writes a real bcrypt hash for the demo accounts. A bypass that could ever reach
+production is worse than the inconvenience it solves, and this codebase already
+had a first-class password path, so it needed no new auth surface at all.
+Writing that hash is gated on four independent conditions in
+`src/lib/local-db.ts` (`NODE_ENV !== "production"`, `ALPHA_LOCAL_DEV=1`, a
+localhost `DATABASE_URL`, and an explicit `SEED_DEV_PASSWORD`), each of which
+fails closed. `tests/local-dev.test.ts` asserts all of that, and asserts the
+auth layer cannot even read the local-dev flag.
+
+How the production database is kept out of reach:
+
+- `scripts/with-local-env.ts` loads `.env.dev-local` and **refuses to spawn
+  anything** unless `DATABASE_URL` is on localhost/127.0.0.1.
+- It injects those values into the child process. `@next/env` never overwrites
+  a key that is already in the environment, so `.env.dev-local` beats
+  `.env.local` for the whole session. That is why it shadows every production
+  secret **by name**, not just `DATABASE_URL`: a local session must not be able
+  to charge live PayFast, send real email, or write to production storage. Add
+  any new secret's name there too.
+- `src/server/db/index.ts` asserts the same thing at connect time, so an
+  override slipping through later still throws instead of reaching production.
+- `npm run seed` refuses a non-local `DATABASE_URL` unless
+  `SEED_ALLOW_REMOTE=true`.
+
+Never edit `.env.local`, never copy values out of it, and never negate it in
+`.gitignore`. `.gitignore` still ignores every `.env*` file; only the two
+templates (`.env.example`, `.env.dev-local.example`) are negated, and neither
+holds a secret. Note `.env.example` has never actually been committed, so a
+fresh clone does not get it yet.
+
+Blank keys in `.env.dev-local` mean Google sign-in, attachments, meetings audio
+and web push show their documented "not enabled" state locally, and magic links
+and outbound email print to the dev server console.
 
 ## Product laws (override feature decisions)
 

@@ -3,10 +3,9 @@ import { PricingCards, PricingFootnote } from "@/components/marketing/pricing-ca
 import { Reveal } from "@/components/marketing/reveal";
 import { Blob } from "@/components/marketing/blob";
 import { Hero } from "@/components/marketing/sections/hero";
-import { BoardShow } from "@/components/marketing/sections/board-show";
+import { FollowingUp } from "@/components/marketing/sections/following-up";
 import { Capture } from "@/components/marketing/sections/capture";
 import { Report } from "@/components/marketing/sections/report";
-import { NudgeOffline } from "@/components/marketing/sections/nudge-offline";
 import { Numbers } from "@/components/marketing/sections/numbers";
 import { Closing } from "@/components/marketing/sections/closing";
 
@@ -18,19 +17,28 @@ export const metadata: Metadata = {
 /**
  * The landing page is a sequence of self-contained animated sections
  * (components/marketing/sections/*), each choreographed with the shared
- * .anim vocabulary and gated by <InView>. Order tells the product story:
- * see it move, capture, report, stay calm, count what matters, decide.
+ * .anim vocabulary and gated by <InView>.
+ *
+ * Order is an argument, not a menu. The promise the hero makes is followed
+ * up on immediately (FollowingUp), then the two halves of how that is
+ * possible: work gets in without typing (Capture), status gets out without
+ * compiling (Report). Numbers is the one paid-plan extra worth a band.
+ * Then price, then the ask.
+ *
+ * Two sections were cut rather than improved. BoardShow was "we have a
+ * kanban", which every competitor has and which proves nothing about
+ * following up; its job is done better by the rail demo inside FollowingUp.
+ * The manifesto band inside Closing quoted an internal product law at a
+ * customer, in the gap between the price and the button.
  */
 export default function LandingPage() {
   return (
     <>
       <Hero />
       <div className="hairline-fade mx-auto max-w-4xl" />
-      <BoardShow />
+      <FollowingUp />
       <Capture />
       <Report />
-      <div className="hairline-fade mx-auto max-w-4xl" />
-      <NudgeOffline />
       <Numbers />
 
       {/* ------------------------------ pricing ---------------------------- */}
@@ -42,16 +50,23 @@ export default function LandingPage() {
           strength={0.05}
         />
         <div aria-hidden className="streak right-[-6%] bottom-[18%]" style={{ animationDelay: "6s" }} />
-        <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-          <Reveal>
-            <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-              Flat bands. No per-seat maths.
-            </h2>
-            <p className="mt-2 text-center text-muted">
-              Your finance lead will read this once and nod.
-            </p>
-          </Reveal>
-          <div className="mt-10">
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-chapter md:px-8 md:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <Reveal>
+              <p className="section-head">What it costs</p>
+            </Reveal>
+            <Reveal delay={80}>
+              <h2 className="mt-group text-balance text-display-sm sm:text-display">
+                Flat bands. No per-seat maths.
+              </h2>
+            </Reveal>
+            <Reveal delay={160}>
+              <p className="mt-item text-lede text-muted">
+                Hiring your fifth person does not change what you pay.
+              </p>
+            </Reveal>
+          </div>
+          <div className="mt-section">
             <PricingCards />
           </div>
           <PricingFootnote />

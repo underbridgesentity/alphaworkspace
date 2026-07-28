@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Templates only. Never negate .env.local or .env.dev-local: both hold secrets,
+# and .env.local points at PRODUCTION.
+!.env.example
+!.env.dev-local.example
 
 # vercel
 .vercel

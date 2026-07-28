@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "tsx scripts/with-local-env.ts next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,7 +14,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx scripts/seed.ts",
+    "db:migrate:local": "tsx scripts/with-local-env.ts drizzle-kit migrate",
+    "db:studio:local": "tsx scripts/with-local-env.ts drizzle-kit studio",
+    "db:reset:local": "dropdb -h localhost --if-exists --force alphaworkspace_dev && createdb -h localhost alphaworkspace_dev && npm run db:migrate:local && npm run seed:local",
+    "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
+    "seed:local": "tsx scripts/with-local-env.ts npx tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "push:keys": "node scripts/generate-vapid-keys.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },

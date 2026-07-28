@@ -2,14 +2,20 @@
  * Seeds a demo agency workspace with three weeks of realistic history so the
  * dashboard, My Work and the weekly narrative have real signal on first open.
  *
- * Run: npm run seed   (needs DATABASE_URL; safe to re-run, it makes a fresh
- * uniquely-slugged workspace each time)
+ * Run: npm run seed:local   (safe to re-run, it makes a fresh uniquely-slugged
+ * workspace each time)
  *
- * Sign in afterwards with lerato@mzansi.studio (magic link prints to the dev
- * console when RESEND_API_KEY is unset).
+ * Sign in afterwards as lerato@mzansi.studio. When SEED_DEV_PASSWORD is set
+ * (see .env.dev-local) the demo users get that password and you sign in
+ * through the ordinary password provider, no email round trip. Otherwise they
+ * are magic-link only and the link prints to the dev console.
+ *
+ * This script refuses a non-local DATABASE_URL unless SEED_ALLOW_REMOTE=true,
+ * because seeding production is how demo data ends up in the real product.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/server/db/schema";
 import type { Db } from "../src/server/db";
@@ -21,27 +27,74 @@ import { createTask, updateTask } from "../src/server/dal/tasks";
 import { addComment } from "../src/server/dal/comments";
 import { addDays, todaySAST } from "../src/lib/dates";
 import { runWeeklyNarratives } from "../src/server/jobs/weekly-narrative";
+import { isLocalDatabaseUrl, localSeedPassword } from "../src/lib/local-db";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error("DATABASE_URL is required (see .env.example)");
+  console.error("DATABASE_URL is required (see .env.dev-local.example)");
   process.exit(1);
 }
+
+// Demo data belongs in a throwaway database. Seeding the live one is how the
+// real product ends up full of Mzansi Studio; it takes a deliberate opt-in.
+if (!isLocalDatabaseUrl(url) && process.env.SEED_ALLOW_REMOTE !== "true") {
+  console.error(
+    "\nDATABASE_URL is not a local Postgres URL, refusing to seed.\n" +
+      "  Use: npm run seed:local\n" +
+      "  To seed a remote database on purpose, set SEED_ALLOW_REMOTE=true.\n",
+  );
+  process.exit(1);
+}
+
+/**
+ * Whether to give the demo users a password. This is NOT an auth bypass: the
+ * hash goes through the same bcrypt + Credentials("password") provider real
+ * users sign in with. It is gated on NODE_ENV, an explicit flag, a local
+ * DATABASE_URL and a supplied password, and fails closed on all four.
+ */
+const seedPassword = localSeedPassword(process.env);
 
 const client = postgres(url, { prepare: false, max: 4 });
 const db = drizzle(client, { schema }) as unknown as Db;
 
 const at = (day: string, hour = 10) => new Date(`${day}T${String(hour).padStart(2, "0")}:00:00+02:00`);
 
+/**
+ * One hash for every demo user. Cost 11 matches BCRYPT_COST in
+ * src/server/auth-password.ts, and costs about a third of a second, so it is
+ * worth computing once rather than per user.
+ */
+let sharedHash: string | null | undefined;
+async function demoPasswordHash() {
+  if (sharedHash === undefined) {
+    sharedHash = seedPassword.allowed
+      ? await bcrypt.hash(seedPassword.password, 11)
+      : null;
+  }
+  return sharedHash;
+}
+
 async function user(email: string, name: string) {
+  const passwordHash = await demoPasswordHash();
+
   const [existing] = await db
     .select({ id: schema.users.id })
     .from(schema.users)
     .where(eq(schema.users.email, email));
-  if (existing) return existing.id;
+  if (existing) {
+    // Re-seeding reuses the person, so refresh the password too, otherwise the
+    // second run leaves you locked out with a stale hash.
+    if (passwordHash) {
+      await db
+        .update(schema.users)
+        .set({ passwordHash, emailVerified: new Date() })
+        .where(eq(schema.users.id, existing.id));
+    }
+    return existing.id;
+  }
   const [row] = await db
     .insert(schema.users)
-    .values({ email, name, emailVerified: new Date() })
+    .values({ email, name, emailVerified: new Date(), passwordHash })
     .returning({ id: schema.users.id });
   return row.id;
 }
@@ -91,6 +144,15 @@ async function main() {
     name: "Mzansi Studio",
     seedStarter: false,
   });
+
+  // A demo workspace exists to show every surface, so put it on the top band.
+  // Without this the free band's 2-project cap kills the seed on the third
+  // project. No entitlements snapshot, so it tracks PLANS.studio as that config
+  // changes.
+  await db
+    .update(schema.workspaces)
+    .set({ plan: "studio" })
+    .where(eq(schema.workspaces.id, ws.id));
   for (const [userId, role] of [
     [thabo, "admin"],
     [naledi, "member"],
@@ -236,9 +298,16 @@ async function main() {
   console.log(`\n✔ Seeded workspace "Mzansi Studio" (${ws.slug})`);
   console.log(`  ${created} tasks across 3 client projects, 4 members`);
   console.log(`  narratives generated: ${narrative.generated}`);
-  console.log(`\nSign in as lerato@mzansi.studio (owner), thabo@… (admin),`);
-  console.log(`naledi@… or sipho@… (members) via magic link.`);
-  console.log(`Without RESEND_API_KEY the link prints to the dev server console.\n`);
+  console.log(`\nMembers: lerato@mzansi.studio (owner), thabo@mzansi.studio (admin),`);
+  console.log(`naledi@mzansi.studio and sipho@mzansi.studio (members).`);
+  if (seedPassword.allowed) {
+    console.log(`\nSign in at /sign-in, Password tab:`);
+    console.log(`  email    lerato@mzansi.studio`);
+    console.log(`  password ${seedPassword.password}   (from SEED_DEV_PASSWORD)\n`);
+  } else {
+    console.log(`\nNo password set (${seedPassword.reason}), sign in by magic link.`);
+    console.log(`Without RESEND_API_KEY the link prints to the dev server console.\n`);
+  }
 
   await client.end();
 }

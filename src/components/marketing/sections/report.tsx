@@ -1,9 +1,17 @@
 /**
- * "It reports itself": copy beside a live-feeling dashboard collage. KPI
- * tiles rise in, momentum blocks pop one by one, then the Monday briefing
- * writes itself line by line and the delivery chip lands. All choreography
- * is CSS one-shots gated by <InView>; server component, zero client JS here.
+ * "It reports itself": copy beside a live-feeling dashboard collage.
+ *
+ * The KPI block is deliberately NOT three identical tiles. Completion rate is
+ * the number an agency owner actually reports upward, so it gets the hero
+ * treatment plus the LEDGER LINE (globals.css, signature 2): the figure sits
+ * on a 2px rule filled to its own share, so magnitude is legible with no
+ * chart and no legend. Overdue and cycle time sit a step down. Hierarchy is
+ * the point; a row of equals reads as a row of nothings.
+ *
+ * All choreography is CSS one-shots gated by <InView>; server component,
+ * zero client JS here beyond CountUp and TypeLines.
  */
+import type { CSSProperties } from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { InView } from "@/components/marketing/in-view";
@@ -35,63 +43,67 @@ export function Report() {
         className="streak left-[-12%] bottom-[10%]"
         style={{ animationDelay: "4s" }}
       />
-      <div className="relative mx-auto w-full max-w-5xl px-5 py-16 md:px-8 md:py-24">
-        <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
+      <div className="relative mx-auto w-full max-w-5xl px-5 py-chapter md:px-8 md:py-24">
+        <div className="grid items-center gap-group md:grid-cols-2 md:gap-14">
           {/* ------------------------------ copy ---------------------------- */}
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-wider text-faint">
-              It reports itself
-            </p>
-            <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Nobody compiles a status report. Ever again.
+            <p className="section-head">It reports itself</p>
+            <h2 className="mt-group text-balance text-display-sm sm:text-display">
+              Nobody compiles the status report.
             </h2>
-            <p className="mt-3 max-w-prose text-pretty text-muted">
-              Zero-setup KPIs read straight from the work: what got done, what
-              slipped, who&rsquo;s overloaded, which client project has gone
-              quiet. Every Monday a short, human briefing lands in-app, by email
-              and by push, written like a sharp ops lead, not a data dump.
+            <p className="mt-item max-w-prose text-pretty text-lede text-muted">
+              The KPIs read straight from the work, with nothing to set up:
+              what closed, what slipped, who is carrying too much, which client
+              project has gone quiet. By 06:30 on Monday the week is written up
+              and sent, in-app, by email and by push.
+            </p>
+            <p className="mt-group text-body text-faint">
+              By the time the first client email arrives, you already know
+              what to tell them.
             </p>
           </Reveal>
 
           {/* ------------------------ live dashboard ------------------------ */}
           <div aria-hidden>
-            <InView className="grid gap-2">
-              {/* KPI tiles */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-4">
-                  <p className="text-[11px] font-medium leading-tight text-faint">
-                    Completion rate
-                  </p>
-                  <p className="tabular mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                    <CountUp value={62} suffix="%" />
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-faint">this week</p>
-                </div>
+            <InView className="grid gap-sibling">
+              {/* The number you report upward, on its ledger line. */}
+              <div className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-item">
+                <p className="section-head">Completion rate, this week</p>
+                <p className="ledger mt-tight num-hero">
+                  <CountUp value={62} suffix="%" />
+                  <span className="ledger-track">
+                    <span
+                      className="ledger-fill"
+                      style={{ "--fill": 0.62 } as CSSProperties}
+                    />
+                  </span>
+                </p>
+                <p className="mt-tight text-meta text-faint">
+                  14 of 22 closed, up from 51% last week
+                </p>
+              </div>
+
+              {/* A step down: the two numbers that need a decision, not a report. */}
+              <div className="grid grid-cols-2 gap-sibling">
                 <div
-                  className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-4"
+                  className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-item"
                   style={{ animationDelay: "110ms" }}
                 >
-                  <p className="text-[11px] font-medium leading-tight text-faint">
-                    Overdue
-                  </p>
-                  <p className="tabular mt-1 text-xl font-semibold tracking-tight text-danger sm:text-2xl">
+                  <p className="section-head">Overdue</p>
+                  <p className="mt-tight num text-display-sm text-danger">
                     <CountUp value={3} />
                   </p>
-                  <p className="mt-0.5 text-[11px] text-faint">
+                  <p className="mt-hair text-meta text-faint">
                     need a decision
                   </p>
                 </div>
                 <div
-                  className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-4"
+                  className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-item"
                   style={{ animationDelay: "220ms" }}
                 >
-                  <p className="text-[11px] font-medium leading-tight text-faint">
-                    Cycle time
-                  </p>
-                  <p className="tabular mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                    2.4d
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-faint">
+                  <p className="section-head">Cycle time</p>
+                  <p className="mt-tight num text-display-sm">2.4d</p>
+                  <p className="mt-hair text-meta text-faint">
                     created to done
                   </p>
                 </div>
@@ -99,14 +111,14 @@ export function Report() {
 
               {/* momentum strip */}
               <div
-                className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-4"
+                className="anim anim-rise grad-card rounded-card border border-dashed border-line bg-surface p-item"
                 style={{ animationDelay: "330ms" }}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium text-faint">Momentum</p>
-                  <p className="text-right text-xs text-faint">5 day streak</p>
+                  <p className="section-head">Momentum</p>
+                  <p className="text-meta text-faint">5 day streak</p>
                 </div>
-                <div className="mt-2.5 flex gap-1 sm:gap-1.5">
+                <div className="mt-tight flex gap-1 sm:gap-1.5">
                   {MOMENTUM.map((tone, i) => (
                     <span
                       key={i}
@@ -125,11 +137,11 @@ export function Report() {
                 className="anim anim-rise relative"
                 style={{ animationDelay: "500ms" }}
               >
-                <div className="grad-card rounded-card border border-dashed border-line-strong bg-surface p-4 sm:p-5">
-                  <div className="flex items-center gap-2">
+                <div className="grad-card rounded-card border border-dashed border-line-strong bg-surface p-item sm:p-5">
+                  <div className="flex items-center gap-tight">
                     <Sparkles className="size-4 text-accent" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-faint">
-                      MONDAY 06:30 · WEEKLY BRIEFING
+                    <p className="section-head">
+                      Monday 06:30 · Weekly briefing
                     </p>
                   </div>
                   <TypeLines
@@ -140,12 +152,12 @@ export function Report() {
                     ]}
                     startDelay={900}
                     step={700}
-                    className="mt-3 space-y-2"
-                    lineClassName="text-sm leading-relaxed text-ink/90"
+                    className="mt-item space-y-sibling"
+                    lineClassName="text-dense leading-relaxed text-ink/90"
                   />
-                  <p className="mt-3 text-xs text-faint">
-                    Written by Alpha from your team&rsquo;s actual activity.
-                    Nobody compiled it.
+                  <p className="mt-item text-meta text-faint">
+                    Assembled from what actually happened. Nobody sat down to
+                    write it.
                   </p>
                 </div>
 
@@ -154,7 +166,7 @@ export function Report() {
                   className="anim anim-pop absolute -right-2 -top-3"
                   style={{ animationDelay: "3200ms" }}
                 >
-                  <div className="anim-bob flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-medium shadow">
+                  <div className="anim-bob flex items-center gap-tight whitespace-nowrap rounded-full border border-line bg-surface px-2.5 py-1 text-micro shadow-e2">
                     <span className="size-1.5 rounded-full bg-accent" />
                     Landed Monday 06:30
                   </div>

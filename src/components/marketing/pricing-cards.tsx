@@ -27,8 +27,11 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
           ...(plan.features.includes("scorecards")
             ? ["Scorecards for the numbers you steer by"]
             : []),
+          // "as they ship" was a hedge left over from before Phase 2 landed.
+          // Both are shipped; saying otherwise on the pricing card reads as a
+          // roadmap promise and costs trust.
           ...(plan.features.includes("time_tracking")
-            ? ["Time tracking & client reports, as they ship"]
+            ? ["Time tracking and client reports"]
             : []),
           ...(detailed
             ? ["Offline-first PWA", "Boards, My Work, search, calendar"]
@@ -43,22 +46,24 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
             )}
           >
             {highlight && (
-              <p className="mb-2 w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+              <p className="mb-sibling w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-micro font-semibold text-accent">
                 Most teams land here
               </p>
             )}
-            <h3 className="text-lg font-semibold tracking-tight">{plan.name}</h3>
-            <p className="mt-0.5 text-sm text-muted">{plan.tagline}</p>
-            <p className="mt-4 text-3xl font-semibold tracking-tight tabular">
+            <h3 className="text-title">{plan.name}</h3>
+            <p className="mt-hair text-dense text-muted">{plan.tagline}</p>
+            {/* The price is the number the page is building towards, so it is
+                the only display-scale figure in the card. */}
+            <p className="mt-item num-hero">
               {plan.priceMonthlyZar === 0 ? "R0" : formatZar(plan.priceMonthlyZar)}
-              <span className="text-sm font-normal text-faint">/month</span>
+              <span className="ml-0.5 text-meta font-normal text-faint">/month</span>
             </p>
-            <p className="mt-0.5 text-xs text-faint">
+            <p className="mt-tight text-meta text-faint">
               {plan.priceMonthlyZar === 0
                 ? "Free forever"
                 : `or ${formatZar(plan.priceAnnualZar)}/year, two months free`}
             </p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted">
+            <ul className="mt-item flex-1 space-y-sibling text-dense text-muted">
               {rows.map((row) => (
                 <li key={row} className="flex gap-2">
                   <Check className="mt-0.5 size-4 shrink-0 text-ok" />
@@ -73,7 +78,7 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
                   : `/sign-in?next=${encodeURIComponent(`/app?plan=${plan.id}`)}`
               }
               className={cn(
-                "press mt-5 rounded-control py-2.5 text-center text-sm font-semibold",
+                "press mt-group rounded-control py-2.5 text-center text-body font-semibold",
                 highlight
                   ? "bg-accent text-on-accent hover:bg-accent-hover"
                   : "bg-raised text-ink hover:bg-overlay",
@@ -89,11 +94,16 @@ export function PricingCards({ detailed = false }: { detailed?: boolean }) {
   );
 }
 
+/**
+ * Deliberately narrow. The rand/VAT/PayFast facts moved to the proof strip in
+ * <Closing>, so this footnote is left with the one thing nothing else on the
+ * page says: what happens if you stop paying.
+ */
 export function PricingFootnote() {
   return (
-    <p className="mt-4 text-center text-xs text-faint">
-      Prices in rand, VAT inclusive · billed via PayFast · no per-seat maths ·
-      cancel anytime and keep everything on Free.
+    <p className="mt-item text-center text-meta text-faint">
+      Change or cancel any time. A cancelled workspace drops back to Free at
+      the end of the period you paid for. Nothing is deleted.
     </p>
   );
 }

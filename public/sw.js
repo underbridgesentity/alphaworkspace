@@ -11,6 +11,10 @@
  *    app is closed; open tabs are asked to flush instead (idempotent either
  *    way, creates carry client UUIDs, updates are last-write-wins)
  *  - web push: notification + deep link
+ *  - new-version handshake: this worker WAITS instead of claiming mid-session,
+ *    and tells the page when the copy it painted has been superseded. The page
+ *    offers a refresh (see components/app/update-prompt.tsx), we never force
+ *    one.
  *
  * Bump VERSION to invalidate caches on deploy of breaking asset changes.
  */
@@ -35,13 +39,21 @@ const PRECACHE = [
   "/fonts/instrument-sans-normal-latin-ext.woff2",
 ];
 
+/**
+ * No skipWaiting here, deliberately. A worker that claims the moment it
+ * installs starts its activate handler, which deletes every cache from the
+ * previous VERSION, underneath tabs that are still running the previous
+ * build and may be mid-recording or mid-upload. Instead a new worker sits in
+ * `waiting` until a page asks it to take over (the message below), which is
+ * the user pressing Refresh. Nobody is interrupted, and a user who never
+ * accepts simply gets the new worker the next time every tab is closed.
+ */
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "aw-activate-update") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -125,6 +137,37 @@ function isStorablePage(response) {
   );
 }
 
+/**
+ * A build fingerprint for a page response: the hashed asset URLs its <head>
+ * pulls in, deduped and sorted. Two renders of the same page differ in their
+ * body (that is the work data), so comparing documents is useless; the head's
+ * script and stylesheet chunks are content-hashed at build time and change
+ * only when the code does. Deriving it from the response we already hold
+ * beats asking the network for a version number, which would cost every
+ * navigation an extra round trip on a link that has none to spare.
+ *
+ * Deliberately blind to server-only changes: a false "there is a new version"
+ * is a nag, a missed one just means the next navigation paints it (the fresh
+ * copy lands in the cache either way). Bias to silence.
+ */
+async function buildTag(response) {
+  const text = await response.text();
+  const end = text.indexOf("</head>");
+  const head = end > 0 ? text.slice(0, end) : text.slice(0, 4096);
+  return [...new Set(head.match(/\/_next\/static\/[^"']+/g) || [])].sort().join("|");
+}
+
+/**
+ * Tell the tab that was just handed a stale page, and only that tab. Other
+ * windows get told when they navigate, so a tab already running the new build
+ * can never be nagged about it.
+ */
+async function announceUpdate(event) {
+  const id = event.resultingClientId || event.clientId;
+  const client = id ? await self.clients.get(id) : null;
+  if (client) client.postMessage({ type: "aw-update" });
+}
+
 /** Insertion-ordered, so the oldest writes fall off the front. */
 async function trimCache(cache, limit) {
   const keys = await cache.keys();
@@ -164,6 +207,12 @@ async function revoked(event, url) {
 async function staleWhileRevalidate(event, request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
+  // Fingerprint the copy we are about to paint, now, while its body is still
+  // ours to read: once a response is handed to respondWith its stream is
+  // locked and clone() throws. The catch is load-bearing too, on a failed
+  // revalidate nothing ever awaits this promise, and an unhandled rejection
+  // in a service worker kills the worker.
+  const paintedTag = cached ? buildTag(cached.clone()).catch(() => null) : null;
 
   const revalidate = fetch(request).then(async (response) => {
     if (isStorablePage(response)) {
@@ -187,10 +236,18 @@ async function staleWhileRevalidate(event, request, cacheName, fallbackUrl) {
 
   event.waitUntil(
     revalidate
-      .then((response) => {
+      .then(async (response) => {
         // Opaque because navigations fetch with redirect:"manual", so we know
         // this URL redirects now but not to where. Enough to act on.
         if (response.type === "opaqueredirect") return revoked(event, request.url);
+        if (!isStorablePage(response)) return;
+        // The server has since answered this URL with a different build, so
+        // the page on screen is the previous version of the app. Say so.
+        const [painted, fresh] = await Promise.all([
+          paintedTag,
+          buildTag(response.clone()),
+        ]);
+        if (painted && fresh && painted !== fresh) await announceUpdate(event);
       })
       .catch(() => undefined),
   );

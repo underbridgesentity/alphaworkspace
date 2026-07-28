@@ -1,0 +1,20 @@
+{
+  // For node scripts run through tsx (seed, local runner). Identical to the app
+  // tsconfig except that `server-only` resolves to a no-op.
+  //
+  // `server-only` is not an installed package: Next's compiler aliases it away
+  // in the server bundle, and vitest aliases it in vitest.config.ts. Plain tsx
+  // does neither, so importing anything that reaches src/server/email/send.ts
+  // died with MODULE_NOT_FOUND. Stubbing it HERE keeps the real guard intact
+  // for the app build, where it is the thing stopping server code leaking into
+  // a client component.
+  //
+  // `paths` replaces rather than merges when extending, so "@/*" is repeated.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "server-only": ["./tests/mocks/server-only.ts"]
+    }
+  }
+}
