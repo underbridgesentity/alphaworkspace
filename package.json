@@ -20,7 +20,9 @@
     "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "seed:local": "tsx scripts/with-local-env.ts npx tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "push:keys": "node scripts/generate-vapid-keys.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
@@ -45,6 +47,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
