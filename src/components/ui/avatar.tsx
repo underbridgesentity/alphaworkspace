@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 
 const palette = [
-  "#5B7C99", "#6FAE87", "#D9A13B", "#7A9BD1", "#B48EAD", "#66757C",
+  "#5B7C99", "#6FAE87", "#CBA733", "#7A9BD1", "#B48EAD", "#66757C",
 ];
 
 function initials(name: string | null, email?: string): string {

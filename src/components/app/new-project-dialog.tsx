@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 import type { ProjectDTO } from "@/lib/types";
 
 const COLORS = [
-  "#5B7C99", "#6FAE87", "#D9A13B", "#7A9BD1",
+  "#5B7C99", "#6FAE87", "#CBA733", "#7A9BD1",
   "#B48EAD", "#8FA876", "#66757C", "#A46D8C",
 ];
 

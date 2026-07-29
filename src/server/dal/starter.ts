@@ -39,7 +39,7 @@ export async function seedStarterProject(ctx: Ctx): Promise<{ projectId: string 
   });
 
   const design = await createLabel(ctx, { name: "Design", color: "#5B7C99" });
-  const copy = await createLabel(ctx, { name: "Copy", color: "#D9A13B" });
+  const copy = await createLabel(ctx, { name: "Copy", color: "#CBA733" });
   const dev = await createLabel(ctx, { name: "Dev", color: "#6FAE87" });
   await createLabel(ctx, { name: "Admin", color: "#66757C"});
 

@@ -177,7 +177,7 @@ async function main() {
   const ctxNaledi = await resolveCtx(db, naledi, ws.id);
 
   const design = await createLabel(ctx, { name: "Design", color: "#5B7C99" });
-  const copy = await createLabel(ctx, { name: "Copy", color: "#D9A13B" });
+  const copy = await createLabel(ctx, { name: "Copy", color: "#CBA733" });
   const dev = await createLabel(ctx, { name: "Dev", color: "#6FAE87" });
   const admin = await createLabel(ctx, { name: "Admin", color: "#66757C" });
 
@@ -193,7 +193,7 @@ async function main() {
   });
   const karoo = await createProject(ctx, {
     name: "Karoo Coffee website",
-    color: "#D9A13B",
+    color: "#CBA733",
     clientName: "Karoo Coffee Co.",
   });
 
