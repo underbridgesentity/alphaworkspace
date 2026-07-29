@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { STATE } from "./paths";
+import { expectClean, watch, workspaceSlug } from "./helpers";
 
 /**
  * Every signed-in surface, opened for real and captured.
@@ -34,39 +35,6 @@ const SURFACES: Surface[] = [
   { name: "billing", path: (w) => `/w/${w}/settings/billing`, ready: /plan|band|billing/i },
 ];
 
-/** The seeded workspace slug, read once from wherever we land after sign-in. */
-async function workspaceSlug(page: Page): Promise<string> {
-  await page.goto("/app");
-  await page.waitForURL(/\/w\/[^/]+/, { timeout: 30_000 });
-  const m = page.url().match(/\/w\/([^/?#]+)/);
-  if (!m) throw new Error(`no workspace in url: ${page.url()}`);
-  return m[1];
-}
-
-/**
- * Noise from `next dev` itself, not from the app. The HMR socket cannot open
- * because Playwright browses 127.0.0.1 while the dev server expects localhost,
- * and it says nothing about whether the product works. Kept as a narrow list
- * rather than a broad filter, so a real websocket bug still fails the run.
- */
-const DEV_NOISE = [/_next\/webpack-hmr/, /Download the React DevTools/];
-
-/** Console errors and 5xx/failed requests collected for the life of a page. */
-function watch(page: Page) {
-  const problems: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() !== "error") return;
-    const text = m.text();
-    if (DEV_NOISE.some((re) => re.test(text))) return;
-    problems.push(`console: ${text.slice(0, 200)}`);
-  });
-  page.on("pageerror", (e) => problems.push(`pageerror: ${String(e).slice(0, 200)}`));
-  page.on("response", (r) => {
-    if (r.status() >= 500) problems.push(`${r.status()} ${r.url().slice(0, 120)}`);
-  });
-  return problems;
-}
-
 test.describe("signed-in surfaces render", () => {
   for (const s of SURFACES) {
     test(s.name, async ({ page }, testInfo) => {
@@ -90,7 +58,7 @@ test.describe("signed-in surfaces render", () => {
         contentType: "image/png",
       });
 
-      expect(problems, `runtime problems on ${s.name}:\n${problems.join("\n")}`).toEqual([]);
+      expectClean(problems, s.name);
     });
   }
 });

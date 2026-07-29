@@ -9,7 +9,14 @@ import { defineConfig, devices } from "@playwright/test";
  * suite that fails because of a port collision teaches nobody anything.
  */
 const PORT = Number(process.env.E2E_PORT ?? 3100);
-const baseURL = `http://127.0.0.1:${PORT}`;
+/**
+ * localhost, not 127.0.0.1. Next 16 blocks cross-origin requests to its own dev
+ * resources, and it treats the two as different origins, so browsing the IP
+ * literal got every dev chunk refused: the pages still SERVER rendered and
+ * still looked right in a screenshot, but React never hydrated and no click in
+ * the product did anything. Read-only tests cannot see that; write tests can.
+ */
+const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",

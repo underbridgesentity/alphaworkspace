@@ -350,7 +350,15 @@ function NoteField({
         />
       ) : (
         <div
-          onClick={() => setEditing(true)}
+          onClick={(e) => {
+            // Ticking a step must NOT drop the note into edit mode: the click
+            // used to bubble up here and swap the rendered checklist for the
+            // raw textarea, so the list you were ticking vanished under you.
+            if ((e.target as HTMLElement).closest("input[type='checkbox']")) {
+              return;
+            }
+            setEditing(true);
+          }}
           className="mt-2 min-h-[3rem] cursor-text rounded-control border border-line bg-surface px-3 py-2.5 text-body leading-relaxed"
         >
           <RichText text={note} onToggleCheck={toggle} />
@@ -487,14 +495,25 @@ function PrivateTaskDialog({
           </span>
         </label>
 
+        {/* mousedown is prevented on both, for the same reason the step
+            controls above prevent it: with the note open, pressing a button
+            blurs the textarea, which swaps it for the shorter rendered view,
+            which reflows the dialog and moves the button out from under the
+            finger before the click lands. The first press was being swallowed. */}
         <div className="mt-item flex items-center gap-2">
-          <Button size="sm" loading={busy === "save"} onClick={save}>
+          <Button
+            size="sm"
+            loading={busy === "save"}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={save}
+          >
             Save
           </Button>
           <Button
             size="sm"
             variant="ghost"
             disabled={busy !== null}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={remove}
             className="text-danger"
           >
