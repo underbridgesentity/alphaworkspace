@@ -59,6 +59,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  /**
+   * Two Next processes sharing one build directory clobber each other's output
+   * and leave the dev server rebuilding in a loop with pages that never settle.
+   * That happens whenever a local dev server runs alongside another one (or
+   * alongside `npm run build`), which is exactly the setup that finally let the
+   * app be looked at. `dev:local` sets this so it gets its own directory.
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
