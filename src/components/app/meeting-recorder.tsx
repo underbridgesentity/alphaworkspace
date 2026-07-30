@@ -97,7 +97,9 @@ export function MeetingRecorderDialog({
 
   // Leaving mid-recording or mid-upload loses the audio; make it deliberate.
   const modeRef = useRef(mode);
-  modeRef.current = mode;
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (modeRef.current === "recording" || modeRef.current === "uploading") {
@@ -162,6 +164,9 @@ export function MeetingRecorderDialog({
     rec.onerror = () => stopAndUpload();
     rec.start(1000);
     recorderRef.current = rec;
+    // Only reached from the start-recording gestures (startMic/startCall),
+    // never during render; the purity lint can't see through the indirection.
+    // eslint-disable-next-line react-hooks/purity
     startedAtRef.current = Date.now();
     setSource(from);
     setMode("recording");
@@ -368,8 +373,8 @@ export function MeetingRecorderDialog({
               autoFocus
             />
             <p className="mt-3 rounded-control bg-raised px-3 py-2 text-xs text-muted">
-              Tell everyone they're being recorded before you start. It's the
-              law (POPIA), and it's good manners.
+              Tell everyone they&apos;re being recorded before you start. It&apos;s the
+              law (POPIA), and it&apos;s good manners.
             </p>
             {noMinutes ? (
               <p className="mt-3 text-sm text-danger">

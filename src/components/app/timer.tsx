@@ -17,12 +17,12 @@ import type { RunningTimerDTO, TaskTimeDTO } from "@/lib/types";
 import { useToast } from "@/components/ui/toast";
 
 function useNowMinute(): number {
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 30_000);
+    const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
-  return Date.now();
+  return now;
 }
 
 function elapsedMinutes(startedAt: string, now: number): number {

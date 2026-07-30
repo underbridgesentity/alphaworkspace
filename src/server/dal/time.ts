@@ -5,9 +5,9 @@
  * no screenshots, nothing surveillance-flavoured, the team tracks effort,
  * the tool never polices it.
  */
-import { and, asc, count, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { Db } from "@/server/db";
-import { memberships, projects, tasks, timeEntries, users } from "@/server/db/schema";
+import { projects, tasks, timeEntries, users } from "@/server/db/schema";
 import type { RunningTimerDTO, TaskTimeDTO, WeekTimeDTO } from "@/lib/types";
 import { dayToDate, todaySAST, weekStart } from "@/lib/dates";
 import { assertFeature, type Ctx } from "./context";

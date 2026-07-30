@@ -68,7 +68,7 @@ export function MeetingBotDialog({ onClose }: { onClose: () => void }) {
                 Alpha Workspace notetaker
               </span>{" "}
               joins, records, and writes the notes. Everyone sees it in the
-              participant list, tell them what it's for.
+              participant list, tell them what it&apos;s for.
             </p>
             <div className="mt-4 space-y-2.5">
               <Input
@@ -111,7 +111,7 @@ export function MeetingBotDialog({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-muted">
               Bots that join Zoom, Google Meet and Microsoft Teams calls are an
               add-on (they carry a real per-minute cost). If your team wants
-              them, get in touch and we'll switch them on for your workspace.
+              them, get in touch and we&apos;ll switch them on for your workspace.
             </p>
             <div className="mt-4 flex justify-end">
               <Button variant="quiet" onClick={onClose}>

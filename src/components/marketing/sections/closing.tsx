@@ -1,41 +1,16 @@
 /**
- * Marketing closer: the ask, then the three facts that answer the last
- * silent objection ("is this actually built for us?").
+ * Marketing closer: just the ask.
  *
- * The manifesto band that used to sit here was cut. It quoted an internal
- * product law ("the anti-noise law") at a customer who has never heard of
- * it, spent a whole dark band on one sentence, and did it between the price
- * and the button, which is the worst possible place to interrupt someone.
- * The same idea now lives where it is earned, under the follow-up demo.
- *
- * The strip below the card replaces the old audience-pill belt. A belt
- * reading "Agencies, Design studios, Dev shops, Ops teams..." is a taxonomy
- * that excludes nobody, so it says nothing. These three are checkable claims
- * an offshore competitor cannot make, sitting exactly where a South African
- * buyer decides whether this product was built with them in mind.
+ * The three-fact proof strip that used to sit under the card (rand, bad
+ * line, POPIA) moved into the built-for-here ink band, where those claims
+ * now live once, with room to breathe. Repeating them here made the page's
+ * last note a recap instead of a decision, and repetition reads as
+ * insecurity. What remains is one card, one sentence of risk-reversal that
+ * is actually true for the free band, and one button.
  */
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { InView } from "@/components/marketing/in-view";
-import { Reveal } from "@/components/marketing/reveal";
-
-const PROOF: Array<{ label: string; body: string }> = [
-  {
-    label: "In rand",
-    body:
-      "R0, R499 or R999 a month, VAT inclusive, billed through PayFast. No card in dollars, no forex surprise on the statement.",
-  },
-  {
-    label: "On a bad line",
-    body:
-      "Reads come from cache, writes queue on the phone until signal returns. It installs from the browser, not from an app store.",
-  },
-  {
-    label: "Your data, POPIA",
-    body:
-      "Export everything you have put in, or delete your account outright, from the settings page. Neither needs a support ticket.",
-  },
-];
 
 export function Closing() {
   return (
@@ -82,16 +57,6 @@ export function Closing() {
               </div>
             </div>
           </InView>
-        </div>
-
-        {/* --------------------- built here, three facts --------------------- */}
-        <div className="mt-section grid gap-group sm:grid-cols-3 sm:gap-8">
-          {PROOF.map((item, i) => (
-            <Reveal key={item.label} delay={i * 90}>
-              <h3 className="section-head">{item.label}</h3>
-              <p className="mt-tight text-dense text-muted">{item.body}</p>
-            </Reveal>
-          ))}
         </div>
       </div>
     </section>

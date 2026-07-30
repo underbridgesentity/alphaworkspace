@@ -4,7 +4,13 @@
  * two task proposals rise in, and the confirm button pops, mirroring the
  * real extract, show, confirm flow. All motion uses the shared anim
  * utilities gated by <InView>, so it starts when the audience arrives and
- * collapses under prefers-reduced-motion. Dark band (section-invert).
+ * collapses under prefers-reduced-motion.
+ *
+ * Band: the warm paper tint (.mkt-band-paper). This used to be a dark
+ * section-invert band, but the page now spends its one ink band on
+ * built-for-here; two dark bands plus the closing card read as three
+ * blackouts. Warm paper keeps the rhythm moving and suits the moment: this
+ * is the section about talking, the most human thing on the page.
  */
 import { Check, Mic } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -27,7 +33,7 @@ const WAVE_BARS = [
 
 export function Capture() {
   return (
-    <section className="section-invert relative overflow-hidden border-y border-dashed border-line bg-bg text-ink">
+    <section className="mkt-band-paper relative overflow-hidden border-y border-line">
       <Blob
         className="right-[-10%] top-[-24%] h-[22rem] w-[26rem]"
         morph={24}

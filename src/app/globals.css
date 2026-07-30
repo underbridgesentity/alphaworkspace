@@ -903,3 +903,48 @@
     transform: none;
   }
 }
+
+/* ---- MARKETING-ONLY (src/components/marketing/**, landing + pricing) -----
+ * Additions for the marketing page's colour rhythm and product imagery.
+ * Nothing in the app consumes these; the app tokens above are untouched.
+ * Marketing renders light-only (ForceLight), so raw light-ink rgba values
+ * are safe in this block and nowhere else.
+ *
+ * The rhythm is BANDS, not rainbows: frost (default), one faint teal wash,
+ * one warm paper tint (gold family, hue >= 40, never orange), one ink band
+ * (.section-invert, defined above). Saturation lives inside the product
+ * screenshots; these grounds stay near-neutral so the shots carry colour. */
+.mkt-band-wash {
+  background-color: color-mix(in oklab, var(--accent) 6%, var(--bg));
+}
+.mkt-band-paper {
+  background-color: color-mix(in oklab, var(--warn) 8%, var(--bg));
+}
+
+/* The ONE screenshot treatment for the whole page (the hairline card):
+ * 1rem radius, hairline ink border, a ring plus layered soft shadows all at
+ * single-digit alpha. overflow:hidden means every crop happens at the card
+ * edge, never by editing the bitmap, which is the "live app" signal. */
+.mkt-frame {
+  overflow: hidden;
+  border-radius: var(--radius-overlay);
+  border: 1px solid rgba(11, 18, 21, 0.08);
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(11, 18, 21, 0.04),
+    0 1px 2px rgba(11, 18, 21, 0.04),
+    0 8px 24px rgba(11, 18, 21, 0.08),
+    0 28px 56px -24px rgba(11, 18, 21, 0.16);
+}
+
+/* Device variant of the same hairline idea, for the one phone shot on the
+ * ink band: the frost ring reads as a handset edge against near-black, and
+ * the band's bottom edge crops the screen (overflow on the section). */
+.mkt-phone {
+  overflow: hidden;
+  border-radius: 2.25rem;
+  border: 1px solid rgba(251, 250, 242, 0.18);
+  box-shadow:
+    0 0 0 6px rgba(251, 250, 242, 0.06),
+    0 32px 72px -24px rgba(0, 0, 0, 0.7);
+}

@@ -214,7 +214,7 @@ export async function beginMeeting(
     );
   }
 
-  let projectId: string | null = input.projectId ?? null;
+  const projectId: string | null = input.projectId ?? null;
   if (projectId) {
     const [p] = await ctx.db
       .select({ id: projects.id })
@@ -491,7 +491,12 @@ export async function sendBot(
     );
   }
   if (!deps.botCreate && !recallConfigured()) {
-    throw new ValidationError("Meeting bots aren't enabled on this server yet");
+    // Distinct from the add-on gate above, which has already passed here: the
+    // workspace HAS the add-on, the server just has no Recall.ai keys. Say so,
+    // or an owner who watched the add-on get switched on reads this as broken.
+    throw new ValidationError(
+      "Your workspace has the bots add-on, but the bot service isn't set up on this server yet. Get in touch and we'll finish the setup",
+    );
   }
 
   const { usedMinutes, limitMinutes } = await meetingUsage(ctx);
@@ -502,7 +507,7 @@ export async function sendBot(
     );
   }
 
-  let projectId: string | null = input.projectId ?? null;
+  const projectId: string | null = input.projectId ?? null;
   if (projectId) {
     const [p] = await ctx.db
       .select({ id: projects.id })

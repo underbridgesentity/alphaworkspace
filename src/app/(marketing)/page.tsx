@@ -3,10 +3,15 @@ import { PricingCards, PricingFootnote } from "@/components/marketing/pricing-ca
 import { Reveal } from "@/components/marketing/reveal";
 import { Blob } from "@/components/marketing/blob";
 import { Hero } from "@/components/marketing/sections/hero";
+import { Proof } from "@/components/marketing/sections/proof";
 import { FollowingUp } from "@/components/marketing/sections/following-up";
 import { Capture } from "@/components/marketing/sections/capture";
-import { Report } from "@/components/marketing/sections/report";
-import { Numbers } from "@/components/marketing/sections/numbers";
+import { Briefing } from "@/components/marketing/sections/briefing";
+import { BuiltForHere } from "@/components/marketing/sections/built-for-here";
+// The founder note speaks in Joseph's first person and signs his name, so it
+// stays out of production until he has read and approved the copy. Re-enable
+// by restoring this import and the element below.
+// import { FounderNote } from "@/components/marketing/sections/founder-note";
 import { Closing } from "@/components/marketing/sections/closing";
 
 export const metadata: Metadata = {
@@ -15,31 +20,40 @@ export const metadata: Metadata = {
 };
 
 /**
- * The landing page is a sequence of self-contained animated sections
- * (components/marketing/sections/*), each choreographed with the shared
- * .anim vocabulary and gated by <InView>.
+ * The landing page, v2. The hero (editorial type, kept) states an identity;
+ * everything after it now has one job each, and the first job is PROOF: the
+ * old page followed a type hero with more type, and a page that never shows
+ * the product reads as a product that does not exist. Real screenshots of
+ * the seeded demo workspace now carry three sections, all in one hairline
+ * frame treatment (.mkt-frame / .mkt-phone, globals.css).
  *
- * Order is an argument, not a menu. The promise the hero makes is followed
- * up on immediately (FollowingUp), then the two halves of how that is
- * possible: work gets in without typing (Capture), status gets out without
- * compiling (Report). Numbers is the one paid-plan extra worth a band.
- * Then price, then the ask.
+ * Colour rhythm is bands, not rainbows: frost, teal wash (Proof), frost
+ * (FollowingUp, Briefing), warm paper (Capture, FounderNote), one deep ink
+ * band (BuiltForHere), frost (pricing), ink card (Closing). Teal stays the
+ * accent thread; gold and indigo only ever mark the thing they mean.
  *
- * Two sections were cut rather than improved. BoardShow was "we have a
- * kanban", which every competitor has and which proves nothing about
- * following up; its job is done better by the rail demo inside FollowingUp.
- * The manifesto band inside Closing quoted an internal product law at a
- * customer, in the gap between the price and the button.
+ * Order is an argument: see the product (Proof), see the promise kept
+ * (FollowingUp), how work gets in (Capture), how status gets out (Briefing,
+ * real shots), why it fits here (BuiltForHere), why to believe us with no
+ * logo wall (FounderNote), what it costs, the ask.
+ *
+ * Cut rather than kept: the Numbers section (scorecards demo). It was the
+ * only band selling a feature instead of the promise, the pricing cards
+ * already name scorecards and time tracking, and cutting it keeps the page
+ * nearer Notion's length than ClickUp's. Also cut: the closing proof strip
+ * (now lives once, in BuiltForHere) and the hero's hairline divider, since
+ * the Proof band's own edge is the punctuation now.
  */
 export default function LandingPage() {
   return (
     <>
       <Hero />
-      <div className="hairline-fade mx-auto max-w-4xl" />
+      <Proof />
       <FollowingUp />
       <Capture />
-      <Report />
-      <Numbers />
+      <Briefing />
+      <BuiltForHere />
+      {/* <FounderNote /> pending the founder's sign-off on his own letter */}
 
       {/* ------------------------------ pricing ---------------------------- */}
       <section className="relative overflow-hidden">

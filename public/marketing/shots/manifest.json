@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-07-30T07:25:53.366Z",
+  "workspace": "Mzansi Studio (seeded local demo data, no real customers)",
+  "reproduce": "with the dev server up on 3100: npx tsx scripts/with-local-env.ts npx tsx --tsconfig tsconfig.scripts.json scripts/marketing-shots.ts",
+  "deviceScaleFactor": 2,
+  "shots": [
+    {
+      "file": "board-desktop-light.png",
+      "shows": "Project board (Sable rebrand): To do / In progress / Done columns with live cards",
+      "theme": "light",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "file": "my-work-desktop-light.png",
+      "shows": "My Work: morning brief card plus the owner's task list, desktop",
+      "theme": "light",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "file": "my-work-mobile-light.png",
+      "shows": "My Work: morning brief card plus the owner's task list, mobile",
+      "theme": "light",
+      "width": 780,
+      "height": 1688
+    },
+    {
+      "file": "pulse-desktop-light.png",
+      "shows": "Pulse dashboard: weekly narrative up top, hero KPIs and momentum",
+      "theme": "light",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "file": "weekly-briefing-card-light.png",
+      "shows": "Weekly briefing card in close-up: the Monday narrative the workspace writes itself",
+      "theme": "light",
+      "width": 1696,
+      "height": 480
+    }
+  ]
+}

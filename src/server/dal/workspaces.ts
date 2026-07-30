@@ -13,7 +13,7 @@ import {
 } from "@/server/db/schema";
 import type { MemberDTO, Role } from "@/lib/types";
 import { sendEmail } from "@/server/email/send";
-import { escapeHtml, renderEmail } from "@/server/email/layout";
+import { renderEmail } from "@/server/email/layout";
 import { assertRole, ctxEntitlements, resolveCtx, type Ctx } from "./context";
 import { logActivity } from "./activity";
 import { LimitError, NotFoundError, ValidationError, ForbiddenError } from "./errors";

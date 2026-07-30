@@ -22,11 +22,7 @@ import {
   usedMeetingMinutes,
   type MeetingDeps,
 } from "@/server/dal/meetings";
-import {
-  LimitError,
-  NotFoundError,
-  ValidationError,
-} from "@/server/dal/errors";
+import { NotFoundError, ValidationError } from "@/server/dal/errors";
 import type { Ctx } from "@/server/dal/context";
 import {
   addMember,

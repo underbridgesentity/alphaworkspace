@@ -1354,7 +1354,7 @@ describe("proration is gated off until PayFast's contract is verified", () => {
       expect(await subOf(m).then((r) => r.amountCents)).toBe(49_900);
 
       // And the billing surface offers no in-place quotes either.
-      expect(await bandChangeQuotes(db, id, now)).toEqual([]);
+      expect(await bandChangeQuotes(db, id, { now })).toEqual([]);
     } finally {
       process.env.PAYFAST_PRORATION = prev;
     }

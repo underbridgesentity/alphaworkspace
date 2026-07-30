@@ -17,10 +17,11 @@
  *   120ms+  work rows rise, 110ms apart
  *   900ms+  nudges slide in from the right, 520ms apart
  *  2600ms   "You sent none of these" chip pops on the frame edge
- * The offline strip below runs its own <InView>, so it plays when it is
- * actually reached rather than finishing off-screen.
+ * The offline strip that used to close this section moved to the ink band
+ * (built-for-here.tsx), where the local-reality story now lives in one
+ * place; this section stays about the one promise the hero made.
  */
-import { AtSign, Bell, Check, Sparkles, WifiOff } from "lucide-react";
+import { AtSign, Bell, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { InView } from "@/components/marketing/in-view";
 import { Reveal } from "@/components/marketing/reveal";
@@ -107,12 +108,6 @@ const NUDGES: Array<{
     body: "2 overdue, 1 due today, 1 project gone quiet.",
     delay: 1940,
   },
-];
-
-const QUEUED: Array<{ title: string; delay: number }> = [
-  { title: "Draft Karoo Coffee status update", delay: 300 },
-  { title: "Sable rebrand moodboard", delay: 480 },
-  { title: "Karoo Coffee label copy", delay: 660 },
 ];
 
 export function FollowingUp() {
@@ -264,66 +259,6 @@ export function FollowingUp() {
             >
               <span className="size-1.5 shrink-0 rounded-full bg-accent" />
               You sent none of these
-            </div>
-          </div>
-        </InView>
-
-        {/* ------------------- and it holds when signal drops ----------------- */}
-        <div className="hairline-fade mt-section" />
-
-        <InView className="mt-section grid items-center gap-group md:grid-cols-[0.9fr_1.1fr] md:gap-8">
-          <div className="min-w-0">
-            <h3 className="section-head">When the line drops</h3>
-            <p className="anim anim-rise mt-item text-body text-muted">
-              Load shedding, a dead tower, a basement at a client&rsquo;s
-              office. Reads come from cache, writes queue on the phone, and
-              everything lands the moment signal returns. Nobody re-types a
-              task.
-            </p>
-          </div>
-
-          <div
-            aria-hidden
-            className="min-w-0 rounded-card border border-line bg-surface p-item shadow-e2"
-          >
-            <div
-              className="anim anim-rise flex items-center gap-3"
-              style={{ animationDelay: "120ms" }}
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-raised">
-                <WifiOff className="size-4 text-muted" />
-              </span>
-              <p className="text-body font-medium">Connection dropped</p>
-              <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-micro text-muted">
-                offline
-              </span>
-            </div>
-            <div className="mt-item space-y-sibling">
-              {QUEUED.map((row) => (
-                <div
-                  key={row.title}
-                  className="anim anim-rise flex items-center gap-2.5 rounded-control border border-line bg-raised/60 px-3 py-2.5"
-                  style={{ animationDelay: `${row.delay}ms` }}
-                >
-                  <span className="size-3.5 shrink-0 rounded-full border-2 border-line-strong" />
-                  <p className="min-w-0 flex-1 truncate text-dense font-medium">
-                    {row.title}
-                  </p>
-                  <span className="shrink-0 rounded-full border border-dashed border-line px-2 py-0.5 text-micro text-faint">
-                    queued
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div
-              className="anim anim-rise relative mt-sibling flex h-8 items-center overflow-hidden rounded-control bg-raised px-3 text-meta text-muted"
-              style={{ animationDelay: "1000ms" }}
-            >
-              <span className="relative">Back online · syncing 3 changes</span>
-              <span
-                className="anim-sweep absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-accent-soft to-transparent"
-                style={{ animationDelay: "1.4s" }}
-              />
             </div>
           </div>
         </InView>

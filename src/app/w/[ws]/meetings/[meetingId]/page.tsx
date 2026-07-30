@@ -45,7 +45,7 @@ function fmtStamp(sec: number): string {
 }
 
 export default function MeetingPage() {
-  const { workspace, members, projects, me } = useWorkspace();
+  const { workspace, projects, me } = useWorkspace();
   const params = useParams<{ meetingId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -119,7 +119,7 @@ export default function MeetingPage() {
   if (error || !meeting) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 pt-16 text-center">
-        <p className="font-medium">That meeting doesn't exist, or it isn't yours</p>
+        <p className="font-medium">That meeting doesn&apos;t exist, or it isn&apos;t yours</p>
         <p className="mt-1 text-sm text-muted">
           Private meetings are only visible to whoever recorded them.
         </p>
@@ -382,8 +382,8 @@ export default function MeetingPage() {
       )}
       {meeting.status === "ready" && !meeting.summary && (
         <div className="mt-6 rounded-card bg-surface p-4 text-sm text-muted">
-          The transcript is ready. AI summaries aren't switched on for this
-          server yet, so there's no auto-summary this time.
+          The transcript is ready. AI summaries aren&apos;t switched on for this
+          server yet, so there&apos;s no auto-summary this time.
         </div>
       )}
 
@@ -459,7 +459,13 @@ function TitleEditor({
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(title);
-  useEffect(() => setValue(title), [title]);
+  // Adopt a renamed title from the server (render-time adjustment, per the
+  // React docs pattern for state that derives from a prop).
+  const [prevTitle, setPrevTitle] = useState(title);
+  if (prevTitle !== title) {
+    setPrevTitle(title);
+    setValue(title);
+  }
 
   if (!canEdit || !editing) {
     return (
@@ -794,7 +800,7 @@ function EmailNotesDialog({
       <div className="px-5 pb-5">
         {candidates.length === 0 ? (
           <p className="text-sm text-muted">
-            You're the only person in this workspace so far. Invite your team
+            You&apos;re the only person in this workspace so far. Invite your team
             first, then send them notes.
           </p>
         ) : (
