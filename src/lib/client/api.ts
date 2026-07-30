@@ -51,8 +51,21 @@ async function throwFrom(res: Response): Promise<never> {
   throw new ApiError(code, message, res.status, limit, feature);
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { accept: "application/json" } });
+/**
+ * `signal` should be threaded from the React Query queryFn. Without it,
+ * qc.cancelQueries only cancels the query STATE while the HTTP request keeps
+ * flying, which is how deleting a task still produced a 404 from its own
+ * /time endpoint: the panel's just-mounted fetch could not be aborted, raced
+ * the DELETE, and landed after the row was gone.
+ */
+export async function apiGet<T>(
+  path: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<T> {
+  const res = await fetch(path, {
+    headers: { accept: "application/json" },
+    signal: opts.signal,
+  });
   if (!res.ok) await throwFrom(res);
   return res.json() as Promise<T>;
 }

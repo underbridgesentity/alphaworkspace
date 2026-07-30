@@ -52,8 +52,12 @@ export function useTaskDetail(taskId: string | null) {
   const { workspace } = useWorkspace();
   return useQuery({
     queryKey: ["ws", workspace.slug, "task", taskId],
-    queryFn: () =>
-      apiGet<TaskDetailData>(`/api/w/${workspace.slug}/tasks/${taskId}`),
+    // Signal threaded for the same reason as the task-time query: a delete
+    // must be able to abort the detail fetch it is racing.
+    queryFn: ({ signal }) =>
+      apiGet<TaskDetailData>(`/api/w/${workspace.slug}/tasks/${taskId}`, {
+        signal,
+      }),
     enabled: !!taskId,
   });
 }

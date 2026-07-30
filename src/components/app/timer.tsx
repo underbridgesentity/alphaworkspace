@@ -102,7 +102,13 @@ export function TaskTime({ taskId }: { taskId: string }) {
 
   const { data } = useQuery({
     queryKey: ["ws", workspace.slug, "task-time", taskId],
-    queryFn: () => apiGet<{ time: TaskTimeDTO }>(`/api/w/${workspace.slug}/tasks/${taskId}/time`),
+    // Signal threaded so deleting the task can genuinely abort this fetch;
+    // see apiGet. A task-scoped query without it races its own DELETE.
+    queryFn: ({ signal }) =>
+      apiGet<{ time: TaskTimeDTO }>(
+        `/api/w/${workspace.slug}/tasks/${taskId}/time`,
+        { signal },
+      ),
     enabled: hasTime,
     select: (d) => d.time,
   });

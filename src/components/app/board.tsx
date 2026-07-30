@@ -68,6 +68,70 @@ const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
     "Press Enter to open this task. Press Space to pick it up, then the arrow keys to move it between columns, Space to drop it, Escape to cancel.",
 };
 
+/**
+ * Left/right always crosses COLUMNS. The stock sortable getter moves to the
+ * closest droppable in the arrow's direction, and inside a non-empty column a
+ * sibling card is closer than the neighbouring column, so the first ArrowRight
+ * reordered within the column and only the second one crossed. That directly
+ * contradicts the instructions read to screen reader users above. Horizontal
+ * arrows now target the nearest column rect in that direction; vertical keys
+ * keep the stock within-column behaviour.
+ */
+function columnCoordinateGetter(
+  columnIds: readonly string[],
+): typeof sortableKeyboardCoordinates {
+  return (event, args) => {
+    if (event.code !== "ArrowLeft" && event.code !== "ArrowRight") {
+      return sortableKeyboardCoordinates(event, args);
+    }
+    const { droppableContainers, droppableRects, collisionRect } = args.context;
+    if (!collisionRect) return undefined;
+    const dir = event.code === "ArrowRight" ? 1 : -1;
+
+    // Compare column CENTRES against the card's centre, with a margin of a
+    // quarter card width. Edges are a trap: the card renders a fraction of a
+    // pixel left of its own column's droppable rect (borders and padding
+    // rounding), so an edge test matched the card's own column as "beyond it"
+    // and the first press slid the card 16px sideways inside the column it was
+    // already in. Centres of neighbouring columns differ by hundreds of px,
+    // centres of a card and its own column by single digits, so the margin
+    // separates them cleanly at any zoom level.
+    const cardCentre = collisionRect.left + collisionRect.width / 2;
+    const margin = collisionRect.width / 4;
+
+    let target: { left: number; top: number; width: number; height: number } | null =
+      null;
+    for (const container of droppableContainers.getEnabled()) {
+      if (!columnIds.includes(String(container.id))) continue;
+      const rect = droppableRects.get(container.id);
+      if (!rect) continue;
+      const centre = rect.left + rect.width / 2;
+      if (dir === 1 ? centre <= cardCentre + margin : centre >= cardCentre - margin) {
+        continue;
+      }
+      if (
+        !target ||
+        (dir === 1
+          ? centre < target.left + target.width / 2
+          : centre > target.left + target.width / 2)
+      ) {
+        target = rect;
+      }
+    }
+    if (!target) return undefined; // already at the edge, stay put
+
+    return {
+      x: target.left + 16,
+      // Keep the card's vertical position but clamp it inside the target
+      // column, so the collision pass resolves to that column, not a gap.
+      y: Math.min(
+        Math.max(collisionRect.top, target.top + 8),
+        target.top + Math.max(target.height - collisionRect.height, 8),
+      ),
+    };
+  };
+}
+
 export function Board({ projectId }: { projectId: string }) {
   const { workspace } = useWorkspace();
   const { data: tasks, isLoading } = useBoard(projectId);
@@ -105,7 +169,7 @@ export function Board({ projectId }: { projectId: string }) {
       activationConstraint: { delay: 180, tolerance: 6 },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: columnCoordinateGetter(columns),
       keyboardCodes: KEYBOARD_CODES,
     }),
   );

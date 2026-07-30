@@ -37,19 +37,7 @@ export function expectClean(problems: string[], where: string): void {
 
 /**
  * Crash-level only: page errors and 5xx, no console noise.
- *
- * This is what a journey's own teardown is held to. Deleting a task from the
- * panel reliably logs one console 404, because the panel refetches the deleted
- * task's time entries on its way out. That is a product bug worth reporting,
- * not one the suite should paper over by dropping its watcher entirely, so the
- * journey proper is still held to expectClean and only the cleanup is not.
- */
-export function expectNoCrashes(problems: string[], where: string): void {
-  const crashes = problems.filter(
-    (p) => p.startsWith("pageerror:") || /^5\d\d /.test(p),
-  );
-  expect(crashes, `crashes during ${where} cleanup:\n${crashes.join("\n")}`).toEqual([]);
-}
+
 
 /** The seeded workspace slug, read once from wherever we land after sign-in. */
 export async function workspaceSlug(page: Page): Promise<string> {

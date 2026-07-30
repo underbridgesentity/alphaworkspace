@@ -4,7 +4,6 @@ import {
   addTaskToColumn,
   awaitPost,
   deleteTask,
-  expectNoCrashes,
   expectClean,
   onlyVisible,
   openFirstProject,
@@ -107,7 +106,7 @@ test.describe("journeys that write", () => {
 
     expectClean(problems, "quick add");
     await deleteTask(page, title);
-    expectNoCrashes(problems, "quick add");
+    expectClean(problems, "quick add");
   });
 
   test("the completion tick moves a card into Done", async ({ page }) => {
@@ -132,7 +131,7 @@ test.describe("journeys that write", () => {
 
     expectClean(problems, "completion tick");
     await deleteTask(page, title);
-    expectNoCrashes(problems, "completion tick");
+    expectClean(problems, "completion tick");
   });
 
   test("a private task takes a checklist step and reports its progress", async ({
@@ -212,7 +211,7 @@ test.describe("journeys that write", () => {
 
     expectClean(problems, "board card");
     await deleteTask(page, title);
-    expectNoCrashes(problems, "board card");
+    expectClean(problems, "board card");
   });
 
   /**
@@ -244,19 +243,18 @@ test.describe("journeys that write", () => {
     await card.focus();
     await page.keyboard.press("Space");
 
-    // Right until dnd-kit itself says the card is over the next column, rather
-    // than a fixed number of presses: the first ArrowRight resolves to a
-    // neighbour inside the current column whenever that column already holds
-    // cards, so "one press = one column" is only true of an empty board.
-    // dnd-kit's own live region is the authority on where the card is, and it
-    // is the same sentence a screen reader user hears.
+    // ONE ArrowRight must cross into the next column, because that is what
+    // the instructions read to a screen reader user promise. This used to take
+    // two presses in a non-empty column (the stock coordinate getter resolved
+    // to the closest sibling card first) and the earlier version of this test
+    // looped presses until the announcement matched, which tolerated the bug.
+    // dnd-kit's own live region is the authority, it is the same sentence a
+    // screen reader user hears.
     const announcer = page.getByRole("status");
-    await expect(async () => {
-      await page.keyboard.press("ArrowRight");
-      await expect(
-        announcer.filter({ hasText: /is over In progress/ }),
-      ).toHaveCount(1, { timeout: 1500 });
-    }).toPass({ timeout: 20_000 });
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      announcer.filter({ hasText: /is over In progress/ }),
+    ).toHaveCount(1, { timeout: 3000 });
     await page.keyboard.press("Space");
 
     await expect(
@@ -275,7 +273,7 @@ test.describe("journeys that write", () => {
 
     expectClean(problems, "keyboard drag");
     await deleteTask(page, title);
-    expectNoCrashes(problems, "keyboard drag");
+    expectClean(problems, "keyboard drag");
   });
 
   /**
@@ -314,7 +312,7 @@ test.describe("journeys that write", () => {
 
     expectClean(problems, "search palette");
     await deleteTask(page, title);
-    expectNoCrashes(problems, "search palette");
+    expectClean(problems, "search palette");
   });
 
   test("the create FAB offers quick add and voice capture", async ({
