@@ -16,7 +16,7 @@ import { Closing } from "@/components/marketing/sections/closing";
 
 export const metadata: Metadata = {
   description:
-    "Alpha Workspace is the project workspace that does the following up, for South African teams of 2 to 15 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
+    "Alpha Workspace is the project workspace that does the following up, for South African teams of 2 to 25 people. Status reports itself, tasks cost nothing to create, and it works offline, in rand.",
 };
 
 /**

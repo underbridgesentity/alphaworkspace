@@ -79,7 +79,7 @@ export function Hero() {
           {/* ------------------------ the clear zone ---------------------- */}
           <div className="mx-auto max-w-3xl text-center">
             <p className="anim anim-rise section-head">
-              For teams of 2 to 15 people
+              For teams of 2 to 25 people
             </p>
 
             <h1
