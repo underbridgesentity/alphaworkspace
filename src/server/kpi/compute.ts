@@ -36,6 +36,14 @@ interface KpiOpts {
   now?: Date;
   /** Limit everything to one project (projectKpis). */
   projectId?: string;
+  /**
+   * Pin the week window (YYYY-MM-DD, a Monday). The dashboard wants the
+   * CURRENT week and omits this; the weekly narrative reports on LAST week
+   * and must pass the same weekStartDay its heading is labeled with, or the
+   * totals describe a different week than the title claims. Point-in-time
+   * numbers (overdueNow, staleNow, openNow) are always as of `now`.
+   */
+  weekStartDay?: string;
 }
 
 /** Count of activity events of a type inside [from, to). */
@@ -69,7 +77,7 @@ export async function workspaceKpis(
 ): Promise<WorkspaceKpis> {
   const now = opts.now ?? new Date();
   const today = todaySAST(now);
-  const weekStartDay = weekStart(today);
+  const weekStartDay = opts.weekStartDay ?? weekStart(today);
   const windowFrom = dayToDate(weekStartDay);
   const windowTo = dayToDate(addDays(weekStartDay, 7));
   const staleDays = await staleDaysFor(db, workspaceId);

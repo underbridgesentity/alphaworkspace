@@ -47,7 +47,12 @@ export async function compileWeeklySummary(
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId));
 
-  const kpis = await workspaceKpis(db, workspaceId, { now });
+  // The same window the summary's heading is labeled with. Without this the
+  // totals came from workspaceKpis' own "current week", so a Monday narrative
+  // titled "week of <last Monday>" carried THIS week's counts next to LAST
+  // week's per-member numbers (seen on seed data as one task closed against
+  // five member completions, "500% of everything finished").
+  const kpis = await workspaceKpis(db, workspaceId, { now, weekStartDay });
 
   /* ---- members ---- */
   const [memberRows, completions] = await Promise.all([

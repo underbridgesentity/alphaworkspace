@@ -230,6 +230,31 @@ describe("projectKpis", () => {
 });
 
 describe("compileWeeklySummary", () => {
+  it("reports the week its heading claims, not the week it runs in", async () => {
+    // The Monday cron compiles LAST week's narrative, so `now` is one week
+    // after the labeled window. The totals used to come from workspaceKpis'
+    // own current-week window while members[] used the labeled one, which is
+    // how a narrative could say "closed out 1 task this week" next to a
+    // member with 5 completions. Every existing test called this with `now`
+    // INSIDE the labeled week, so the two windows coincided and the bug was
+    // invisible; this call is the cron's real shape.
+    const cronMonday = new Date("2026-07-20T06:30:00+02:00");
+    const summary = await compileWeeklySummary(db, ws.id, WEEK_START, {
+      now: cronMonday,
+    });
+
+    // The labeled week (Jul 13) holds both seeded completions; the week the
+    // cron RUNS in (Jul 20) holds none. Pre-fix this asserted 0.
+    expect(summary.weekStart).toBe(WEEK_START);
+    expect(summary.totals.completed).toBe(2);
+
+    // Coherence: the members table and the totals describe the same window,
+    // so the per-member sum can never exceed the total it sits next to.
+    const memberSum = summary.members.reduce((n, m) => n + m.completed, 0);
+    expect(memberSum).toBe(summary.totals.completed);
+  });
+
+
   it("builds the narrative's world view — names, projects, dueNext", async () => {
     const summary = await compileWeeklySummary(db, ws.id, WEEK_START, { now: NOW });
 
