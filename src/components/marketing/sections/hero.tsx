@@ -1,51 +1,33 @@
 import Link from "next/link";
+import Image from "next/image";
 import { InView } from "@/components/marketing/in-view";
 
 /* ---------------------------------------------------------------------------
- * THE HERO: EDITORIAL
+ * THE HERO: THE SENTENCE, THEN THE PROOF
  *
- * The stance: there is no product illustration, because the sentence is the
- * product. A collage of tilted cards is a picture of software; a title page is
- * a picture of a point of view. So this is set like the opening spread of a
- * magazine: a masthead rule with a running head under it, one enormous type
- * block, one deck, two actions, a colophon rule to close the page.
+ * Two zones, deliberately placed. The upper zone is kept clear for the type:
+ * centred, hand-broken lines, the teal full stop as the only ornament. The
+ * lower zone is the product itself, the real board from the demo workspace,
+ * framed and anchored to the fold so the page opens on the claim and lands on
+ * the evidence. The colour washes arc around the image's top edge, so the
+ * ground gets warmer exactly where the eye arrives.
  *
- * Three decisions carry the whole thing.
+ * What is deliberately NOT here, all removed on the owner's direct feedback:
+ * no ruled-paper lines, no vertical change bar in the margin, no masthead or
+ * colophon rules, and no location callout (the product's origin shows in the
+ * substance and once in the footer; it does not need a banner).
  *
- * 1. THE LINE BREAKS ARE DESIGNED, NOT DISCOVERED. The browser never chooses
- *    where this sentence turns. A wide screen gets two lines, so the promise
- *    stays whole on the second one ("does the following up."); a phone gets
- *    three at a narrower measure. Two rags, both hand set, neither one an
- *    accident of the viewport. The deck below is broken by hand for the same
- *    reason.
+ * THE LINE BREAKS ARE STILL DESIGNED, NOT DISCOVERED: two lines on a wide
+ * screen so "does the following up." stays whole, three on a phone. The image
+ * crops rather than shrinks on a phone: object-left-top shows the first
+ * columns of the real board at legible scale instead of a postage stamp of
+ * the whole thing.
  *
- * 2. THE FULL STOP IS TEAL. One glyph. It is the only ornament in the type,
- *    it costs nothing, and it is the argument in miniature: this product ends
- *    the conversation. You do not notice it, then you do.
- *
- * 3. THE HANGING RULE IS A CHANGE BAR. In print, a vertical rule in the margin
- *    marks the line that changed, the line you are meant to read. Here it runs
- *    the height of the headline in hairline grey and turns accent for exactly
- *    the last line, the one that carries the promise. It is also, not by
- *    coincidence, the follow-up rail from the app: the same 2px mark that sits
- *    on the leading edge of every piece of work inside the product.
- *
- * At 375px: the visual survives whole rather than simplifying, because it IS
- * the type. The headline re-breaks to three hand-set lines, the hanging rule
- * moves from a 2rem margin to 1rem, and its accent segment moves from the
- * bottom half to the bottom third so it still lands on the payoff line. Nothing
- * is hidden on a phone because nothing decorative exists to hide.
- *
- * Motion: two things move, both once, both transform and opacity only. Copy
- * rises in reading order, and the change bar draws downward, which is the
- * follow-up arriving. No idle loops, no bobbing, nothing repeating in the
- * corner of the eye. Reduced motion collapses all of it to visible and still.
+ * Motion: copy rises in reading order, then the board rises last, one pass,
+ * transform and opacity only. Reduced motion collapses to visible and still.
+ * The board image is the fold's LCP so it loads with priority, never lazy.
  * ------------------------------------------------------------------------- */
 
-/* Type spec lives here rather than in arbitrary Tailwind values: this hero is
- * a typographic object, and size, leading and tracking should be legible as one
- * paragraph of intent. Both tracking and leading close up as the size grows,
- * which is the optical rule the token scale already follows. */
 const CSS = `
 .hero-head {
   font-size: clamp(2.25rem, 11vw, 3.5rem);
@@ -54,142 +36,77 @@ const CSS = `
 }
 @media (min-width: 40rem) {
   .hero-head {
-    font-size: clamp(3rem, 8.4vw, 5.5rem);
+    font-size: clamp(3rem, 7.2vw, 5rem);
     line-height: 0.95;
     letter-spacing: -0.042em;
   }
 }
-/* The change bar draws top to bottom. Pairs with .anim, which supplies the
-   duration, the easing and the pause-until-in-view; only the name and the
-   origin are set here, so nothing fights the shared choreography. */
-@keyframes hero-draw {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
-}
-.hero-rule {
-  animation-name: hero-draw;
-  transform-origin: top center;
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-rule { animation: none; transform: none; }
-}
-/* The ground. Three whisper-alpha colour washes (the product's semantic trio:
-   teal where the eye lands, gold near the payoff, a breath of indigo between)
-   over a fine print grain, plus a baseline grid confined to the headline's
-   quadrant. Everything is a static background painted once: no JS, no filter,
-   no animation, so it costs the compositor nothing after first paint. The
-   grain is the part doing quiet work: 6 to 8 percent alpha gradients on cream
-   band visibly on cheap panels, and noise breaks the banding up. */
+/* The ground: the product's semantic trio at whisper alpha, positioned for a
+   CENTRED composition, teal high behind the headline, gold and indigo low on
+   either flank of the board so the image sits in warmth rather than floating
+   on flat cream. Static paint, no JS, no filters; the grain exists because
+   low-alpha gradients on cream band visibly on cheap panels and noise breaks
+   the banding. */
 .hero-ground {
   background:
-    radial-gradient(52rem 30rem at 14% 12%, rgba(23, 104, 92, 0.07), transparent 62%),
-    radial-gradient(44rem 28rem at 86% 68%, rgba(169, 126, 34, 0.06), transparent 64%),
-    radial-gradient(36rem 24rem at 62% 30%, rgba(77, 95, 168, 0.04), transparent 60%);
+    radial-gradient(56rem 30rem at 50% 6%, rgba(23, 104, 92, 0.06), transparent 62%),
+    radial-gradient(44rem 30rem at 12% 88%, rgba(169, 126, 34, 0.07), transparent 62%),
+    radial-gradient(44rem 30rem at 88% 86%, rgba(77, 95, 168, 0.05), transparent 62%);
 }
 .hero-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   opacity: 0.05;
   mix-blend-mode: multiply;
 }
-.hero-grid {
-  /* Ledger paper: continuous full-width rules at the leading rhythm, fading
-     out before the deck so the reading zone stays clean. A radial mask was
-     tried first and rejected on sight: it cut the rules into floating
-     fragments that read as rendering artifacts. Rules must run edge to edge
-     or not exist. */
-  background-image: repeating-linear-gradient(
-    to bottom,
-    var(--line) 0,
-    var(--line) 1px,
-    transparent 1px,
-    transparent 2.75rem
-  );
-  mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 72%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 72%);
-  opacity: 0.5;
-}
 `;
-
-/* The colophon. Three facts, no adjectives, set as a printer's note under the
- * closing rule so the page has a bottom edge instead of trailing off. */
-const COLOPHON = [
-  "One flat price, in rand",
-  "Works on a bad connection",
-  "Built for Android first",
-];
 
 export function Hero() {
   return (
-    <section className="relative">
+    <section className="relative overflow-hidden">
       <style href="hero" precedence="medium">
         {CSS}
       </style>
 
-      {/* Painted ground behind the type. aria-hidden and pointer-events-none:
-          it must never be content, never intercept a tap. */}
+      {/* Painted ground. aria-hidden and pointer-events-none: never content,
+          never intercepts a tap. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="hero-ground absolute inset-0" />
-        <div className="hero-grid absolute inset-0" />
         <div className="hero-grain absolute inset-0" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-5xl px-5 py-20 md:px-8 md:py-32">
+      <div className="relative mx-auto w-full max-w-6xl px-5 pt-16 md:px-8 md:pt-24">
         <InView>
-          {/* --------------------------- masthead ------------------------- */}
-          <div aria-hidden className="h-px w-full bg-line-strong" />
-          <p className="anim anim-rise mt-3 section-head">
-            For South African teams of 2–15 people
-          </p>
+          {/* ------------------------ the clear zone ---------------------- */}
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="anim anim-rise section-head">
+              For teams of 2 to 15 people
+            </p>
 
-          {/* ------------------------- the type block --------------------- */}
-          {/* Indented past the change bar, which hangs in the margin and lines
-              up in x with the left end of the rule above it. */}
-          <div className="mt-10 pl-4 sm:mt-14 sm:pl-8">
-            {/* The rise lives on the wrapper, not the h1, so the change bar
-                and the words travel together instead of drifting apart by the
-                18px of the entry while it plays. */}
-            <div
-              className="anim anim-rise relative"
+            <h1
+              className="hero-head anim anim-rise mx-auto mt-6 font-semibold text-ink-strong"
               style={{ animationDelay: "60ms" }}
             >
-              <span
-                aria-hidden
-                className="anim hero-rule absolute inset-y-0 -left-4 flex w-0.5 flex-col sm:-left-8"
-                style={{ animationDelay: "200ms" }}
-              >
-                <span className="flex-1 bg-line-strong" />
-                {/* Marks the last line: three lines on a phone, two on a
-                    desktop, so the accent always covers the promise. */}
-                <span className="h-1/3 shrink-0 bg-accent-line sm:h-1/2" />
-              </span>
+              The workspace{" "}
+              <br aria-hidden className="sm:hidden" />
+              that{" "}
+              <br aria-hidden className="hidden sm:inline" />
+              does the{" "}
+              <br aria-hidden className="sm:hidden" />
+              following up
+              <span className="text-accent-quiet">.</span>
+            </h1>
 
-              <h1 className="hero-head font-semibold text-ink-strong">
-                The workspace{" "}
-                <br aria-hidden className="sm:hidden" />
-                that{" "}
-                <br aria-hidden className="hidden sm:inline" />
-                does the{" "}
-                <br aria-hidden className="sm:hidden" />
-                following up
-                <span className="text-accent-quiet">.</span>
-              </h1>
-            </div>
-
-            {/* The deck is deliberately a narrow column under a full-measure
-                headline. That width difference is the composition. Its break is
-                hand set too, on the comma, so the two parallel clauses stay on
-                one line together instead of the browser splitting them. */}
             <p
-              className="anim anim-rise mt-8 max-w-[34rem] text-lede text-muted sm:mt-10 sm:text-[1.1875rem]"
+              className="anim anim-rise mx-auto mt-6 max-w-[36rem] text-lede text-muted sm:text-[1.1875rem]"
               style={{ animationDelay: "160ms" }}
             >
-              A project workspace where work captures itself,{" "}
+              Work captures itself, status reports itself,{" "}
               <br aria-hidden className="hidden sm:inline" />
-              status reports itself, and nobody has to ask twice.
+              and nobody has to ask twice.
             </p>
 
             <div
-              className="anim anim-rise mt-9 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:gap-7"
+              className="anim anim-rise mt-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-7"
               style={{ animationDelay: "240ms" }}
             >
               <Link
@@ -202,7 +119,7 @@ export function Hero() {
                   buttons side by side means neither one is the answer. */}
               <Link
                 href="/pricing"
-                className="press group inline-flex min-h-11 items-center justify-center font-medium text-ink sm:justify-start"
+                className="press group inline-flex min-h-11 items-center justify-center font-medium text-ink"
               >
                 <span className="border-b border-line-strong pb-1 transition-colors group-hover:border-accent-line group-hover:text-accent-quiet">
                   See pricing
@@ -211,29 +128,26 @@ export function Hero() {
             </div>
           </div>
 
-          {/* --------------------------- colophon ------------------------- */}
-          <div aria-hidden className="mt-16 h-px w-full bg-line sm:mt-24" />
-          <ul
-            className="anim anim-rise mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 section-head"
+          {/* ------------------------- the evidence ------------------------ */}
+          {/* The real board from the demo workspace, in the page's single
+              frame treatment, anchored to the fold. On a phone the same
+              artifact is CROPPED, not shrunk: object-left-top keeps the first
+              column readable instead of rendering the whole board as texture. */}
+          <div
+            className="anim anim-rise mt-12 sm:mt-16"
             style={{ animationDelay: "320ms" }}
           >
-            {COLOPHON.map((fact, i) => (
-              /* One line each on a phone with no slashes, because a wrapped
-                 slash strands at a line edge and reads as a typo. On a wide
-                 screen they run together as one rule of printer's marks. */
-              <li
-                key={fact}
-                className="flex w-full items-center gap-x-3 sm:w-auto"
-              >
-                {i > 0 ? (
-                  <span aria-hidden className="hidden text-faint-mark sm:inline">
-                    /
-                  </span>
-                ) : null}
-                {fact}
-              </li>
-            ))}
-          </ul>
+            <div className="mkt-frame relative mx-auto aspect-[9/10] w-full max-w-[26rem] sm:aspect-[16/8.4] sm:max-w-none">
+              <Image
+                src="/marketing/shots/board-desktop-light.png"
+                alt="A project board in Alpha Workspace: To do, In progress and Done columns with real tasks, coloured due-date rails on the leading edge of each card"
+                fill
+                priority
+                sizes="(min-width: 64rem) 72rem, 94vw"
+                className="object-cover object-left-top"
+              />
+            </div>
+          </div>
         </InView>
       </div>
     </section>

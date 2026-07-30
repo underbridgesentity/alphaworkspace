@@ -67,13 +67,12 @@ export function BuiltForHere() {
           {/* ------------------------- copy + facts ------------------------- */}
           <div className="pb-chapter md:pb-24">
             <Reveal>
-              <p className="section-head">Built for here</p>
-              {/* Hand-set break: the browser's own choice split "South /
-                  Africa" across lines. The country's name stays whole. */}
+              <p className="section-head">Built for real conditions</p>
+              {/* Hand-set break so the parallel triple stays balanced. */}
               <h2 className="mt-group text-display-sm sm:text-display">
-                Made for how{" "}
+                Real phones, real networks,{" "}
                 <br aria-hidden />
-                South Africa actually works.
+                real budgets.
               </h2>
               <p className="mt-item max-w-prose text-pretty text-lede text-muted">
                 The tools this replaces assume fibre, an iPhone and a dollar

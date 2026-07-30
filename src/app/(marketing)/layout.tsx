@@ -40,11 +40,10 @@ export default function MarketingLayout({
         <div className="mx-auto w-full max-w-5xl px-5 py-10 md:px-8">
           <p className="max-w-2xl text-sm text-muted">
             <span className="font-semibold text-ink">Alpha Workspace</span>{" "}
-            is the project and work-management app for small South African
-            teams.
-            It follows up on work so people don&apos;t have to: status reports
-            itself, tasks cost nothing to create, and it keeps working offline,
-            priced in rand.
+            is the project and work-management app for small teams that are
+            done chasing status. It follows up on work so people don&apos;t
+            have to: status reports itself, tasks cost nothing to create, and
+            it keeps working when the connection doesn&apos;t.
           </p>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
