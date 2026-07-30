@@ -73,6 +73,41 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   .hero-rule { animation: none; transform: none; }
 }
+/* The ground. Three whisper-alpha colour washes (the product's semantic trio:
+   teal where the eye lands, gold near the payoff, a breath of indigo between)
+   over a fine print grain, plus a baseline grid confined to the headline's
+   quadrant. Everything is a static background painted once: no JS, no filter,
+   no animation, so it costs the compositor nothing after first paint. The
+   grain is the part doing quiet work: 6 to 8 percent alpha gradients on cream
+   band visibly on cheap panels, and noise breaks the banding up. */
+.hero-ground {
+  background:
+    radial-gradient(52rem 30rem at 14% 12%, rgba(23, 104, 92, 0.07), transparent 62%),
+    radial-gradient(44rem 28rem at 86% 68%, rgba(169, 126, 34, 0.06), transparent 64%),
+    radial-gradient(36rem 24rem at 62% 30%, rgba(77, 95, 168, 0.04), transparent 60%);
+}
+.hero-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+}
+.hero-grid {
+  /* Ledger paper: continuous full-width rules at the leading rhythm, fading
+     out before the deck so the reading zone stays clean. A radial mask was
+     tried first and rejected on sight: it cut the rules into floating
+     fragments that read as rendering artifacts. Rules must run edge to edge
+     or not exist. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--line) 0,
+    var(--line) 1px,
+    transparent 1px,
+    transparent 2.75rem
+  );
+  mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 72%);
+  opacity: 0.5;
+}
 `;
 
 /* The colophon. Three facts, no adjectives, set as a printer's note under the
@@ -90,7 +125,15 @@ export function Hero() {
         {CSS}
       </style>
 
-      <div className="mx-auto w-full max-w-5xl px-5 py-20 md:px-8 md:py-32">
+      {/* Painted ground behind the type. aria-hidden and pointer-events-none:
+          it must never be content, never intercept a tap. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="hero-ground absolute inset-0" />
+        <div className="hero-grid absolute inset-0" />
+        <div className="hero-grain absolute inset-0" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-5xl px-5 py-20 md:px-8 md:py-32">
         <InView>
           {/* --------------------------- masthead ------------------------- */}
           <div aria-hidden className="h-px w-full bg-line-strong" />
