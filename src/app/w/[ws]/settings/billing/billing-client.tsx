@@ -94,7 +94,7 @@ function fmtCents(cents: number): string {
   })}`;
 }
 
-export default function BillingSettingsPage() {
+export function BillingSettingsPage() {
   const { workspace } = useWorkspace();
   const qc = useQueryClient();
   const { toast } = useToast();

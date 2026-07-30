@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import type { TaskProposal } from "@/lib/types";
 import { apiMutate, ApiError } from "@/lib/client/api";
 import { raiseLimit } from "@/lib/client/tasks";
-import { useWorkspace } from "@/lib/client/workspace";
+import { useShell, useWorkspace } from "@/lib/client/workspace";
 import {
   createTranscriptionProvider,
   transcriptionSupported,
@@ -55,6 +55,7 @@ export function VoiceCaptureSheet({
 
   const capturesLeft =
     usage.limits.voiceCapturesPerMonth - usage.voiceCapturesThisMonth;
+  const shell = useShell();
 
   useEffect(() => () => providerRef.current?.stop(), []);
 
@@ -201,7 +202,11 @@ export function VoiceCaptureSheet({
           <p className="mt-3 text-xs text-faint">
             {capturesLeft > 0
               ? `Tap to start · ${capturesLeft} capture${capturesLeft === 1 ? "" : "s"} left this month`
-              : "You've used this month's captures. Upgrade for more."}
+              : // The store shell may state the limit but never pitch a
+                // purchase, so "Upgrade for more" is web-only wording.
+                shell
+                ? "You've used this month's captures."
+                : "You've used this month's captures. Upgrade for more."}
           </p>
           <p className="mx-auto mt-4 max-w-xs text-[11px] leading-relaxed text-faint">
             Transcribed on your device. Audio is never recorded or stored, only the text you approve.

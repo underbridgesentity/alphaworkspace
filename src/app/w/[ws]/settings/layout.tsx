@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { useWorkspace } from "@/lib/client/workspace";
+import { useShell, useWorkspace } from "@/lib/client/workspace";
 
 const TABS = [
   { href: "", label: "General" },
@@ -11,12 +11,17 @@ const TABS = [
   { href: "/billing", label: "Billing" },
 ];
 
+/** The store shell gets no Billing tab: commerce-free by store policy. */
+const SHELL_TABS = TABS.filter((t) => t.href !== "/billing");
+
 export default function SettingsLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { workspace } = useWorkspace();
+  const shell = useShell();
   const pathname = usePathname();
   const base = `/w/${workspace.slug}/settings`;
+  const tabs = shell ? SHELL_TABS : TABS;
 
   if (workspace.role === "member") {
     return (
@@ -40,7 +45,7 @@ export default function SettingsLayout({
     <div className="mx-auto w-full max-w-2xl px-4 pb-24 pt-5 md:px-6 md:pt-7">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
       <div className="mt-4 flex gap-1 border-b border-line">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const href = `${base}${t.href}`;
           const active = pathname === href;
           return (

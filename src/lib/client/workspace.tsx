@@ -26,6 +26,12 @@ export interface BootstrapData {
   };
   serverTranscribe?: boolean;
   isOperator?: boolean;
+  /**
+   * Store-shell request (Capacitor webview, detected server-side from the UA
+   * marker). Optional because a service-worker-cached bootstrap from before
+   * this field existed may still be served; absent means not the shell.
+   */
+  shell?: boolean;
   me: UserLite;
   projects: ProjectDTO[];
   members: MemberDTO[];
@@ -68,6 +74,15 @@ export function useWorkspace(): BootstrapData {
   const ctx = useContext(WorkspaceContext);
   if (!ctx) throw new Error("useWorkspace outside WorkspaceProvider");
   return ctx;
+}
+
+/**
+ * Commerce-free shell mode (store binaries). When true, no client component
+ * may render prices, plan pitches, upgrade links or checkout affordances;
+ * the server has already stripped its side of those surfaces.
+ */
+export function useShell(): boolean {
+  return useWorkspace().shell === true;
 }
 
 /** Whether the workspace's plan includes a feature (client-side gate). */

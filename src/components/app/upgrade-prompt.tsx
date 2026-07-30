@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { PLANS, formatZar, planWithFeature, type Feature } from "@/lib/plans";
-import { useWorkspace } from "@/lib/client/workspace";
+import { useShell, useWorkspace } from "@/lib/client/workspace";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -27,8 +27,23 @@ const HEADLINES: Record<string, string> = {
   feature: "That one's a Studio thing",
 };
 
+/**
+ * Store-shell wording for each limit kind. The server's own limit messages
+ * can say "upgrade", so in shell mode they are never echoed; the message is
+ * composed here as a plain statement of fact with no plan name, no price and
+ * no link out (Apple 3.1.3(f) / Play Billing).
+ */
+const SHELL_THING: Record<string, string> = {
+  members: "member",
+  projects: "project",
+  captures: "voice capture",
+  meetings: "meeting minutes",
+  storage: "storage",
+};
+
 export function UpgradePrompt() {
   const { workspace } = useWorkspace();
+  const shell = useShell();
   const [detail, setDetail] = useState<LimitDetail | null>(null);
 
   useEffect(() => {
@@ -38,6 +53,31 @@ export function UpgradePrompt() {
   }, []);
 
   if (!detail) return null;
+
+  if (shell) {
+    const thing = SHELL_THING[detail.limit ?? ""];
+    return (
+      <Dialog
+        open
+        onClose={() => setDetail(null)}
+        ariaLabel="Plan limit reached"
+        variant="center"
+      >
+        <DialogHeader title="Limit reached" onClose={() => setDetail(null)} />
+        <div className="px-5 pb-5">
+          <p className="text-muted">
+            {thing
+              ? `This workspace has reached its ${thing} limit.`
+              : "This isn't included in this workspace's current plan."}{" "}
+            Nothing you&apos;ve made is locked away.
+          </p>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setDetail(null)}>OK</Button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
 
   // For a feature gate, pitch the CHEAPEST plan that has it; for capacity
   // limits, pitch the band above the current one.

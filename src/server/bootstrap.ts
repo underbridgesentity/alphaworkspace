@@ -7,18 +7,21 @@ import { listLabels } from "@/server/dal/labels";
 import { unreadCount } from "@/server/dal/notifications";
 import { transcriptionConfigured } from "@/server/ai/transcribe";
 import { isOperator } from "@/server/admin/operator";
+import { isShellRequest } from "@/server/shell";
 import { db } from "@/server/db";
 
 /** Everything the app shell needs, in one query burst. */
 export async function getBootstrap(ctx: Ctx, user: SessionUser) {
-  const [projects, members, labels, usage, unread, operator] = await Promise.all([
-    listProjects(ctx),
-    listMembers(ctx),
-    listLabels(ctx),
-    workspaceUsage(ctx),
-    unreadCount(db, user.id),
-    isOperator(user),
-  ]);
+  const [projects, members, labels, usage, unread, operator, shell] =
+    await Promise.all([
+      listProjects(ctx),
+      listMembers(ctx),
+      listLabels(ctx),
+      workspaceUsage(ctx),
+      unreadCount(db, user.id),
+      isOperator(user),
+      isShellRequest(),
+    ]);
 
   return {
     workspace: {
@@ -31,6 +34,10 @@ export async function getBootstrap(ctx: Ctx, user: SessionUser) {
     },
     serverTranscribe: transcriptionConfigured(),
     isOperator: operator,
+    // Store-shell request (Capacitor webview): commerce surfaces are stripped
+    // server-side. Mirrors isOperator so client components gate off context
+    // instead of sniffing the UA themselves.
+    shell,
     me: user,
     projects,
     members,

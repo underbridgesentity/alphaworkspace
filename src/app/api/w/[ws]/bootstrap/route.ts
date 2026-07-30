@@ -6,6 +6,7 @@ import { listLabels } from "@/server/dal/labels";
 import { unreadCount } from "@/server/dal/notifications";
 import { transcriptionConfigured } from "@/server/ai/transcribe";
 import { isOperator } from "@/server/admin/operator";
+import { isShellRequest } from "@/server/shell";
 import { db } from "@/server/db";
 
 /**
@@ -17,14 +18,16 @@ export const GET = api(async (_req, params) => {
   const user = await requireUser();
   const ctx = await withWorkspace(params.ws);
 
-  const [projects, members, labels, usage, unread, operator] = await Promise.all([
-    listProjects(ctx),
-    listMembers(ctx),
-    listLabels(ctx),
-    workspaceUsage(ctx),
-    unreadCount(db, user.id),
-    isOperator(user),
-  ]);
+  const [projects, members, labels, usage, unread, operator, shell] =
+    await Promise.all([
+      listProjects(ctx),
+      listMembers(ctx),
+      listLabels(ctx),
+      workspaceUsage(ctx),
+      unreadCount(db, user.id),
+      isOperator(user),
+      isShellRequest(),
+    ]);
 
   return json({
     workspace: {
@@ -37,6 +40,8 @@ export const GET = api(async (_req, params) => {
     },
     serverTranscribe: transcriptionConfigured(),
     isOperator: operator,
+    // Store-shell request: see getBootstrap, the two payloads stay in step.
+    shell,
     me: user,
     projects,
     members,

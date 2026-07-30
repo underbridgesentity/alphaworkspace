@@ -17,13 +17,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiGet } from "@/lib/client/api";
-import { useWorkspace } from "@/lib/client/workspace";
+import { useShell, useWorkspace } from "@/lib/client/workspace";
 import { Logo } from "@/components/ui/logo";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { NewProjectDialog } from "./new-project-dialog";
 
 export function Sidebar({ className }: { className?: string }) {
   const { workspace, projects, usage } = useWorkspace();
+  const shell = useShell();
   const pathname = usePathname();
   const [newProject, setNewProject] = useState(false);
 
@@ -119,7 +120,9 @@ export function Sidebar({ className }: { className?: string }) {
       </nav>
 
       <div className="border-t border-line px-3 py-3 space-y-0.5">
-        {workspace.plan === "free" && (
+        {/* Upgrade card: a purchase call to action, so the store shell never
+            renders it (Apple 3.1.3(f) / Play Billing: consumption-only). */}
+        {workspace.plan === "free" && !shell && (
           <Link
             href={`${base}/settings/billing`}
             className="press mb-2 block rounded-card bg-raised px-3 py-2.5 hover:bg-overlay"
@@ -205,6 +208,7 @@ export function WorkspaceMenuItems({
   nav?: boolean;
 }) {
   const { workspace } = useWorkspace();
+  const shell = useShell();
   const router = useRouter();
   const base = `/w/${workspace.slug}`;
   const isAdmin = workspace.role !== "member";
@@ -235,10 +239,15 @@ export function WorkspaceMenuItems({
                 <UserPlus className="size-4" />
                 Members &amp; invites
               </MenuItem>
-              <MenuItem onClick={() => go(`${base}/settings/billing`)}>
-                <CreditCard className="size-4" />
-                Billing
-              </MenuItem>
+              {/* No Billing entry in the store shell: the destination is the
+                  plan-facts page, but the menu item itself reads as a path
+                  toward purchase. */}
+              {!shell && (
+                <MenuItem onClick={() => go(`${base}/settings/billing`)}>
+                  <CreditCard className="size-4" />
+                  Billing
+                </MenuItem>
+              )}
               <MenuItem onClick={() => go(`${base}/settings`)}>
                 <Settings className="size-4" />
                 Workspace settings

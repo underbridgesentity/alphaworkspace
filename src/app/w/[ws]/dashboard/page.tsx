@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, Plus, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiGet, apiMutate } from "@/lib/client/api";
-import { useFeature, useWorkspace } from "@/lib/client/workspace";
+import { useFeature, useShell, useWorkspace } from "@/lib/client/workspace";
 import { planWithFeature, type Feature } from "@/lib/plans";
 import { formatDay, formatMinutes, timeAgo } from "@/lib/dates";
 import type {
@@ -840,9 +840,13 @@ function FeatureTeaser({
   blurb: string;
 }) {
   const { workspace } = useWorkspace();
+  const shell = useShell();
   const isAdmin = workspace.role !== "member";
   const plan = planWithFeature(feature);
   if (!isAdmin) return null;
+  // The teaser names a paid plan and invites moving to it, which the store
+  // shell may not show; a locked feature simply is not there in the shell.
+  if (shell) return null;
   return (
     <section className="mt-4 rounded-card border border-dashed border-line-strong bg-surface/60 p-4">
       <div className="flex flex-wrap items-center gap-3">
