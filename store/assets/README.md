@@ -122,27 +122,44 @@ cascade continues down through 6.3", 6.1", 5.5" and 4.7".
 - Do not upload landscape. The app is portrait-first
   (`src/app/manifest.ts` sets `orientation: "portrait"`).
 
-### 2b. Apple, iPad: needed only because iPad is currently declared
+### 2b. Apple, iPad: DECIDED, iPad stays declared and the set is captured
 
-`ios/App/App.xcodeproj/project.pbxproj` has `TARGETED_DEVICE_FAMILY = "1,2"`,
-which declares **iPhone and iPad**. The 13" iPad row is annotated "Required if
-app runs on iPad", so as things stand **iPad screenshots are mandatory**.
+`TARGETED_DEVICE_FAMILY` stays `"1,2"` (iPhone and iPad), by Joseph's call on
+2026-08-17. The earlier draft of this section recommended dropping to iPhone
+only on the grounds that nobody had tested a tablet layout. That objection has
+been answered rather than avoided: `e2e/tablet.spec.ts` audits five surfaces at
+iPad size and asserts no horizontal overflow, that the desktop sidebar (not the
+phone tab bar) is what appears at 1032 points, and that landscape does not
+strand the content in a narrow column. It passes.
 
-Two ways out, and the first is almost certainly right for v1:
+**Both sets are already captured.** They are generated from the running product
+by `e2e/store-shots.spec.ts`, so they cannot drift from what the app does:
 
-1. **Set `TARGETED_DEVICE_FAMILY = "1"`** (iPhone only) and skip iPad entirely.
-   The app is portrait, mobile-first, and designed for a mid-range Android;
-   nobody has designed or tested an iPad layout. Shipping an untested iPad
-   build also invites a 4.2 quality rejection on a device you did not aim at.
-   This is a change to `ios/`, owned by someone else. Ask for it.
-2. **Keep iPad and capture the 13" set:**
-   - **Pixels: 2064 x 2752 portrait** (2048 x 2732 also accepted).
-   - **Capture recipe: viewport 1032 x 1376, `deviceScaleFactor: 2`** (iPad Pro
-     13" logical size).
-   - The 12.9" row is not separately required: omit it and Apple scales the 13"
-     set.
-   - Check the app actually looks deliberate at 1032 points wide before doing
-     this. If it looks like a stretched phone, take option 1.
+```
+npm run db:reset:local          # clean seed: the write journeys leave litter
+npx playwright test --project=iphone --project=ipad store-shots
+```
+
+Output, ready to upload, sizes asserted by the spec itself:
+
+| Slot | Files | Pixels |
+| --- | --- | --- |
+| App Store, iPhone 6.9" | `store/assets/screenshots/iphone/1-4.png` | 1320 x 2868 |
+| App Store, iPad 13" | `store/assets/screenshots/ipad/1-4.png` | 2064 x 2752 |
+
+The 12.9" iPad row is not separately required: omit it and Apple scales the 13"
+set. Supplying 6.9" likewise makes the 6.5" iPhone set optional.
+
+Three things the capture handles that a manual screenshot would get wrong:
+
+- **No billing surface is captured.** The binaries ship commerce free under
+  Apple 3.1.3(f), so a price in a screenshot contradicts the review notes.
+- **Next's dev indicator is hidden** at capture time. It floats over the
+  bottom-left corner, on top of the sidebar's Settings link.
+- **The window is forced to 1100x1500 for iPad.** A viewport taller than the
+  browser window makes Chromium tile the capture and repeat every `sticky`
+  element, which put a second copy of the app header near the bottom of the
+  image. It reads as a duplicated-component bug and is purely an artefact.
 
 ### 2c. Play, phone
 

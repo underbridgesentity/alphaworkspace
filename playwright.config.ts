@@ -42,9 +42,16 @@ export default defineConfig({
   projects: [
     // Auth runs first and hands its saved session to the rest.
     { name: "setup", testMatch: /auth\.setup\.ts/ },
+    /*
+     * The device-specific specs are scoped to the projects they were written
+     * for. Without this, `npx playwright test` runs store-shots on desktop,
+     * where the size assertion cannot pass, and reports a broken suite for a
+     * spec that was never meant to run there.
+     */
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: [/tablet\.spec\.ts/, /store-shots\.spec\.ts/],
       dependencies: ["setup"],
     },
     // The product law is mobile first on a cheap Android, so it is a first
@@ -52,6 +59,58 @@ export default defineConfig({
     {
       name: "mobile",
       use: { ...devices["Pixel 7"] },
+      testIgnore: [/tablet\.spec\.ts/, /store-shots\.spec\.ts/],
+      dependencies: ["setup"],
+    },
+    /*
+     * iPad, because the iOS binary declares TARGETED_DEVICE_FAMILY "1,2" and
+     * Apple reviews on the device families you claim. The layout had never
+     * been looked at above phone width and below desktop.
+     *
+     * 1032x1376 at deviceScaleFactor 2 is the iPad Pro 13" logical viewport,
+     * and it renders at exactly 2064x2752, which is the screenshot size App
+     * Store Connect demands for that family. So the audit and the store assets
+     * come out of the same run and cannot drift apart.
+     */
+    {
+      name: "ipad",
+      use: {
+        viewport: { width: 1032, height: 1376 },
+        deviceScaleFactor: 2,
+        isMobile: false, // iPadOS Safari reports desktop-class
+        hasTouch: true,
+        /*
+         * The window must be at least as tall as the viewport. 1376 CSS px is
+         * taller than Chromium's default window, and when the viewport exceeds
+         * the window the capture is TILED: anything `position: sticky` or
+         * `fixed` is painted again in every tile, so the app header appeared a
+         * second time near the bottom of the image. It looks exactly like a
+         * duplicated-component bug and is purely an artefact of the capture.
+         * Verified against the DOM: one <header>, one "New task" control, and
+         * scrollHeight equal to the viewport.
+         */
+        launchOptions: { args: ["--window-size=1100,1500"] },
+      },
+      testMatch: [/tablet\.spec\.ts/, /store-shots\.spec\.ts/],
+      dependencies: ["setup"],
+    },
+    /*
+     * iPhone 6.9" (16 Pro Max) at 440x956 and dSF 3, which renders 1320x2868:
+     * the one iPhone screenshot size App Store Connect asks for. Providing 6.9"
+     * makes the 6.5" set optional, so this is the only iPhone target needed.
+     *
+     * Distinct from the "mobile" Pixel 7 project, which exists to enforce the
+     * mobile-first product law on a cheap Android and should stay that way.
+     */
+    {
+      name: "iphone",
+      use: {
+        viewport: { width: 440, height: 956 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+      testMatch: [/store-shots\.spec\.ts/],
       dependencies: ["setup"],
     },
   ],
