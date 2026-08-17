@@ -18,6 +18,8 @@ connectivity, priced in rand.
 - `npm run build`, production build (must stay green)
 - `npm test`, vitest (DAL isolation, entitlements, PayFast, extraction, KPI)
 - `npm run db:generate` / `db:migrate` / `db:push`. Drizzle migrations
+  (**production migrations do not run on deploy, and `db:migrate` alone aims at
+  the wrong port**, see Migrating production below)
 - `npm run db:migrate:local` / `seed:local` / `db:reset:local`, see Local development
 - `npm run seed`, demo agency workspace (refuses a remote DATABASE_URL)
 - `npm run push:keys`, generate VAPID keys for web push
@@ -94,6 +96,40 @@ fresh clone does not get it yet.
 Blank keys in `.env.dev-local` mean Google sign-in, attachments, meetings audio
 and web push show their documented "not enabled" state locally, and magic links
 and outbound email print to the dev server console.
+
+## Migrating production
+
+**The deploy does not run migrations.** `build` is plain `next build`, so
+pushing to main ships code against whatever schema the database already has.
+Apply the migration yourself, and remember new code can meet an old schema in
+that window: write DAL mutations so they are correct on both, which for
+multi-statement deletes means one `db.transaction`.
+
+**`DATABASE_URL` is the transaction pooler and must not be used for DDL.** It
+ends in `:6543` (pgbouncer, transaction mode), which is right for a serverless
+app and wrong for migrations: transaction mode keeps no session state, which is
+what DDL, advisory locks and drizzle's `__drizzle_migrations` bookkeeping rely
+on. `npm run db:migrate` reads that URL as-is, so it points at 6543 too.
+
+Run migrations on the **session pooler**: same host and credentials, port
+**5432**. Swap the port in-process, never by copying the URL out of
+`.env.local`:
+
+```js
+const url = new URL(process.env.DATABASE_URL); url.port = "5432";
+const sql = postgres(url.toString(), {
+  max: 1, prepare: false,
+  connection: { lock_timeout: "5s", statement_timeout: "120s" },
+});
+await migrate(drizzle(sql), { migrationsFolder: "./drizzle" });
+```
+
+`lock_timeout` matters because drizzle wraps every pending migration in ONE
+transaction, so locks taken by an early `ALTER` are held until the last
+statement commits. Without it, one long-running query can make a migration
+queue and every request queue behind it. With it the migration fails fast and
+rolls back. Verify the result by querying `information_schema` and
+`pg_constraint` afterwards rather than trusting the CLI's exit code.
 
 ## Product laws (override feature decisions)
 
