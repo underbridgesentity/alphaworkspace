@@ -148,24 +148,46 @@ export async function deleteAccount(db: Db, userId: string): Promise<void> {
   await deleteObjects(paths);
 
   /*
-   * Revoke the invites this person issued but nobody has accepted yet.
+   * ALL FOUR ROW DELETES IN ONE TRANSACTION. Separately they are a partial
+   * deletion waiting to happen: if the last statement fails, the workspaces
+   * and invites are already gone and the account survives, which destroys data
+   * without honouring the request and cannot be safely retried.
    *
-   * invites.invited_by is SET NULL now, so an unaccepted link outlives its
-   * author. A shareable link can carry the admin role and lasts 90 days, so
-   * without this an admin could mint one, delete their account, sign up again
-   * on the same address and walk back in as admin. Deletion was impossible
-   * before this change, which is the only reason that was not already reachable.
+   * That is not hypothetical. Deployed against a database that has not yet had
+   * migration 0013, the final `DELETE FROM users` raises a foreign key
+   * violation, so precisely that sequence runs: storage purged, invites
+   * revoked, sole-owned workspaces destroyed, account still there. The
+   * transaction makes the code safe on both schemas and removes the deploy
+   * ordering hazard entirely.
    *
-   * Accepted invites are left alone: they are the audit record of how a
-   * current member got in, and the token is already spent.
+   * The storage purge deliberately stays OUTSIDE and before it. Object deletes
+   * cannot be rolled back, and holding a database transaction open across
+   * hundreds of HTTP calls would pin a connection for the whole purge.
    */
-  await db
-    .delete(invites)
-    .where(and(eq(invites.invitedBy, userId), isNull(invites.acceptedAt)));
+  await db.transaction(async (tx) => {
+    /*
+     * Revoke the invites this person issued but nobody has accepted yet.
+     *
+     * invites.invited_by is SET NULL now, so an unaccepted link outlives its
+     * author. A shareable link can carry the admin role and lasts 90 days, so
+     * without this an admin could mint one, delete their account, sign up
+     * again on the same address and walk back in as admin. Deletion was
+     * impossible before this change, which is the only reason that was not
+     * already reachable.
+     *
+     * acceptedAt IS NULL is the right predicate precisely because acceptInvite
+     * never stamps it on a shareable link, so a reusable admin link always
+     * matches. Accepted email invites are left alone: they are the audit
+     * record of how a current member got in, and the token is spent.
+     */
+    await tx
+      .delete(invites)
+      .where(and(eq(invites.invitedBy, userId), isNull(invites.acceptedAt)));
 
-  for (const workspaceId of soleOwned) {
-    await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
-  }
+    for (const workspaceId of soleOwned) {
+      await tx.delete(workspaces).where(eq(workspaces.id, workspaceId));
+    }
 
-  await db.delete(users).where(eq(users.id, userId));
+    await tx.delete(users).where(eq(users.id, userId));
+  });
 }

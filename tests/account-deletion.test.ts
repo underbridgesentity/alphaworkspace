@@ -20,7 +20,7 @@
  * loses the team's discussion rather than just the name against it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "@/server/db/schema";
 import type { Db } from "@/server/db";
 import { addMember, createTestDb, createTestUser, ctxFor } from "./helpers/db";
@@ -138,7 +138,7 @@ describe("deleteAccount", () => {
   });
 
   it("revokes the unaccepted invites they issued", async () => {
-    const { member, ws } = await scenario(db);
+    const { owner, member, ws } = await scenario(db);
     // A reusable link carrying the admin role: the escalation path is to mint
     // one, delete the account, sign up again on the same address and rejoin as
     // admin. Deletion used to be impossible, which is the only thing that had
@@ -163,10 +163,84 @@ describe("deleteAccount", () => {
       acceptedAt: new Date(),
     });
 
+    // Somebody else's invite, in the same workspace. Without this row the
+    // predicate could drop the invitedBy clause entirely and still pass, which
+    // would be a cross-tenant wipe of every pending invite in the product.
+    await db.insert(schema.invites).values({
+      workspaceId: ws.id,
+      email: "hire@test.local",
+      role: "member",
+      token: "owners-token",
+      invitedBy: owner.id,
+      expiresAt: new Date(Date.now() + 14 * 864e5),
+    });
+    // And one in a workspace this deletion does not touch at all.
+    const stranger = await createTestUser(db, "stranger@test.local", "Stranger");
+    const [other] = await db
+      .insert(schema.workspaces)
+      .values({ name: "Other", slug: "other", createdBy: stranger.id })
+      .returning();
+    await addMember(db, other.id, stranger.id, "owner");
+    await db.insert(schema.invites).values({
+      workspaceId: other.id,
+      email: null,
+      role: "admin",
+      token: "other-tenant-token",
+      invitedBy: stranger.id,
+      expiresAt: new Date(Date.now() + 90 * 864e5),
+    });
+
     await deleteAccount(db, member.id);
 
     const left = await db.select().from(schema.invites);
-    expect(left.map((i) => i.token)).toEqual(["spent-token"]);
+    expect(left.map((i) => i.token).sort()).toEqual([
+      "other-tenant-token",
+      "owners-token",
+      "spent-token",
+    ]);
+  });
+
+  it("rolls the whole deletion back when the final delete fails", async () => {
+    const { member, ws } = await scenario(db);
+    await db.insert(schema.invites).values({
+      workspaceId: ws.id,
+      email: null,
+      role: "admin",
+      token: "link",
+      invitedBy: member.id,
+      expiresAt: new Date(Date.now() + 90 * 864e5),
+    });
+
+    /*
+     * Reproduce a deploy that lands before its migration. On the old schema
+     * the cascade runs happily until `DELETE FROM users` hits a foreign key
+     * with no ON DELETE clause. A trigger is the honest way to stage that
+     * here, because this test database already has migration 0013.
+     *
+     * Without the transaction the invites and sole-owned workspaces are gone
+     * by the time it raises, which destroys data while the account survives
+     * and leaves nothing that can be retried cleanly.
+     */
+    // One statement per execute: the extended protocol PGlite speaks parses a
+    // single command, and a semicolon-separated pair is a syntax error.
+    await db.execute(sql`
+      CREATE FUNCTION block_user_delete() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'simulated FK violation'; END;
+      $$ LANGUAGE plpgsql
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER block_user_delete BEFORE DELETE ON users
+      FOR EACH ROW EXECUTE FUNCTION block_user_delete()
+    `);
+
+    await expect(deleteAccount(db, member.id)).rejects.toThrow();
+
+    await db.execute(sql`DROP TRIGGER block_user_delete ON users`);
+
+    // Everything the transaction touched must still be there.
+    expect(await db.select().from(schema.invites)).toHaveLength(1);
+    expect(await db.select().from(schema.users)).toHaveLength(2);
+    expect(await db.select().from(schema.workspaces)).toHaveLength(1);
   });
 
   it("replays an offline comment whose author has since gone", async () => {
@@ -311,5 +385,78 @@ describe("deleteWorkspace", () => {
 
     expect(purged).not.toContain(null);
     expect(purged.every((p) => typeof p === "string" && p.length > 0)).toBe(true);
+  });
+});
+
+/**
+ * The same credential-revocation rule on the two membership paths. An invite
+ * link carries a role for up to 90 days, so losing admin has to take the links
+ * with it or the demotion is cosmetic.
+ */
+describe("invite revocation on membership change", () => {
+  let db: Db;
+  beforeEach(async () => {
+    db = await createTestDb();
+  });
+
+  async function linkFrom(ws: string, userId: string, token: string) {
+    await db.insert(schema.invites).values({
+      workspaceId: ws,
+      email: null,
+      role: "admin",
+      token,
+      invitedBy: userId,
+      expiresAt: new Date(Date.now() + 90 * 864e5),
+    });
+  }
+
+  it("removing an admin revokes their links but not anyone else's", async () => {
+    const { owner, ws } = await scenario(db);
+    const admin = await createTestUser(db, "admin@test.local", "Thabo");
+    await addMember(db, ws.id, admin.id, "admin");
+    await linkFrom(ws.id, admin.id, "leaving-admin-link");
+    await linkFrom(ws.id, owner.id, "owner-link");
+
+    const { removeMember } = await import("@/server/dal/workspaces");
+    const [m] = await db
+      .select()
+      .from(schema.memberships)
+      .where(eq(schema.memberships.userId, admin.id));
+    await removeMember(await ctxFor(db, owner.id, ws.slug), m.id);
+
+    const left = await db.select().from(schema.invites);
+    expect(left.map((i) => i.token)).toEqual(["owner-link"]);
+  });
+
+  it("demoting an admin to member revokes their links too", async () => {
+    const { owner, ws } = await scenario(db);
+    const admin = await createTestUser(db, "admin2@test.local", "Thabo");
+    await addMember(db, ws.id, admin.id, "admin");
+    await linkFrom(ws.id, admin.id, "demoted-admin-link");
+
+    const { changeMemberRole } = await import("@/server/dal/workspaces");
+    const [m] = await db
+      .select()
+      .from(schema.memberships)
+      .where(eq(schema.memberships.userId, admin.id));
+    await changeMemberRole(await ctxFor(db, owner.id, ws.slug), m.id, "member");
+
+    // They cannot redeem it themselves, but they can hand it to a fresh
+    // account on another address and be admin again.
+    expect(await db.select().from(schema.invites)).toHaveLength(0);
+  });
+
+  it("promoting a member revokes nothing", async () => {
+    const { owner, member, ws } = await scenario(db);
+    await linkFrom(ws.id, owner.id, "owner-link");
+
+    const { changeMemberRole } = await import("@/server/dal/workspaces");
+    const [m] = await db
+      .select()
+      .from(schema.memberships)
+      .where(eq(schema.memberships.userId, member.id));
+    await changeMemberRole(await ctxFor(db, owner.id, ws.slug), m.id, "admin");
+
+    expect(await db.select().from(schema.invites)).toHaveLength(1);
   });
 });

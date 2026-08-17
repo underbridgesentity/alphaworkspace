@@ -164,8 +164,9 @@ export default function PrivacyPage() {
           <span className="font-medium text-ink">
             names of everyone in the workspace
           </span>
-          , whether or not the content mentions them. Email addresses are not
-          sent. Under Anthropic’s
+          , whether or not the content mentions them. We do not send members’
+          email addresses. Anything you type or say is sent as you wrote it, so
+          an address inside a note or a recording goes with it. Under Anthropic’s
           commercial terms this data is not used to train their models. AI
           credentials never reach your browser, and the AI never creates or
           changes work, a person always confirms first.

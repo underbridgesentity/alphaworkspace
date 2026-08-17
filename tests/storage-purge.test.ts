@@ -16,21 +16,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
-/** Bodies of every request the helper made, newest last. */
-let requests: { url: string; prefixes: string[] }[] = [];
+/** Every request the helper made, newest last. */
+let requests: {
+  url: string;
+  method: string;
+  contentType: string;
+  prefixes: string[];
+}[] = [];
+
+function record(url: string, init: RequestInit) {
+  requests.push({
+    url: String(url),
+    method: String(init.method),
+    contentType: String(
+      (init.headers as Record<string, string> | undefined)?.["content-type"],
+    ),
+    prefixes: JSON.parse(String(init.body)).prefixes,
+  });
+}
 
 beforeEach(() => {
   vi.stubEnv("SUPABASE_URL", "https://project.supabase.test");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key");
   requests = [];
   globalThis.fetch = (async (url: string, init: RequestInit) => {
-    requests.push({
-      url: String(url),
-      prefixes: JSON.parse(String(init.body)).prefixes,
-    });
-    return new Response("{}", { status: 200 });
+    record(url, init);
+    return new Response(JSON.stringify(ok(init)), { status: 200 });
   }) as unknown as typeof fetch;
 });
+
+/** The real endpoint answers with the objects it removed; mirror that. */
+function ok(init: RequestInit): { name: string }[] {
+  return JSON.parse(String(init.body)).prefixes.map((name: string) => ({ name }));
+}
 
 afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
@@ -42,6 +60,34 @@ afterEach(() => {
 });
 
 describe("deleteObjects", () => {
+  it("addresses the bucket endpoint the storage API actually implements", async () => {
+    const { deleteObjects } = await import("@/server/storage");
+    await deleteObjects(["ws-1/a.pdf"]);
+
+    // Without this, pointing the purge at a URL that does not exist leaves
+    // every other test in this file green while nothing is ever deleted:
+    // exactly the "reports success, removes nothing" failure.
+    expect(requests[0].url).toBe(
+      "https://project.supabase.test/storage/v1/object/attachments",
+    );
+    expect(requests[0].method).toBe("DELETE");
+    expect(requests[0].contentType).toBe("application/json");
+  });
+
+  it("counts what the response says was removed, not the status code", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // 200 OK with an empty array is what an under-privileged key produces:
+    // RLS filters every object and the purge silently removes nothing.
+    globalThis.fetch = (async () =>
+      new Response("[]", { status: 200 })) as unknown as typeof fetch;
+
+    const { deleteObjects } = await import("@/server/storage");
+    await deleteObjects(["ws-1/a.pdf", "ws-1/b.pdf"]);
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0][0])).toContain("2 failed");
+  });
+
   it("covers every path exactly once, in few requests", async () => {
     const { deleteObjects } = await import("@/server/storage");
     const paths = Array.from({ length: 2_500 }, (_, i) => `ws-1/file-${i}.pdf`);
@@ -96,11 +142,8 @@ describe("deleteObjects", () => {
     vi.spyOn(Date, "now").mockImplementation(() => now);
     globalThis.fetch = (async (url: string, init: RequestInit) => {
       now += 5_000;
-      requests.push({
-        url: String(url),
-        prefixes: JSON.parse(String(init.body)).prefixes,
-      });
-      return new Response("{}", { status: 200 });
+      record(url, init);
+      return new Response(JSON.stringify(ok(init)), { status: 200 });
     }) as unknown as typeof fetch;
 
     const { deleteObjects } = await import("@/server/storage");
@@ -123,11 +166,8 @@ describe("deleteObjects", () => {
     globalThis.fetch = (async (url: string, init: RequestInit) => {
       call++;
       if (call === 1) throw new Error("socket hang up");
-      requests.push({
-        url: String(url),
-        prefixes: JSON.parse(String(init.body)).prefixes,
-      });
-      return new Response("{}", { status: 200 });
+      record(url, init);
+      return new Response(JSON.stringify(ok(init)), { status: 200 });
     }) as unknown as typeof fetch;
 
     const { deleteObjects } = await import("@/server/storage");

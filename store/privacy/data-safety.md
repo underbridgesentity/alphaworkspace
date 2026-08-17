@@ -126,9 +126,11 @@ compliance, Personalisation, Account management.
   `subscriptions.last_itn`, which stores PayFast's callback **verbatim**,
   including `name_first`, `name_last` and `email_address`
   (`src/server/payfast/itn.ts:124-126`, `schema.ts:629`).
-- Reaches: Resend (every magic link and every notification email); Anthropic
-  (member email addresses are inside extraction and meeting-summary prompts,
-  which the privacy page does not currently mention, see CONTRADICTIONS item 6).
+- Reaches: Resend (every magic link and every notification email). NOT
+  Anthropic: the member roster in the extraction and meeting-summary prompts
+  carries names only (`m.name ?? m.email.split("@")[0]`), so no address is
+  deliberately sent. Note an address a user TYPES or SAYS still travels inside
+  the transcript, which the privacy page states plainly.
 
 **User IDs** — Collected **Yes** · Shared **No** · Ephemeral **No** ·
 **Required** · Purposes: **App functionality, Account management**
@@ -386,7 +388,7 @@ expires.
 | Supabase | The whole database, plus attachment and meeting-audio objects in a private bucket | Database and file storage | `src/server/db/index.ts`, `src/server/storage.ts` |
 | Vercel | Request handling for every page and API call, region pinned to London | Application hosting | `vercel.json` |
 | Deepgram | Voice-capture audio bytes; meeting audio fetched by signed URL; a keyterm list of member, project, client and label names | Speech to text | `src/server/ai/transcribe.ts` |
-| Anthropic | Meeting transcripts, typed and spoken capture text, weekly activity summaries, and every workspace member's id, name and email address | Summaries, task extraction, weekly narrative | `src/server/ai/meeting-summary.ts`, `extraction.ts`, `narrative.ts` |
+| Anthropic | Meeting transcripts, typed and spoken capture text, weekly activity summaries, and every workspace member's id and name (no email address) | Summaries, task extraction, weekly narrative | `src/server/ai/meeting-summary.ts`, `extraction.ts`, `narrative.ts` |
 | Recall.ai | Meeting join URL, a bot name, and internal meeting and workspace UUIDs; records and holds the call audio | Optional notetaker bot, an add-on in no band | `src/server/meetingbot/recall.ts` |
 | Resend | Recipient email address, subject and body, including magic-link sign-in URLs and meeting summaries | Transactional email | `src/server/email/send.ts` |
 | PayFast | `name_first`, `email_address`, amount, workspace and plan identifiers | Payments, **web only, never in the app** | `src/server/payfast/checkout.ts` |

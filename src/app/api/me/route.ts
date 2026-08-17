@@ -12,11 +12,14 @@ import { deleteAccount } from "@/server/dal/account";
  * account, plus every meeting the user recorded anywhere, before it drops the
  * rows that hold those paths.
  *
- * 60 is the ceiling that holds on every Vercel plan (300 is Pro-only and is
- * rejected at deploy on Hobby). deleteObjects stops at its own 45s deadline
- * and returns, so the account delete always runs: dying mid-purge would leave
- * the account undeletable, which is the POPIA right this route exists for.
- * GET and PATCH are unaffected by the ceiling.
+ * 60 because deleteObjects stops at its own 45s deadline and returns, so the
+ * account delete always runs; dying mid-purge would leave the account
+ * undeletable, which is the POPIA right this route exists for. A higher
+ * ceiling would buy nothing (and is not plan-limited here: four other routes
+ * ship 300 and deploy fine).
+ *
+ * Route config is per SEGMENT, so this ceiling covers GET and PATCH too. It
+ * only bites if a handler actually runs that long, which neither does.
  */
 export const maxDuration = 60;
 

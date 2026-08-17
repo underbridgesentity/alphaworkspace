@@ -183,6 +183,27 @@ describe("extraction prompt", () => {
     expect(system).toContain("NEVER invent ids");
   });
 
+  it("sends no email address, even for a member with no name set", () => {
+    // Magic-link signups leave users.name null until the person fills it in,
+    // so `name ?? email` quietly shipped real addresses for exactly those
+    // members on every capture. The live privacy policy now states we do not
+    // send them, which makes this a one-line change with a promise on it.
+    const { system } = buildExtractionPrompt(
+      { transcript: "x", source: "voice" },
+      {
+        ...context,
+        members: [
+          { id: "u-1", name: null, email: "naledi@mzansi.studio" },
+          { id: "u-2", name: "Thabo", email: "thabo@mzansi.studio" },
+        ],
+      },
+    );
+    expect(system).not.toContain("@");
+    // Still matchable: the local part is what the model hears in a transcript.
+    expect(system).toContain("naledi");
+    expect(system).toContain("Thabo");
+  });
+
   it("switches to single-task mode for quick-add", () => {
     const { system } = buildExtractionPrompt(
       { transcript: "x", source: "quickadd" },

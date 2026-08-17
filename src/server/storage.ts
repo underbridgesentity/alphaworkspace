@@ -137,7 +137,22 @@ export async function deleteObjects(paths: readonly string[]): Promise<void> {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prefixes: batch }),
       });
-      if (!res.ok) failed += batch.length;
+      if (!res.ok) {
+        failed += batch.length;
+        continue;
+      }
+      /*
+       * Count what was actually removed, not what the status code implies.
+       * The endpoint answers 200 with the array of objects it deleted, so
+       * res.ok alone cannot tell "removed 100" from "removed 0". The mode that
+       * matters: swap the service-role key for an anon key and RLS filters
+       * every object, which would otherwise report a clean purge forever.
+       *
+       * Reading the body also releases the socket. Leaving it unconsumed holds
+       * connections open across every batch in the budget.
+       */
+      const removed: unknown = await res.json().catch(() => null);
+      failed += batch.length - (Array.isArray(removed) ? removed.length : 0);
     } catch {
       failed += batch.length;
     }

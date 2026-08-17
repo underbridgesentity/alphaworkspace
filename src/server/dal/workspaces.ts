@@ -243,6 +243,23 @@ export async function changeMemberRole(
     .update(memberships)
     .set({ role })
     .where(eq(memberships.id, membershipId));
+
+  // Demotion has to take their outstanding invites with it, for the same
+  // reason removal does: an admin link they minted stays valid for 90 days and
+  // carries the admin role. They cannot redeem it themselves (acceptInvite
+  // returns early for an existing member and never upgrades a role), but they
+  // can hand it to a fresh account on another address and be admin again.
+  if (role === "member") {
+    await ctx.db
+      .delete(invites)
+      .where(
+        and(
+          eq(invites.workspaceId, ctx.workspace.id),
+          eq(invites.invitedBy, target.userId),
+          isNull(invites.acceptedAt),
+        ),
+      );
+  }
 }
 
 /**

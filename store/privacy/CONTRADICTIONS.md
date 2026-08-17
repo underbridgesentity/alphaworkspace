@@ -158,7 +158,16 @@ the web app (item 3 covers the same fix).
 
 ---
 
-## 6. Anthropic receives every workspace member's email address
+## 6. RESOLVED (commit 416efd0): Anthropic received every member's email address
+
+**Fixed at the source rather than disclosed.** The roster in both prompts is
+now `${m.name ?? m.email.split("@")[0]}`, so no address is sent, and the
+fallback for a member with no name set (every magic-link signup until they fill
+it in) sends the local part rather than the address. The privacy page and
+data-safety.md both say so, and `tests/ai-extraction.test.ts` asserts the built
+prompt contains no `@`.
+
+The original finding is kept below for the record.
 
 **The policy says** (AI processing): transcripts and weekly activity summaries
 are processed through Anthropic's API.
