@@ -35,6 +35,10 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
   vi.unstubAllEnvs();
+  // Not just tidiness: a test that fails before its own mockRestore() leaks
+  // its console spy into the next test, which then fails for a reason that
+  // has nothing to do with what it is testing.
+  vi.restoreAllMocks();
 });
 
 describe("deleteObjects", () => {
@@ -76,10 +80,41 @@ describe("deleteObjects", () => {
 
     expect(warn).toHaveBeenCalledOnce();
     const message = String(warn.mock.calls[0][0]);
-    expect(message).toContain("2/2");
+    expect(message).toContain("2 failed");
+    expect(message).toContain("of 2 objects");
     // Paths carry the workspace id and the user's own filename.
     expect(message).not.toContain("client-brief");
     expect(message).not.toContain("ws-7");
+    warn.mockRestore();
+  });
+
+  it("gives up on its time budget instead of overrunning the function", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Every request burns 5 seconds of the 45s budget, so the purge must stop
+    // itself after ~9 batches rather than working through all 50.
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      now += 5_000;
+      requests.push({
+        url: String(url),
+        prefixes: JSON.parse(String(init.body)).prefixes,
+      });
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { deleteObjects } = await import("@/server/storage");
+    const paths = Array.from({ length: 5_000 }, (_, i) => `ws/f-${i}`);
+
+    // The contract that matters: it RETURNS. The caller still has to delete
+    // the rows, and an account that cannot be deleted is the worse failure.
+    await deleteObjects(paths);
+
+    expect(requests.length).toBeLessThan(12);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0][0])).toContain("skipped on time budget");
+
+    vi.mocked(Date.now).mockRestore();
     warn.mockRestore();
   });
 

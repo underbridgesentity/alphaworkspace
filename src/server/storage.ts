@@ -98,15 +98,39 @@ export async function deleteObject(path: string): Promise<void> {
  */
 const PURGE_BATCH = 100;
 
+/**
+ * How long the purge may run before it gives up and lets the caller get on
+ * with deleting the rows.
+ *
+ * The route budget is 60s (the ceiling on every Vercel plan, so it cannot be
+ * rejected at deploy). This leaves headroom for the queries either side, and
+ * it is the whole point of the design: the caller is honouring a deletion
+ * request, and running out of wall clock must not leave the account or
+ * workspace undeletable. Objects we did not reach are logged and stay in the
+ * bucket, which is a far smaller harm than a user who can never delete.
+ */
+const PURGE_BUDGET_MS = 45_000;
+
 export async function deleteObjects(paths: readonly string[]): Promise<void> {
   // Dedupe: a meeting recorded inside a workspace that also dies with the
   // account is collected by two different queries.
   const unique = [...new Set(paths.filter(Boolean))];
   if (unique.length === 0) return;
 
+  const deadline = Date.now() + PURGE_BUDGET_MS;
   let failed = 0;
+  let skipped = 0;
+
   for (let i = 0; i < unique.length; i += PURGE_BATCH) {
     const batch = unique.slice(i, i + PURGE_BATCH);
+
+    // Checked before the request, not after: a batch started at 44.9s would
+    // otherwise still be in flight when the function is killed.
+    if (Date.now() >= deadline) {
+      skipped = unique.length - i;
+      break;
+    }
+
     try {
       const res = await sb(`/object/${BUCKET}`, {
         method: "DELETE",
@@ -119,12 +143,12 @@ export async function deleteObjects(paths: readonly string[]): Promise<void> {
     }
   }
 
-  // Count only, never a path: paths carry the workspace id and the user's own
+  // Counts only, never a path: paths carry the workspace id and the user's own
   // filename. Without this line a total storage failure is indistinguishable
   // from a clean purge.
-  if (failed > 0) {
+  if (failed > 0 || skipped > 0) {
     console.warn(
-      `storage purge: ${failed}/${unique.length} objects not deleted`,
+      `storage purge: ${failed} failed, ${skipped} skipped on time budget, of ${unique.length} objects`,
     );
   }
 }

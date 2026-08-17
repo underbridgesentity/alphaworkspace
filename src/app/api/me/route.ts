@@ -10,11 +10,15 @@ import { deleteAccount } from "@/server/dal/account";
 /**
  * DELETE purges Supabase storage for every workspace that dies with the
  * account, plus every meeting the user recorded anywhere, before it drops the
- * rows that hold those paths. See the same ceiling on /api/w/[ws]: dying
- * mid-purge would leave the account undeletable, which is the POPIA right this
- * route exists to honour. GET and PATCH here are unaffected by the ceiling.
+ * rows that hold those paths.
+ *
+ * 60 is the ceiling that holds on every Vercel plan (300 is Pro-only and is
+ * rejected at deploy on Hobby). deleteObjects stops at its own 45s deadline
+ * and returns, so the account delete always runs: dying mid-purge would leave
+ * the account undeletable, which is the POPIA right this route exists for.
+ * GET and PATCH are unaffected by the ceiling.
  */
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export const GET = api(async () => {
   const user = await requireUser();
