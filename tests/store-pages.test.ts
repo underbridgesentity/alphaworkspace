@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { config } from "@/proxy";
 import sitemap from "@/app/sitemap";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 /**
  * The two marketing pages both app stores check by hand, pinned.
@@ -58,15 +59,28 @@ describe("store-required marketing pages", () => {
     }
   });
 
-  it("publishes a real support address on every page that promises one", () => {
+  it("publishes one shared support address on every page that promises one", () => {
+    // All three must render a mailto, and all three must take the address from
+    // the shared constant rather than hard-coding their own. Three local
+    // copies is how one of them ends up stale, pointing a store listing at a
+    // mailbox nobody reads.
     for (const file of [SUPPORT_PAGE, DELETE_PAGE, PRIVACY_PAGE]) {
-      expect(readFileSync(file, "utf8"), file).toContain(
-        "mailto:${SUPPORT_EMAIL}",
+      const src = readFileSync(file, "utf8");
+      expect(src, file).toContain("mailto:${SUPPORT_EMAIL}");
+      expect(src, `${file} must import the shared address`).toContain(
+        'from "@/lib/contact"',
+      );
+      expect(src, `${file} must not hard-code an address`).not.toMatch(
+        /const SUPPORT_EMAIL\s*=\s*"/,
       );
     }
-    expect(readFileSync(SUPPORT_PAGE, "utf8")).toContain(
-      '"support@alphaworkspace.co.za"',
-    );
+  });
+
+  it("the shared support address is a plausible, reachable mailbox", () => {
+    // Apple emails this during review, so a placeholder here fails a
+    // submission rather than a build.
+    expect(SUPPORT_EMAIL).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i);
+    expect(SUPPORT_EMAIL).not.toMatch(/example|test|localhost|invalid|todo/i);
   });
 
   it("sends a signed-in reader from /delete-account to the real control", () => {

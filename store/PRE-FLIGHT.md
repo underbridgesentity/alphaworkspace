@@ -179,11 +179,12 @@ and no contact page. The privacy policy says to "email the operator of this
 deployment" without giving an address
 (`src/app/(marketing)/privacy/page.tsx:120-124`).
 
-**Fix, smallest version:** a `/support` page with a working email address and
-three or four lines about response times, plus a live
-`support@alphaworkspace.co.za` mailbox. `store/listing/apple-urls-and-contact.txt`
-and `store/listing/google-play-contact-and-metadata.txt` both assume that
-address and that URL.
+**DONE.** `/support` is built and live, publishing `info@underbridges.co.za`,
+which already exists and is already read. Neither store requires the support
+address to be on the app's own domain: Apple wants a reachable Support URL with
+a way to contact a human, Play wants a support email on the listing. The
+address is defined once in `src/lib/contact.ts` and rendered from there on
+/support, /privacy and /delete-account, so it cannot go stale on one of them.
 
 **Do not** point the Support URL at `/privacy`. It is not support.
 

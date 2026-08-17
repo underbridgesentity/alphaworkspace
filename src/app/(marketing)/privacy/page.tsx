@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -27,10 +28,9 @@ export const metadata: Metadata = {
  * Nothing in src/server/ai sets a per-request retention or opt-out flag, so if
  * either vendor offers one, set it and this comment can go.
  *
- * The support address published here is the same one on /support, and that
- * mailbox still has to be created.
+ * The support address published here comes from @/lib/contact, shared with
+ * /support and /delete-account.
  */
-const SUPPORT_EMAIL = "support@alphaworkspace.co.za";
 
 function Section({
   title,

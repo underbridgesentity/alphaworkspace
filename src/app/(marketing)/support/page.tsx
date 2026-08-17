@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "Support",
@@ -10,21 +11,14 @@ export const metadata: Metadata = {
 };
 
 /*
- * ---------------------------------------------------------------------------
- * ACTION REQUIRED, JOSEPH: the mailbox below does not exist yet.
+ * The published support address lives in @/lib/contact, not here, because it
+ * also appears on /privacy and /delete-account and on both store listings. One
+ * constant means a change cannot leave a stale address on one of them.
  *
- * support@alphaworkspace.co.za must be a real, monitored inbox BEFORE either
- * store listing is submitted. Apple requires a working Support URL on every
- * listing and checks it; Google Play requires reachable developer contact
- * details. A page that publishes an address which bounces is worse than no
- * page, so create the mailbox (or an alias forwarding to an inbox you read)
- * and send yourself a test message before pressing Submit.
- *
- * This address is also published on /privacy and /delete-account. Change it in
- * one place and the other two need changing too.
- * ---------------------------------------------------------------------------
+ * It is info@underbridges.co.za: an inbox that already exists and is already
+ * read. Neither store requires the address to sit on the app's own domain,
+ * only that it reaches a person, and Apple does email it during review.
  */
-const SUPPORT_EMAIL = "support@alphaworkspace.co.za";
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {

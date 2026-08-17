@@ -10,10 +10,11 @@ TAGS                   Task Management, Project Management, Team Collaboration
                        are actually true.)
 
 CONTACT DETAILS (Store settings > Store listing contact details)
-  Email     support@alphaworkspace.co.za
-            BLOCKER: this mailbox must exist and be monitored. Play publishes
-            it on the listing and uses it for policy correspondence. See
-            store/PRE-FLIGHT.md item B1.
+  Email     info@underbridges.co.za
+            An existing, monitored mailbox, so this is no longer a blocker.
+            Play publishes it on the listing and uses it for policy
+            correspondence. Neither store requires the support address to sit
+            on the app's own domain. Source of truth: src/lib/contact.ts.
   Website   https://www.alphaworkspace.co.za
   Phone     optional, leave blank rather than giving a personal number
 

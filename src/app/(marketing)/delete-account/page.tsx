@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "Delete your account",
@@ -16,11 +17,9 @@ export const metadata: Metadata = {
  * It is therefore a PUBLIC, static page: no session, no data fetching, nothing
  * that could bounce a signed-out visitor. Keep it that way.
  *
- * ACTION REQUIRED, JOSEPH: support@alphaworkspace.co.za below is the same
- * mailbox /support publishes and it still has to be created. See the note on
- * that page.
+ * The support address comes from @/lib/contact, the same one /support and
+ * /privacy publish.
  */
-const SUPPORT_EMAIL = "support@alphaworkspace.co.za";
 
 function Section({
   title,
