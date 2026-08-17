@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        allowBackup=false: this shell is a webview on the live origin, so the
+        Auth.js session cookie lives in the app's data directory. Sessions are
+        JWTs with no server-side revocation, so a cookie restored from Google
+        auto-backup, a device-to-device transfer or `adb backup` (extractable
+        up to Android 11, and minSdk here is 24) is a live session that
+        outlives a password change. There is nothing else in here worth
+        restoring: every byte of real state is on the server.
+
+        dataExtractionRules covers the Android 12+ split, where allowBackup no
+        longer governs device-to-device transfer.
+    -->
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!--
+            taskAffinity="": keeps this exported launcher activity out of the
+            default per-package task, which is the standard defence against a
+            malicious app claiming the same affinity and having our sign-in
+            form drawn inside ITS task. Single-activity app, so nothing
+            depends on sharing a task.
+        -->
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Share target. This is what puts Alpha Workspace in the system
+                share sheet, so a WhatsApp message, an email or a link can be
+                sent INTO the app and land in quick-add with the text already
+                in the field.
+
+                The Intent only reaches the Activity because of this filter;
+                turning it into something the web layer can see is
+                AlphaSharePlugin's job (Capacitor's own appUrlOpen event never
+                fires for ACTION_SEND, which carries no URI).
+
+                text/plain covers messages and links. text/* additionally
+                catches apps that share with a narrower text subtype; the
+                plugin ignores anything that is not text.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+
+            <!--
+                Custom scheme, so the iOS Share Extension has a counterpart
+                here and a deep link opens the app rather than a browser tab.
+                Handled by the web layer (sharedTextFromUrl), which accepts
+                only alphaworkspace://share?text=.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="alphaworkspace" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ requires an explicit runtime grant before any notification
+         can be posted. Without it, push registration succeeds and every
+         notification is then dropped silently. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Biometric app lock (androidx.biometric, via the biometric plugin). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+</manifest>

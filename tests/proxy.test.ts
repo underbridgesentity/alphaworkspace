@@ -50,3 +50,37 @@ describe("proxy", () => {
     }
   });
 });
+
+/**
+ * Text shared in from another app is somebody's private message. It must not
+ * be copied into the sign-in redirect, where it would land in a second URL, a
+ * second set of access logs, and the browser history of a device that nobody
+ * is even signed in on. Losing the share is the correct trade.
+ */
+describe("proxy and shared text", () => {
+  it("strips ?share= from the sign-in destination", () => {
+    const res = proxy(req("/app?share=call%20Sable%20about%20the%20invoice"));
+    const next = new URL(res.headers.get("location") ?? "").searchParams.get(
+      "next",
+    );
+    expect(next).toBe("/app");
+    expect(res.headers.get("location")).not.toContain("Sable");
+  });
+
+  it("keeps every other parameter, so ?plan= still survives sign-in", () => {
+    const res = proxy(req("/app?plan=team&share=secret%20message"));
+    const next = new URL(res.headers.get("location") ?? "").searchParams.get(
+      "next",
+    );
+    expect(next).toBe("/app?plan=team");
+    expect(res.headers.get("location")).not.toContain("secret");
+  });
+
+  it("leaves a plain destination exactly as it was", () => {
+    const res = proxy(req("/w/mzansi/p/abc?task=123"));
+    const next = new URL(res.headers.get("location") ?? "").searchParams.get(
+      "next",
+    );
+    expect(next).toBe("/w/mzansi/p/abc?task=123");
+  });
+});

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { shellPlatform } from "@/lib/shell";
+import { SHARE_PARAM, shellPlatform } from "@/lib/shell";
 
 /**
  * Route protection (Next 16 proxy). This is UX-level only, a cheap cookie
@@ -28,9 +28,17 @@ export function proxy(request: NextRequest) {
 
   if (!hasSession) {
     const signIn = new URL("/sign-in", request.url);
+    // Shared text is dropped before the destination is copied into ?next=.
+    // It is somebody's WhatsApp message, and carrying it through a sign-in
+    // round trip would park it in a second URL, a second set of access logs
+    // and the browser history of a device nobody is even signed in on. The
+    // share is lost, which is the correct trade: sign in, then share again.
+    const search = new URLSearchParams(request.nextUrl.search);
+    search.delete(SHARE_PARAM);
+    const query = search.toString();
     signIn.searchParams.set(
       "next",
-      request.nextUrl.pathname + request.nextUrl.search,
+      request.nextUrl.pathname + (query ? `?${query}` : ""),
     );
     return NextResponse.redirect(signIn);
   }

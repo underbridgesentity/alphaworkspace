@@ -35,7 +35,11 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <aside
       className={cn(
+        // The insets are for the tablet case, where this bar IS visible inside
+        // the shell and would otherwise run under the status bar and the home
+        // indicator. Both are zero in a browser window.
         "sticky top-0 h-dvh flex-col border-r border-line bg-surface",
+        "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]",
         className,
       )}
     >

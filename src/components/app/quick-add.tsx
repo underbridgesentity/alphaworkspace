@@ -23,14 +23,24 @@ interface ExtractResponse {
 
 export function QuickAddDialog({
   defaultProjectId,
+  initialText,
   onClose,
 }: {
   defaultProjectId?: string;
+  /**
+   * Prefill, used by the OS share target. UNTRUSTED: it is whatever another
+   * app put on the share sheet, already normalised by normalizeSharedText().
+   * It may only ever be a plain string in the controlled input below, which
+   * React escapes; it must never reach HTML, a URL or a non-React template.
+   */
+  initialText?: string;
   onClose: () => void;
 }) {
   const { workspace } = useWorkspace();
   const { toast } = useToast();
-  const [line, setLine] = useState("");
+  // The dialog is mounted fresh on every open, so seeding state here is the
+  // whole of the prefill; there is no stale-prop case to reconcile.
+  const [line, setLine] = useState(initialText ?? "");
   const [phase, setPhase] = useState<"input" | "extracting" | "review">("input");
   const [result, setResult] = useState<ExtractResponse | null>(null);
 

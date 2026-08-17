@@ -29,6 +29,8 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { normalizeSharedText, SHARE_PARAM } from "@/lib/shell";
+import { onSharedText } from "@/lib/client/share-intake";
 import { useWorkspace } from "@/lib/client/workspace";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
@@ -72,7 +74,7 @@ interface UIState {
   openTask: (id: string) => void;
   closeTask: () => void;
   openSearch: () => void;
-  openQuickAdd: (projectId?: string) => void;
+  openQuickAdd: (projectId?: string, text?: string) => void;
   openMic: (projectId?: string) => void;
   openNotifications: () => void;
 }
@@ -107,7 +109,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const taskId = searchParams.get("task");
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [quickAdd, setQuickAdd] = useState<{ projectId?: string } | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{
+    projectId?: string;
+    text?: string;
+  } | null>(null);
   const [mic, setMic] = useState<{ projectId?: string } | null>(null);
   const [plusOpen, setPlusOpen] = useState(false);
 
@@ -157,11 +162,36 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  /* ---------------------------- share target ---------------------------- */
+
+  // Text shared from another app while this one is already open. The native
+  // layer emits it; on the web nothing ever fires this.
+  useEffect(() => onSharedText((text) => setQuickAdd({ text })), []);
+
+  // The cold entry point: /app?share=<text> redirected here. Read once, then
+  // dropped from the URL, because the text is somebody's private message and
+  // has no business sitting in history or surviving a refresh.
+  // Deferred a tick, the codebase's convention for an effect that reads and
+  // then sets: the URL rewrite and the open have to happen in that order.
+  const shared = searchParams.get(SHARE_PARAM);
+  useEffect(() => {
+    const text = normalizeSharedText(shared);
+    if (!text) return;
+    const id = window.setTimeout(() => {
+      setQuickAdd({ text });
+      const params = new URLSearchParams(searchParams);
+      params.delete(SHARE_PARAM);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [shared, searchParams, pathname, router]);
+
   const ui: UIState = {
     openTask,
     closeTask,
     openSearch: () => setSearchOpen(true),
-    openQuickAdd: (projectId) => setQuickAdd({ projectId }),
+    openQuickAdd: (projectId, text) => setQuickAdd({ projectId, text }),
     openMic: (projectId) => setMic({ projectId }),
     openNotifications: () => setNotifOpen(true),
   };
@@ -179,12 +209,22 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         </a>
         <Sidebar className="hidden md:flex" />
 
-        <div className="flex min-h-dvh min-w-0 flex-col pb-16 md:pb-0">
+        {/* The bottom padding tracks the tab bar's real height, which grows by
+            the home-indicator inset, so the last row of a list is never parked
+            underneath it. */}
+        <div className="flex min-h-dvh min-w-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
           {/* Top bar. frost-edge-b lays a 14px scrim below the bar so scrolling
               content dissolves into it. The old bg-bg/90 + backdrop-blur-sm
               re-sampled the whole scroller every frame, which is the single
-              worst thing you can leave running on a budget Android. */}
-          <header className="frost-edge-b sticky top-0 z-30 flex h-14 items-center gap-1.5 px-3 sm:px-4 md:px-6">
+              worst thing you can leave running on a budget Android.
+
+              The height carries the status-bar inset ON TOP of the 3.5rem row
+              rather than as padding inside it, so the icons keep their full
+              touch target instead of being squeezed. Zero in a normal browser
+              tab; non-zero in the installed PWA and on a notched phone, both of
+              which draw under the status bar (viewport-fit=cover plus
+              black-translucent). */}
+          <header className="frost-edge-b sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-1.5 px-3 pt-[env(safe-area-inset-top)] sm:px-4 md:px-6">
             {/* Mobile: workspace name/menu */}
             <div className="min-w-0 flex-1 md:hidden">
               <Menu
@@ -325,7 +365,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             and it replaces a second live backdrop-filter that sat over the
             scroller for the whole session. */}
         <nav className="frost-edge-t fixed inset-x-0 bottom-0 z-30 md:hidden">
-          <div className="grid h-16 grid-cols-5 items-center px-1 pb-[env(safe-area-inset-bottom)]">
+          {/* The left/right insets matter in landscape on a notched phone,
+              where the cutout eats into the row and would clip the outer two
+              tabs' labels. max() rather than px-1 alongside it, so the normal
+              0.25rem is the floor and nothing depends on which utility
+              Tailwind happens to emit last. */}
+          <div className="grid h-16 grid-cols-5 items-center pb-[env(safe-area-inset-bottom)] pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]">
             <TabLink href={base} active={pathname === base} icon={Home} label="My Work" />
             <TabLink
               href={`${base}/projects`}
@@ -379,6 +424,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         {quickAdd && (
           <QuickAddDialog
             defaultProjectId={quickAdd.projectId}
+            initialText={quickAdd.text}
             onClose={() => setQuickAdd(null)}
           />
         )}

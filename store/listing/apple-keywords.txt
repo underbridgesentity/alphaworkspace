@@ -1,0 +1,1 @@
+project,management,manager,task,team,todo,list,kanban,board,agency,offline,meeting,notes,tracker

@@ -61,7 +61,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-6"
+        // Clears the mobile tab bar, whose height grows by the home-indicator
+        // inset; without it a toast lands behind the bar on a notched phone.
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-6"
       >
         {toasts.map((t) => (
           <div

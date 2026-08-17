@@ -72,7 +72,8 @@ export interface TaskDTO {
   priority: Priority;
   position: number;
   labels: LabelDTO[];
-  createdBy: string;
+  /** Null once the creator has deleted their account; the task stays. */
+  createdBy: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -114,7 +115,12 @@ export interface CommentDTO {
   taskId: string;
   body: string;
   createdAt: string;
-  author: UserLite;
+  /**
+   * Null once the author has deleted their account. The comment survives
+   * because it is part of the workspace's history; only the attribution goes.
+   * Render it as "Former member" rather than hiding the comment.
+   */
+  author: UserLite | null;
   /** Aggregated per emoji; `mine` marks the viewer's own reaction. */
   reactions?: CommentReactionDTO[];
 }

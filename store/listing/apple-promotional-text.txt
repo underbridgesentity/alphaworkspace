@@ -1,0 +1,1 @@
+Alpha reads the board every morning and nudges whoever owns the work, so nobody has to do the chasing round. It keeps working when the signal does not.

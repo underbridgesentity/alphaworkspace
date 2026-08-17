@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The ink token. The adaptive icon's foreground is the white Alpha mark
+         on transparency, so this is the badge behind it and it has to match
+         the solid ic_launcher.png fallback for older launchers.
+         Note: no double hyphen anywhere in this comment. XML forbids it, and
+         aapt fails the whole resource merge on it. -->
+    <color name="ic_launcher_background">#0B1215</color>
+</resources>

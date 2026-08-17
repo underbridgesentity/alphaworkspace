@@ -91,20 +91,20 @@ const NUDGES: Array<{
 }> = [
   {
     icon: Bell,
-    title: "To Naledi, 06:30",
+    title: "To Naledi, 06:00",
     body: "The Karoo Coffee report was due Friday. Still yours?",
     delay: 900,
   },
   {
     icon: AtSign,
-    title: "To Thabo, 06:30",
+    title: "To Thabo, 06:00",
     body: "Sable has not moved in 6 days.",
     delay: 1420,
   },
   {
     icon: Sparkles,
     accent: true,
-    title: "To you, 06:30",
+    title: "To you, 06:00",
     body: "2 overdue, 1 due today, 1 project gone quiet.",
     delay: 1940,
   },

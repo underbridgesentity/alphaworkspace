@@ -52,9 +52,15 @@ export default function MarketingLayout({
             <p className="text-sm text-faint sm:ml-2">
               Made in South Africa, for South African teams.
             </p>
-            <nav className="flex gap-4 text-sm text-muted sm:ml-auto">
+            {/* Support has to be reachable from every marketing page: it is
+                the address both stores check, and the only published way to
+                reach a person. flex-wrap so five links still fit at 360px. */}
+            <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted sm:ml-auto">
               <Link href="/pricing" className="hover:text-ink">
                 Pricing
+              </Link>
+              <Link href="/support" className="hover:text-ink">
+                Support
               </Link>
               <Link href="/privacy" className="hover:text-ink">
                 Privacy &amp; POPIA

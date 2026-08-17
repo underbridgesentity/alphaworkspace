@@ -78,6 +78,58 @@ export async function deleteObject(path: string): Promise<void> {
 }
 
 /**
+ * Best-effort bulk delete, for account and workspace deletion where the rows
+ * holding these paths are about to disappear.
+ *
+ * ONE REQUEST PER BATCH, NOT PER OBJECT. Attachment quota is measured in bytes,
+ * not rows, so a workspace on the Studio band can hold tens of thousands of
+ * small files. At one HTTP DELETE each, the purge outruns the function's time
+ * budget and the handler dies BEFORE the row delete: the objects are gone, the
+ * workspace survives pointing at them, and every retry shaves off another
+ * slice while the deletion never actually completes. Supabase takes an array
+ * of prefixes on the bucket endpoint, which turns thousands of round trips
+ * into tens.
+ *
+ * Every failure is swallowed deliberately. The caller is honouring a POPIA
+ * deletion request, and that must not be blocked by a storage hiccup: a user
+ * who cannot delete their account is a worse outcome than an object we failed
+ * to remove. Callers delete objects BEFORE the rows so that a crash midway
+ * leaves the paths still recorded and the purge retryable.
+ */
+const PURGE_BATCH = 100;
+
+export async function deleteObjects(paths: readonly string[]): Promise<void> {
+  // Dedupe: a meeting recorded inside a workspace that also dies with the
+  // account is collected by two different queries.
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (unique.length === 0) return;
+
+  let failed = 0;
+  for (let i = 0; i < unique.length; i += PURGE_BATCH) {
+    const batch = unique.slice(i, i + PURGE_BATCH);
+    try {
+      const res = await sb(`/object/${BUCKET}`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: batch }),
+      });
+      if (!res.ok) failed += batch.length;
+    } catch {
+      failed += batch.length;
+    }
+  }
+
+  // Count only, never a path: paths carry the workspace id and the user's own
+  // filename. Without this line a total storage failure is indistinguishable
+  // from a clean purge.
+  if (failed > 0) {
+    console.warn(
+      `storage purge: ${failed}/${unique.length} objects not deleted`,
+    );
+  }
+}
+
+/**
  * Server-side upload (bot recordings arrive via webhook, no browser to hand
  * a signed URL to). Upsert so webhook retries can't collide.
  */

@@ -19,6 +19,7 @@ import { defaultChannelsFor } from "@/lib/notification-defaults";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { AppLockSetting } from "@/components/native/app-lock-setting";
 import { cn } from "@/lib/cn";
 
 interface MeData {
@@ -222,6 +223,9 @@ export default function AccountPage() {
       </section>
 
       <PasswordSection />
+
+      {/* Store shell only; renders null in a browser. */}
+      <AppLockSetting />
 
       <section>
         <h2 className="text-sm font-semibold">Notifications</h2>

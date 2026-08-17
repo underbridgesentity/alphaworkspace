@@ -1,0 +1,106 @@
+/**
+ * deleteObjects() batching.
+ *
+ * This exists because the naive shape (one HTTP DELETE per object) is the kind
+ * of thing that passes every test on a fixture with three attachments and then
+ * times out on a real workspace with twelve thousand. Attachment quota is
+ * measured in bytes, not rows, so the row count has no ceiling: a Studio
+ * workspace can hold tens of thousands of small files.
+ *
+ * The failure that matters is not slowness. The purge runs BEFORE the rows are
+ * deleted, so a function that dies mid-purge leaves the objects gone and the
+ * workspace still present, pointing at files that no longer exist, and every
+ * retry shaves off another slice while the deletion never completes.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const ORIGINAL_FETCH = globalThis.fetch;
+
+/** Bodies of every request the helper made, newest last. */
+let requests: { url: string; prefixes: string[] }[] = [];
+
+beforeEach(() => {
+  vi.stubEnv("SUPABASE_URL", "https://project.supabase.test");
+  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key");
+  requests = [];
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    requests.push({
+      url: String(url),
+      prefixes: JSON.parse(String(init.body)).prefixes,
+    });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = ORIGINAL_FETCH;
+  vi.unstubAllEnvs();
+});
+
+describe("deleteObjects", () => {
+  it("covers every path exactly once, in few requests", async () => {
+    const { deleteObjects } = await import("@/server/storage");
+    const paths = Array.from({ length: 2_500 }, (_, i) => `ws-1/file-${i}.pdf`);
+
+    await deleteObjects(paths);
+
+    const sent = requests.flatMap((r) => r.prefixes);
+    expect(sent).toHaveLength(2_500);
+    expect(new Set(sent).size).toBe(2_500);
+    // 2 500 / 100 = 25. The old one-per-object shape would have made 2 500.
+    expect(requests.length).toBeLessThanOrEqual(30);
+  });
+
+  it("deletes a path shared by two collection queries only once", async () => {
+    const { deleteObjects } = await import("@/server/storage");
+    // deleteAccount collects a meeting twice when it sits inside a workspace
+    // that also dies with the account.
+    await deleteObjects(["m/a.opus", "m/a.opus", "att/b.pdf"]);
+
+    expect(requests.flatMap((r) => r.prefixes)).toEqual(["m/a.opus", "att/b.pdf"]);
+  });
+
+  it("makes no request at all for an empty list", async () => {
+    const { deleteObjects } = await import("@/server/storage");
+    await deleteObjects([]);
+    expect(requests).toHaveLength(0);
+  });
+
+  it("reports a count when the bucket refuses, and never a path", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    globalThis.fetch = (async () =>
+      new Response("nope", { status: 500 })) as unknown as typeof fetch;
+
+    const { deleteObjects } = await import("@/server/storage");
+    await deleteObjects(["ws-7/client-brief.pdf", "ws-7/audio.opus"]);
+
+    expect(warn).toHaveBeenCalledOnce();
+    const message = String(warn.mock.calls[0][0]);
+    expect(message).toContain("2/2");
+    // Paths carry the workspace id and the user's own filename.
+    expect(message).not.toContain("client-brief");
+    expect(message).not.toContain("ws-7");
+    warn.mockRestore();
+  });
+
+  it("does not let a thrown request abort the remaining batches", async () => {
+    let call = 0;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      call++;
+      if (call === 1) throw new Error("socket hang up");
+      requests.push({
+        url: String(url),
+        prefixes: JSON.parse(String(init.body)).prefixes,
+      });
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { deleteObjects } = await import("@/server/storage");
+    const paths = Array.from({ length: 250 }, (_, i) => `ws/f-${i}`);
+    await deleteObjects(paths);
+
+    // First batch of 100 died; the other 150 must still have been attempted,
+    // because a deletion request must make as much progress as it can.
+    expect(requests.flatMap((r) => r.prefixes)).toHaveLength(150);
+  });
+});

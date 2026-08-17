@@ -37,8 +37,16 @@ export function buildExtractionPrompt(
   const projects = context.projects
     .map((p) => `- ${p.id} :: ${p.name}${p.clientName ? ` (client: ${p.clientName})` : ""}`)
     .join("\n");
+  // Name only, never an email address. The model matches the name it heard in
+  // the transcript and returns the id, so the address was never doing any
+  // work: it just sent every member's email to a third party on every capture.
+  //
+  // The fallback matters as much as the rule. Magic-link signups leave
+  // users.name null until the person fills it in, so a plain `?? m.email` sent
+  // real addresses for exactly those members. The local part is enough to
+  // match "tell thabo to..." and carries no domain.
   const members = context.members
-    .map((m) => `- ${m.id} :: ${m.name ?? m.email} <${m.email}>`)
+    .map((m) => `- ${m.id} :: ${m.name ?? m.email.split("@")[0]}`)
     .join("\n");
 
   const system = `You turn spoken or typed notes from a small South African creative agency into structured task proposals. Team members review and confirm every field before anything is created, so be useful but honest about uncertainty.

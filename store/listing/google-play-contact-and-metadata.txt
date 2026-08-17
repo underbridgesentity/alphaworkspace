@@ -1,0 +1,45 @@
+Play Console > Grow users > Store presence > Store listing (and Store settings)
+
+APP NAME               Alpha Workspace
+SHORT DESCRIPTION      see google-play-short-description.txt
+FULL DESCRIPTION       see google-play-full-description.txt
+
+APP CATEGORY           Productivity
+TAGS                   Task Management, Project Management, Team Collaboration
+                       (Play lets you pick up to 5 tags; pick only ones that
+                       are actually true.)
+
+CONTACT DETAILS (Store settings > Store listing contact details)
+  Email     support@alphaworkspace.co.za
+            BLOCKER: this mailbox must exist and be monitored. Play publishes
+            it on the listing and uses it for policy correspondence. See
+            store/PRE-FLIGHT.md item B1.
+  Website   https://www.alphaworkspace.co.za
+  Phone     optional, leave blank rather than giving a personal number
+
+EXTERNAL MARKETING     Off, unless you are running paid acquisition.
+
+PRIVACY POLICY (Store settings > App content > Privacy policy)
+  https://www.alphaworkspace.co.za/privacy
+
+ACCOUNT DELETION URL (App content > Data safety > Data deletion)
+  https://www.alphaworkspace.co.za/account
+  BLOCKER: this URL sits behind the sign-in wall (src/proxy.ts matches
+  /account/:path*, so a signed-out visitor is bounced to /sign-in). Play
+  expects the deletion route to be discoverable from a web page without
+  reinstalling the app. See store/PRE-FLIGHT.md item B2 for the fix.
+
+COUNTRIES / REGIONS
+  Start with South Africa only, then widen. A single-country release keeps the
+  first review narrow and means the listing's South African framing matches
+  where it is actually shown. Nothing in the product blocks other countries.
+
+CONTAINS ADS           No.
+  Verified: no advertising SDK exists in the project. package.json has no ad,
+  analytics, attribution or crash-reporting dependency, and the app's CSP
+  (next.config.ts) is default-src 'self' with connect-src limited to the app's
+  own origin plus the Supabase storage origin, so no third-party beacon could
+  even reach the network.
+
+IN-APP PURCHASES       No.
+  The binaries are commerce-free by construction. See store/review-notes.md.

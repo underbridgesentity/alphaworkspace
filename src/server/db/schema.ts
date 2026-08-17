@@ -179,9 +179,15 @@ export const workspaces = pgTable("workspaces", {
   /** Snapshot taken at subscribe/change time; falls back to PLANS[plan]. */
   entitlements: jsonb("entitlements").$type<EntitlementsSnapshot | null>(),
   settings: jsonb("settings").$type<WorkspaceSettings>().default({}).notNull(),
-  createdBy: text("created_by")
-    .notNull()
-    .references(() => users.id),
+  /**
+   * Nullable and SET NULL, like every other authorship column. See the note on
+   * comments.author_id: these attribute workspace-owned content to a person,
+   * and a NOT NULL reference here made account deletion impossible for anyone
+   * who had ever created anything.
+   */
+  createdBy: text("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: createdAt(),
 });
 
@@ -217,9 +223,9 @@ export const invites = pgTable(
     email: text("email"),
     role: workspaceRole("role").default("member").notNull(),
     token: text("token").notNull().unique(),
-    invitedBy: text("invited_by")
-      .notNull()
-      .references(() => users.id),
+    invitedBy: text("invited_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     expiresAt: timestamp("expires_at", {
       withTimezone: true,
       mode: "date",
@@ -247,9 +253,9 @@ export const projects = pgTable(
     /** The member accountable for the project as a whole. */
     leadId: text("lead_id").references(() => users.id, { onDelete: "set null" }),
     position: doublePrecision("position").default(0).notNull(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => users.id),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
     archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
   },
@@ -284,9 +290,9 @@ export const tasks = pgTable(
     } | null>(),
     /** Set on tasks spawned by recurrence (parent task id). */
     recurrenceOf: text("recurrence_of"),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => users.id),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .defaultNow()
@@ -345,9 +351,22 @@ export const comments = pgTable(
     taskId: text("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
-    authorId: text("author_id")
-      .notNull()
-      .references(() => users.id),
+    /**
+     * Nullable, SET NULL on delete. A comment belongs to the workspace's
+     * project history, not to the person who typed it, so deleting an account
+     * anonymises authorship rather than erasing the team's discussion.
+     *
+     * This column being NOT NULL is what broke account deletion: the delete
+     * threw a foreign key violation for anyone who had ever commented in a
+     * workspace that outlived them, which is nearly every departing member.
+     *
+     * Readers MUST left-join users here. An inner join silently drops every
+     * comment whose author has gone, which loses the thread instead of the
+     * name. See listTask() and the null branch in the comments DTO.
+     */
+    authorId: text("author_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     body: text("body").notNull(),
     createdAt: createdAt(),
   },
@@ -600,6 +619,37 @@ export const pushSubscriptions = pgTable(
   (t) => [index("push_subs_user_idx").on(t.userId)],
 );
 
+/**
+ * Device tokens for the store shell's native push (FCM on Android, APNs via
+ * FCM on iOS).
+ *
+ * A SEPARATE table rather than nullable columns on push_subscriptions,
+ * because the two credentials have nothing in common: a web subscription is an
+ * endpoint URL plus two encryption keys and is delivered by VAPID, a native
+ * token is an opaque device string delivered by Google's servers. Widening the
+ * web push table would have meant dropping two NOT NULLs that keep every
+ * existing row honest, to store a shape that shares none of its columns.
+ */
+export const nativePushTokens = pgTable(
+  "native_push_tokens",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Unique so a device re-registering (the token rotates) updates its row
+    // instead of accumulating one per launch.
+    token: text("token").notNull().unique(),
+    platform: text("platform", { enum: ["android", "ios"] }).notNull(),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [index("native_push_user_idx").on(t.userId)],
+);
+
 /* --------------------------- billing ------------------------------------ */
 
 export const subscriptions = pgTable(
@@ -730,7 +780,9 @@ export const kpiDefinitions = pgTable(
     period: kpiPeriod("period").default("monthly").notNull(),
     /** e.g. {kind:"label", labelId} | {kind:"project", projectId} | {kind:"time_total"} */
     autoSource: jsonb("auto_source").$type<Record<string, unknown> | null>(),
-    createdBy: text("created_by").references(() => users.id),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
     archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
   },
@@ -750,7 +802,9 @@ export const kpiEntries = pgTable(
     periodStart: date("period_start").notNull(),
     value: doublePrecision("value").notNull(),
     source: text("source").default("manual").notNull(), // "auto" | "manual"
-    enteredBy: text("entered_by").references(() => users.id),
+    enteredBy: text("entered_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
   },
   (t) => [

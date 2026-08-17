@@ -61,8 +61,11 @@ function buildPrompt(
         `- ${p.id} :: ${p.name}${p.clientName ? ` (client: ${p.clientName})` : ""}`,
     )
     .join("\n");
+  // Name only. See the same roster in extraction.ts: the model matches on the
+  // spoken name and answers with the id, so sending everyone's email address
+  // to Anthropic on every meeting bought nothing.
   const members = context.members
-    .map((m) => `- ${m.id} :: ${m.name ?? m.email} <${m.email}>`)
+    .map((m) => `- ${m.id} :: ${m.name ?? m.email.split("@")[0]}`)
     .join("\n");
 
   const system = `You summarize recorded meetings for a small South African team. The person who recorded the meeting reviews everything you produce; action items only become tasks after they confirm each one, so be useful but never invent.

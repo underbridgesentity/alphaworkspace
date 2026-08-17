@@ -9,7 +9,9 @@ export default function AccountLayout({
   return (
     <AppProviders>
       <div className="min-h-dvh">
-        <header className="flex h-14 items-center gap-3 border-b border-line px-4 md:px-6">
+        {/* The status-bar inset rides on top of the 3.5rem row, the same as
+            the app shell's header; zero in a browser tab. */}
+        <header className="flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line px-4 pt-[env(safe-area-inset-top)] md:px-6">
           <Link
             href="/app"
             className="press flex items-center gap-1 rounded-control px-2 py-1.5 text-sm text-muted hover:bg-raised hover:text-ink"

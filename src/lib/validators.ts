@@ -212,6 +212,22 @@ export const pushSubscribeSchema = z.object({
   userAgent: z.string().max(400).optional(),
 });
 
+/**
+ * A native device token from the store shell. Bounded at both ends because it
+ * is an opaque vendor string we never parse: FCM registration tokens run to
+ * ~200 characters and APNs tokens to 64 hex, so 4 KB is generous headroom and
+ * still refuses anything trying to use the table as storage.
+ */
+export const nativePushSchema = z.object({
+  token: z.string().trim().min(16).max(4096),
+  platform: z.enum(["android", "ios"]),
+  userAgent: z.string().max(400).optional(),
+});
+
+export const nativePushDeleteSchema = z.object({
+  token: z.string().trim().min(16).max(4096),
+});
+
 /* ------------------------------ billing ---------------------------------- */
 
 export const checkoutSchema = z.object({

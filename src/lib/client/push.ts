@@ -1,10 +1,15 @@
 "use client";
 
 /**
- * Web push subscription helpers. Push is the primary nudge channel for our
+ * Push subscription helpers. Push is the primary nudge channel for our
  * Android-heavy market; subscription needs the service worker (production
  * builds, dev degrades gracefully).
+ *
+ * Inside the store shell there is no service worker push to subscribe to, so
+ * all three entry points hand off to ./native-push (FCM/APNs) behind the same
+ * PushStatus vocabulary. Callers, the Account page included, do not branch.
  */
+import { isNativeShell } from "./native";
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -23,6 +28,9 @@ export type PushStatus =
   | "unsubscribed";
 
 export async function pushStatus(): Promise<PushStatus> {
+  if (isNativeShell()) {
+    return (await import("./native-push")).nativePushStatus();
+  }
   if (
     typeof window === "undefined" ||
     !("serviceWorker" in navigator) ||
@@ -38,6 +46,9 @@ export async function pushStatus(): Promise<PushStatus> {
 }
 
 export async function subscribePush(): Promise<PushStatus> {
+  if (isNativeShell()) {
+    return (await import("./native-push")).subscribeNativePush();
+  }
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!key) return "no-key";
   const permission = await Notification.requestPermission();
@@ -63,6 +74,9 @@ export async function subscribePush(): Promise<PushStatus> {
 }
 
 export async function unsubscribePush(): Promise<PushStatus> {
+  if (isNativeShell()) {
+    return (await import("./native-push")).unsubscribeNativePush();
+  }
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
   if (sub) {

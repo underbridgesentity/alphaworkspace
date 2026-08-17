@@ -85,6 +85,20 @@
       "when": 1784710800000,
       "tag": "0011_attachment_confirmed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784714400000,
+      "tag": "0012_native_push_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786957234448,
+      "tag": "0013_author_attribution_set_null",
+      "breakpoints": true
     }
   ]
 }

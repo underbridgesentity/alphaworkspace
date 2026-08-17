@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { flushOutbox } from "@/lib/client/outbox";
 import { ToastProvider, useToast } from "@/components/ui/toast";
+import { NativeLayer } from "@/components/native";
 
 /**
  * Client providers for the app surface: React Query (reads cache), outbox
@@ -83,6 +84,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <ToastProvider>
         <OutboxFlusher />
         <SwRegistrar />
+        {/* Renders null and loads nothing outside the store shell. Mounted
+            here so the app lock covers /account and /admin too, not just the
+            workspace routes. */}
+        <NativeLayer />
         {children}
       </ToastProvider>
     </QueryClientProvider>

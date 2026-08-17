@@ -44,7 +44,7 @@ const FACTS: Array<{ icon: typeof WifiOff; label: string; body: string }> = [
   {
     icon: Sunrise,
     label: "On SAST time",
-    body: "Morning briefs at 06:30, weekly narrative on Monday morning, because mornings happen here.",
+    body: "Morning briefs at 06:00, weekly narrative on Monday morning, because mornings happen here.",
   },
   {
     icon: MonitorSmartphone,

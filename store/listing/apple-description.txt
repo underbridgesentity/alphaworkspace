@@ -1,0 +1,51 @@
+Alpha Workspace is a project and work-management app for small teams that are done chasing status.
+
+It does the following up so people do not have to. Work captures itself, status reports itself, and nobody has to ask twice.
+
+YOU STOP BEING THE PERSON WHO CHASES
+
+Alpha reads the board every morning. Overdue, due today, gone quiet: each one becomes a nudge to whoever owns it, batched into one message per person per morning, in the app, by push and by email. The Thursday afternoon "any update?" round stops happening.
+
+NOBODY COMPILES THE STATUS REPORT
+
+Pulse reads straight from the work, with nothing to set up: what closed, what slipped, which client project has gone quiet. On Monday morning the week is written up in plain sentences and sent to the team.
+
+TALK, AND THE TASKS APPEAR
+
+Walk out of a client call and just talk. Alpha pulls the tasks out of what you said, with the person, the project and the day already attached, and shows you the list before any of them exist. Or type "homepage concepts for Sable, Thabo, Friday" and press enter. The AI proposes. You are the one who creates. Nothing is created or changed until a person confirms it.
+
+BOARDS THAT READ THE ROOM
+
+Drag work across To do, In progress and Done. A coloured rail on the leading edge of each card means due today or overdue, so there is no status column anyone has to keep filling in.
+
+A PRIVATE LIST THAT IS ACTUALLY PRIVATE
+
+Your own tasks sit under your day, invisible to everyone else, admins included. Promote one to the team the moment it becomes everybody's problem.
+
+MEETINGS, WRITTEN UP
+
+Record a meeting on your phone and get a transcript with the speakers separated, a short summary, and the action items pulled out. Confirm the ones that are real and they become ordinary tasks. Recordings stay private to whoever made them until they are shared. Tell everyone in the room that you are recording before you start.
+
+BUILT FOR REAL CONDITIONS
+
+Offline is normal. When the connection drops, reads come from cache and writes queue on your phone, then land when the signal returns.
+
+Light on data. Built to stay quick over a patchy mobile connection, because a data bundle has to last the month.
+
+On South African time. The morning brief lands at 06:00 and the weekly write-up by 06:30 on Monday, because mornings happen here.
+
+Your data, POPIA. Export everything you have put in, or delete your account outright, from Account settings inside the app. No support ticket.
+
+No ads, and no advertising or analytics trackers in the app.
+
+WHO IT IS FOR
+
+Teams of 2 to 25 people. Studios, agencies and small businesses where everyone is doing three jobs and nobody has the time to be the person who chases.
+
+GETTING STARTED
+
+Alpha Workspace works with an Alpha Workspace account. Sign in with an email link or a password, then join the workspace you were invited to, or start a new one from the app.
+
+The microphone is used only while you are recording a voice capture or a meeting, and nothing is captured until you press record. Notifications carry the morning nudge, mentions and assignments, and are tunable per type and per channel in Account settings.
+
+Privacy and POPIA: https://www.alphaworkspace.co.za/privacy

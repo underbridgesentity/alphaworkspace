@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ (API 31) split what allowBackup used to cover. allowBackup
+    ="false" still stops CLOUD backup, but device-to-device transfer is
+    governed here and would otherwise carry everything across.
+
+    Both are excluded for the same reason: this shell is a webview on the live
+    origin, so the app's data directory holds the Auth.js session cookie, and
+    sessions are JWTs with no server-side revocation. A cookie restored onto a
+    second phone is a live session that outlives a password change. Nothing in
+    this directory is worth restoring, because every byte of real state lives
+    on the server and comes back on the next sign-in.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

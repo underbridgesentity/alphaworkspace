@@ -33,7 +33,7 @@ const CALLOUTS: Array<{ dot: string; label: string; body: string }> = [
   {
     dot: "bg-accent",
     label: "The brief writes itself",
-    body: "06:30 every morning: what is due, what slipped, where to start. Nobody typed it.",
+    body: "06:00 every morning: what is due, what slipped, where to start. Nobody typed it.",
   },
   {
     dot: "bg-warn",

@@ -443,17 +443,25 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
             <div className="mt-3 space-y-4">
               {data.comments.map((c) => (
                 <div key={c.id} className="flex gap-2.5">
+                  {/* author is null once that member deletes their account.
+                      The comment stays because it is the team's history; only
+                      the name goes. */}
                   <Avatar
-                    name={c.author.name}
-                    email={c.author.email}
-                    image={c.author.image}
+                    name={c.author?.name ?? "Former member"}
+                    email={c.author?.email ?? ""}
+                    image={c.author?.image ?? null}
                     size={26}
                     className="mt-0.5"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm">
-                      <span className="font-medium">
-                        {c.author.name ?? c.author.email}
+                      <span
+                        className={cn(
+                          "font-medium",
+                          !c.author && "text-faint italic",
+                        )}
+                      >
+                        {c.author ? (c.author.name ?? c.author.email) : "Former member"}
                       </span>{" "}
                       <span className="text-xs text-faint">{timeAgo(c.createdAt)}</span>
                     </p>

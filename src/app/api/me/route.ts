@@ -7,6 +7,15 @@ import { users } from "@/server/db/schema";
 import { notificationPrefsSchema } from "@/lib/validators";
 import { deleteAccount } from "@/server/dal/account";
 
+/**
+ * DELETE purges Supabase storage for every workspace that dies with the
+ * account, plus every meeting the user recorded anywhere, before it drops the
+ * rows that hold those paths. See the same ceiling on /api/w/[ws]: dying
+ * mid-purge would leave the account undeletable, which is the POPIA right this
+ * route exists to honour. GET and PATCH here are unaffected by the ceiling.
+ */
+export const maxDuration = 300;
+
 export const GET = api(async () => {
   const user = await requireUser();
   const [row] = await db

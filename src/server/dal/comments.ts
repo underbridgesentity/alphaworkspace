@@ -51,10 +51,12 @@ export async function addComment(
     // Offline replay of an already-synced comment. Scope the lookup to THIS
     // workspace and task: a client-supplied id colliding with some other
     // tenant's comment must read as a conflict, never as their comment.
+    // Left join, not inner: author_id is null once that account is deleted,
+    // and an inner join would report "id already taken" as "no such comment".
     const [existing] = await ctx.db
       .select({ comment: comments, author: users })
       .from(comments)
-      .innerJoin(users, eq(comments.authorId, users.id))
+      .leftJoin(users, eq(comments.authorId, users.id))
       .where(
         and(
           eq(comments.id, input.id!),
@@ -68,12 +70,14 @@ export async function addComment(
       taskId,
       body: existing.comment.body,
       createdAt: existing.comment.createdAt.toISOString(),
-      author: {
-        id: existing.author.id,
-        name: existing.author.name,
-        email: existing.author.email,
-        image: existing.author.image,
-      },
+      author: existing.author
+        ? {
+            id: existing.author.id,
+            name: existing.author.name,
+            email: existing.author.email,
+            image: existing.author.image,
+          }
+        : null,
     };
   }
 

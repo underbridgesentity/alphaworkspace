@@ -1,16 +1,19 @@
 /**
  * Workspace lifecycle, membership and invites.
  */
-import { and, asc, count, eq, gt, gte, isNull, ne } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, isNotNull, isNull, ne } from "drizzle-orm";
 import type { Db } from "@/server/db";
 import {
+  attachments,
   invites,
+  meetings,
   memberships,
   tasks,
   users,
   workspaces,
   type WorkspaceSettings,
 } from "@/server/db/schema";
+import { deleteObjects } from "@/server/storage";
 import type { MemberDTO, Role } from "@/lib/types";
 import { sendEmail } from "@/server/email/send";
 import { renderEmail } from "@/server/email/layout";
@@ -128,9 +131,39 @@ export async function updateWorkspace(
     .where(eq(workspaces.id, ctx.workspace.id));
 }
 
-/** POPIA: deletion that actually deletes. FK cascades take everything. */
+/**
+ * POPIA: deletion that actually deletes. FK cascades take every row.
+ *
+ * Rows are not the whole story. Attachments and meeting recordings live in
+ * Supabase storage and only the row knows the path, so cascading first left
+ * every file the workspace ever held sitting in the bucket, unreachable and
+ * permanent. Objects go first, while their paths still exist.
+ */
 export async function deleteWorkspace(ctx: Ctx): Promise<void> {
   assertRole(ctx, "owner");
+
+  const [files, recordings] = await Promise.all([
+    ctx.db
+      .select({ path: attachments.storagePath })
+      .from(attachments)
+      .where(eq(attachments.workspaceId, ctx.workspace.id)),
+    ctx.db
+      .select({ path: meetings.audioPath })
+      .from(meetings)
+      .where(
+        and(
+          eq(meetings.workspaceId, ctx.workspace.id),
+          isNotNull(meetings.audioPath),
+        ),
+      ),
+  ]);
+
+  await deleteObjects(
+    [...files, ...recordings]
+      .map((r) => r.path)
+      .filter((p): p is string => !!p),
+  );
+
   await ctx.db.delete(workspaces).where(eq(workspaces.id, ctx.workspace.id));
 }
 
@@ -277,6 +310,19 @@ export async function removeMember(ctx: Ctx, membershipId: string): Promise<void
   if (target.userId !== ctx.userId) assertRole(ctx, "admin");
 
   await ctx.db.delete(memberships).where(eq(memberships.id, membershipId));
+
+  // Revoke any invite they issued that nobody has accepted yet. A shareable
+  // link can carry the admin role and lasts 90 days, so leaving one live lets
+  // a removed admin walk straight back in through their own door.
+  await ctx.db
+    .delete(invites)
+    .where(
+      and(
+        eq(invites.workspaceId, ctx.workspace.id),
+        eq(invites.invitedBy, target.userId),
+        isNull(invites.acceptedAt),
+      ),
+    );
 
   // Their in-flight work would otherwise stay assigned to someone no longer in
   // the workspace, invisible in everyone's My Work. Hand it back to the pool so

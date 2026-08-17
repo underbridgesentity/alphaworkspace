@@ -244,9 +244,14 @@ export async function taskDetail(ctx: Ctx, taskId: string): Promise<TaskDetail> 
         ? ctx.db.select(userLite).from(users).where(eq(users.id, row.assigneeId))
         : Promise.resolve([]),
       ctx.db
+        // Left join, not inner. author_id goes null when that member deletes
+        // their account, and an inner join would drop the comment from the
+        // thread entirely: the team would lose the discussion, not just the
+        // name against it. The DTO carries author: null and the panel renders
+        // "Former member".
         .select({ comment: comments, author: userLite })
         .from(comments)
-        .innerJoin(users, eq(comments.authorId, users.id))
+        .leftJoin(users, eq(comments.authorId, users.id))
         .where(eq(comments.taskId, taskId))
         .orderBy(asc(comments.createdAt)),
       ctx.db

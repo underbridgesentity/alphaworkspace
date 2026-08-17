@@ -21,12 +21,23 @@
     "seed:local": "tsx scripts/with-local-env.ts npx tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "push:keys": "node scripts/generate-vapid-keys.mjs",
     "icons": "node scripts/generate-icons.mjs",
+    "icons:native": "node scripts/generate-native-assets.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@auth/drizzle-adapter": "^1.11.2",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/ios": "^8.5.0",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -46,6 +57,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",

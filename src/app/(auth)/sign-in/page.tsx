@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { googleEnabled } from "@/server/auth";
+import { oauthAllowed } from "@/server/shell";
 import { getUser } from "@/server/session";
 import { safeRelativePath } from "@/lib/safe-path";
 import { SignInForm } from "./sign-in-form";
@@ -73,6 +74,10 @@ export default async function SignInPage({
     params.mode === "password" || params.mode === "create"
       ? params.mode
       : "link";
+  // Google is dropped inside the store shell, see oauthAllowed(). The blurb
+  // has to follow the button: promising a door that is not on the page reads
+  // as a broken build to a store reviewer.
+  const google = await oauthAllowed(googleEnabled);
 
   return (
     <div>
@@ -82,7 +87,9 @@ export default async function SignInPage({
       <p className="mt-1.5 text-muted">
         {mode === "create"
           ? "An email and a password, confirmed with one click."
-          : "A magic link, a password, or Google. New here? The same door creates your account."}
+          : google
+            ? "A magic link, a password, or Google. New here? The same door creates your account."
+            : "A magic link or a password. New here? The same door creates your account."}
       </p>
 
       {error && (
@@ -94,7 +101,7 @@ export default async function SignInPage({
         </p>
       )}
 
-      <SignInForm googleEnabled={googleEnabled} next={next} initialMode={mode} />
+      <SignInForm googleEnabled={google} next={next} initialMode={mode} />
 
       <p className="mt-6 text-sm text-faint">
         By continuing you agree to our{" "}
