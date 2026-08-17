@@ -1,5 +1,41 @@
 apply plugin: 'com.android.application'
 
+/*
+ * Release signing.
+ *
+ * The key NEVER lives in this file or anywhere in git. It is read from
+ * android/keystore.properties, which .gitignore excludes along with *.jks and
+ * *.keystore. Capacitor ships those ignore lines commented out, so a keystore
+ * dropped in android/ would have been committed; that is corrected there.
+ *
+ * Play App Signing means this is an UPLOAD key, not the key users verify
+ * against: Google holds the app signing key and re-signs. Losing the upload
+ * key is recoverable by asking Google to reset it. Losing it is still a bad
+ * day, so back up the .jks and its passwords somewhere that is not this Mac.
+ *
+ * To create it (once), from the repo root:
+ *
+ *   keytool -genkeypair -v \
+ *     -keystore android/upload-keystore.jks \
+ *     -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+ *     -dname "CN=Alpha Workspace, O=Underbridges, L=Johannesburg, C=ZA"
+ *
+ * then write android/keystore.properties (gitignored):
+ *
+ *   storeFile=upload-keystore.jks
+ *   storePassword=...
+ *   keyAlias=upload
+ *   keyPassword=...
+ *
+ * 10000 days because Play requires a validity ending after 22 October 2033.
+ */
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasKeystore = keystorePropertiesFile.exists()
+if (hasKeystore) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "za.co.alphaworkspace.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,11 +52,53 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasKeystore) {
+            release {
+                // rootProject.file, NOT file(): inside the :app module a bare
+                // file() resolves against android/app/, so a keystore sitting
+                // next to keystore.properties in android/ is reported missing.
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            /*
+             * Without a keystore, Gradle would otherwise fall back to the DEBUG
+             * signing config and hand you an app-release.aab that Play rejects
+             * on upload with a message about the debug certificate. Failing
+             * here instead says why, at the point the mistake was made.
+             */
+            if (hasKeystore) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig null
+            }
         }
+    }
+}
+
+/*
+ * A release build with no signing config produces an unsigned artifact that
+ * looks successful. Catch it at configuration time rather than at upload.
+ */
+gradle.taskGraph.whenReady { graph ->
+    def wantsRelease = graph.allTasks.any {
+        it.name.toLowerCase().contains("release") && it.project == project
+    }
+    if (wantsRelease && !hasKeystore) {
+        throw new GradleException(
+            "Release build requested but android/keystore.properties is missing.\n" +
+            "Create the upload key and that file first: see the comment at the\n" +
+            "top of android/app/build.gradle, or store/README.md."
+        )
     }
 }
 

@@ -57,18 +57,28 @@ Screenshots are **not** in here yet. They have to be captured; see step 3.
 
 ## Phase 0. Decisions to make before anything else
 
-### 0.1 [JOSEPH] Register the Play developer account as an **Organisation**
+### 0.1 [JOSEPH] Check the Play account you ALREADY have, before creating one
 
-Not personal. This is the single highest-leverage decision in the whole process.
+This section originally said to register a fresh Organisation account. Read
+this first, because it probably does not apply to you.
 
 Play's testing requirement, a closed test with **at least 12 testers opted in
 continuously for 14 days** before you may even apply for production access,
 applies only to **personal accounts created after 13 November 2023**.
-Organisation accounts skip it entirely.
+Organisation accounts are exempt, and so is any account, personal or not,
+created **before** that date.
 
-The cost is a D-U-N-S number, which takes days to weeks to get if you do not
-already have one. The alternative cost is recruiting a dozen real people with
-real Android devices and then waiting two weeks and a human review.
+Joseph has published on Play before, so an existing account almost certainly
+predates the cutoff and is exempt on age alone. **Confirm rather than assume:**
+Play Console > **Settings** > **Developer account** > **Account details** shows
+the account type, and **Payments profile** shows when it was created. If a
+banner about testing requirements appears on the app's dashboard, the rule
+applies; if there is no banner, it does not.
+
+Only if a NEW account turns out to be necessary is Organisation worth the
+D-U-N-S number, which takes days to weeks to obtain. The alternative cost is
+recruiting a dozen real people with real Android devices, then waiting two
+weeks and a human review.
 
 Reference: <https://support.google.com/googleplay/android-developer/answer/14151465>
 
@@ -109,8 +119,36 @@ both paths.
    **`za.co.alphaworkspace.app`**. It matches `capacitor.config.ts:26` and
    `android/app/build.gradle:7` and **cannot be changed after the first
    release**.
-4. **[JOSEPH]** Enrol in **Play App Signing**. Back up the upload keystore and
-   its passwords.
+4. **[JOSEPH]** Create the upload key, then enrol in **Play App Signing**.
+   The Gradle side is **[DONE]**: `android/app/build.gradle` has a release
+   signing config that reads `android/keystore.properties`, `.gitignore`
+   excludes `*.jks`, `*.keystore` and that properties file, and a release build
+   with no keystore now fails with a named error instead of quietly signing
+   with the debug certificate and being rejected at upload. All of that is
+   verified: a throwaway key was generated, a signed 5.9 MB AAB was produced
+   from it, its certificate confirmed as the upload key rather than the debug
+   one, and the throwaway deleted.
+
+   Two commands, from the repo root:
+
+   ```bash
+   keytool -genkeypair -v -keystore android/upload-keystore.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Alpha Workspace, O=Underbridges, L=Johannesburg, C=ZA"
+   ```
+
+   Then write `android/keystore.properties` (never committed):
+
+   ```
+   storeFile=upload-keystore.jks
+   storePassword=<the store password you chose>
+   keyAlias=upload
+   keyPassword=<the key password you chose>
+   ```
+
+   `10000` days because Play requires validity past 22 October 2033. Back up
+   the `.jks` and both passwords somewhere off this machine: with Play App
+   Signing a lost upload key is recoverable via a Google reset, but it is still
+   days of delay. After that, `./scripts/native-build.sh android-release`
+   produces the AAB to upload.
 5. **[JOSEPH]** iOS Distribution certificate and App Store provisioning
    profile. Xcode automatic signing does this once the account is live.
 6. **[JOSEPH]** Only if push ships: APNs authentication key (the `.p8`

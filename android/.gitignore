@@ -52,10 +52,15 @@ captures/
 # Comment next line if keeping position of elements in Navigation Editor is relevant for you
 .idea/navEditor.xml
 
-# Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# Keystore files.
+#
+# Capacitor ships these lines commented out. They are ON here, deliberately: a
+# keystore committed to the repository is a signing key handed to anyone who
+# can read it, and keystore.properties holds its passwords in plain text.
+# Never negate these, and never move a keystore outside android/ to dodge them.
+*.jks
+*.keystore
+keystore.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

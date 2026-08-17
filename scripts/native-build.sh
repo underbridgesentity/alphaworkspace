@@ -31,8 +31,10 @@ case "${1:-help}" in
     echo "APK: android/app/build/outputs/apk/debug/app-debug.apk"
     ;;
   android-release)
-    # The Play upload artifact. Requires the signing config to be filled in
-    # (see store/README.md); an unsigned bundle will be rejected on upload.
+    # The Play upload artifact. Needs android/keystore.properties and the
+    # upload keystore it names; see store/README.md step 4 for the two commands
+    # that create them. Without it the build stops with a named error rather
+    # than signing with the debug certificate and failing at upload instead.
     ( cd android && ./gradlew bundleRelease )
     echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
     ;;
