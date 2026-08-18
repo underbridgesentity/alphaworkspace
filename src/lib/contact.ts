@@ -15,7 +15,7 @@
  *
  * It must stay a real, monitored inbox. Apple emails it during review.
  */
-export const SUPPORT_EMAIL = "info@underbridges.co.za";
+export const SUPPORT_EMAIL = "joseph@underbridges.co.za";
 
 /** `mailto:` form, so call sites do not each rebuild the string. */
 export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}`;

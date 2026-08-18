@@ -179,7 +179,7 @@ and no contact page. The privacy policy says to "email the operator of this
 deployment" without giving an address
 (`src/app/(marketing)/privacy/page.tsx:120-124`).
 
-**DONE.** `/support` is built and live, publishing `info@underbridges.co.za`,
+**DONE.** `/support` is built and live, publishing `joseph@underbridges.co.za`,
 which already exists and is already read. Neither store requires the support
 address to be on the app's own domain: Apple wants a reachable Support URL with
 a way to contact a human, Play wants a support email on the listing. The

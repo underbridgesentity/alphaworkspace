@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  * also appears on /privacy and /delete-account and on both store listings. One
  * constant means a change cannot leave a stale address on one of them.
  *
- * It is info@underbridges.co.za: an inbox that already exists and is already
+ * It is joseph@underbridges.co.za: an inbox that already exists and is already
  * read. Neither store requires the address to sit on the app's own domain,
  * only that it reaches a person, and Apple does email it during review.
  */
