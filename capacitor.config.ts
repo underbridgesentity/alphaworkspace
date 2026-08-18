@@ -34,6 +34,21 @@ const config: CapacitorConfig = {
     hostname: "www.alphaworkspace.co.za",
     androidScheme: "https",
     iosScheme: "https",
+    /*
+     * REQUIRED, and the app is unusable without it. Capacitor iOS decides
+     * "is this navigation ours" by STRING-PREFIXING the full server.url,
+     * path included. With url ending in /app, the very first server redirect
+     * (/app -> /sign-in) fails that prefix test, the main-frame load is
+     * cancelled (WebKit code 102) and the URL is handed to Safari: blank
+     * webview, sign-in opens in the system browser, and cookies set there
+     * never reach the app, so nobody can ever sign in. allowNavigation is
+     * checked BEFORE the prefix rule and matches by host, which is the
+     * semantic actually wanted. Found by running the app in the simulator;
+     * no build error catches this. Off-host links still open externally via
+     * the runtime's click handler, and WKAppBoundDomains still fences the
+     * webview to these hosts.
+     */
+    allowNavigation: ["www.alphaworkspace.co.za"],
     // No cleartext anywhere: the session cookie must never cross plain HTTP.
     cleartext: false,
   },
