@@ -7,9 +7,9 @@ step: **[JOSEPH]** is something only you can do, usually in a browser or a
 console. **[DONE]** is already in the repository and just needs pointing at.
 
 **Start here, not at step 1.** Open `store/PRE-FLIGHT.md` and read section B.
-There are five open blockers in the product, two of which will get you rejected
-on the first pass. If B1 is not fixed you cannot submit to Apple at all, because
-there is no support page for the required Support URL.
+The two P0 blockers it originally named are FIXED and live: /support publishes
+a real address, and /delete-account is reachable signed out. What remains in B
+is the smaller items, worth a skim before submitting.
 
 ---
 
@@ -51,7 +51,11 @@ public/.well-known/
                                   fingerprint. See step A7.
 ```
 
-Screenshots are **not** in here yet. They have to be captured; see step 3.
+Screenshots ARE in here now: `assets/screenshots/iphone/` (1320x2868, the
+6.9" slot) and `assets/screenshots/ipad/` (2064x2752, the 13" slot), captured
+from the running product by `e2e/store-shots.spec.ts`. To refresh them:
+`npm run db:reset:local`, then
+`npx playwright test --project=iphone --project=ipad store-shots`.
 
 ---
 
@@ -99,13 +103,12 @@ Part 5:
 As of writing neither native project permits the microphone at all, so doing
 nothing means Shape A.
 
-### 0.3 [JOSEPH] Decide iPhone-only or iPhone and iPad
+### 0.3 DECIDED: iPhone and iPad
 
-`ios/App/App.xcodeproj/project.pbxproj` currently has
-`TARGETED_DEVICE_FAMILY = "1,2"`, which declares iPad. That makes 13" iPad
-screenshots mandatory and puts an untested layout in front of a reviewer.
-Recommend setting it to `"1"` for v1. `store/assets/README.md` section 2b has
-both paths.
+`TARGETED_DEVICE_FAMILY` stays `"1,2"`, per Joseph on 2026-08-17. The layout is
+audited at tablet size by `e2e/tablet.spec.ts` (no horizontal overflow, sidebar
+not tab bar at 1032 points, landscape sane), and the mandatory 13" screenshots
+exist. `store/assets/README.md` section 2b has the detail.
 
 ---
 
@@ -149,8 +152,43 @@ both paths.
    Signing a lost upload key is recoverable via a Google reset, but it is still
    days of delay. After that, `./scripts/native-build.sh android-release`
    produces the AAB to upload.
-5. **[JOSEPH]** iOS Distribution certificate and App Store provisioning
-   profile. Xcode automatic signing does this once the account is live.
+5. **[JOSEPH]** iOS builds go through **Xcode Cloud**, decided 2026-08-18: no
+   local Xcode signing, Apple builds from GitHub and signs in their cloud, and
+   finished builds land in TestFlight on their own. The repo side is **[DONE]**:
+   the App scheme is shared (Xcode Cloud cannot see unshared schemes), and
+   `ios/App/ci_scripts/` holds the two scripts Apple's runners need, one that
+   installs Node and runs `npx cap sync ios` before package resolution (the
+   iOS project's Swift packages point into `node_modules`, so a bare clone
+   cannot even resolve), and one that stamps `CI_BUILD_NUMBER` so no upload is
+   ever rejected for a reused build number.
+
+   Your half, in App Store Connect (signed in as you, once):
+
+   1. <https://appstoreconnect.apple.com> > **My Apps** > **+** > **New App**:
+      platform iOS, name **Alpha Workspace**, bundle ID
+      **`za.co.alphaworkspace.app`** (if the dropdown does not offer it,
+      register the identifier first at <https://developer.apple.com/account>
+      under **Identifiers**), SKU anything stable, e.g. `alphaworkspace-ios`.
+   2. In the app's page: **Xcode Cloud** tab > **Get Started**.
+   3. **Grant access to your GitHub repository**
+      (`underbridgesentity/alphaworkspace`): it walks you through installing
+      the Xcode Cloud GitHub app. This is the moment credentials change hands,
+      and they go to Apple, nobody else.
+   4. First workflow: product **App**, scheme **App**. Edit it to: start
+      condition **Branch Changes** on `main` with **Files and Folders**
+      narrowed to `ios/` (otherwise every web deploy burns a build), action
+      **Archive** with platform iOS, post-action **TestFlight (Internal
+      Testing)**.
+   5. Press **Start Build** once by hand. The first run does the certificate
+      dance automatically: Xcode Cloud creates and stores its own Distribution
+      certificate, no keychain, no .p12 export, nothing to back up.
+   6. When it goes green, the build is in TestFlight: add yourself as an
+      internal tester in the **TestFlight** tab and install it on your phone
+      from the TestFlight app.
+
+   Free tier is 25 compute hours per month; this app archives in well under
+   one, so the quota is not a constraint. If step 5 fails, the log names the
+   failing script line: the two ci_scripts are the only moving parts we own.
 6. **[JOSEPH]** Only if push ships: APNs authentication key (the `.p8`
    downloads **once**, save it) and `google-services.json` into `android/app/`.
    `PRE-FLIGHT.md` A4 and A5.
